@@ -1,0 +1,7 @@
+syntax = "proto3";
+package proto;
+
+// node/ping
+message Ping {}
+message Pong {}
+
