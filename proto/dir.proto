@@ -6,8 +6,6 @@ message PeerInfo {
   repeated bytes addr = 2;  // peer multiaddrs
 }
 
-message NullResponse {}
-
 // directory/register
 message RegisterPeer {
   PeerInfo info = 1;
@@ -19,10 +17,7 @@ message LookupPeerRequest {
 }
 
 message LookupPeerResponse {
-  oneof body {
-    PeerInfo info = 1;
-    NullResponse nil = 2;
-  }
+  PeerInfo peer = 1;       // abset if peer not found
 }
 
 // directory/list
