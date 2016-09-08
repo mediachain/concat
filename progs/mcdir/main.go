@@ -15,13 +15,15 @@ import (
 	p2p_swarm "github.com/libp2p/go-libp2p/p2p/net/swarm"
 	pb "github.com/mediachain/concat/proto"
 	"log"
+	"sync"
 )
 
 type Directory struct {
 	pkey  p2p_crypto.PrivKey
 	id    p2p_peer.ID
 	host  p2p_host.Host
-	nodes map[p2p_peer.ID]p2p_pstore.PeerInfo
+	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
+	mx    sync.Mutex
 }
 
 const MaxMessageSize = 2 << 20 // 1 MB
@@ -78,11 +80,15 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
-
+	dir.mx.Lock()
+	dir.peers[info.ID] = info
+	dir.mx.Unlock()
 }
 
 func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
-
+	dir.mx.Lock()
+	delete(dir.peers, pid)
+	dir.mx.Unlock()
 }
 
 func main() {
