@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	ggio "github.com/gogo/protobuf/io"
 	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
@@ -11,8 +13,8 @@ import (
 	p2p_metrics "github.com/libp2p/go-libp2p/p2p/metrics"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	p2p_swarm "github.com/libp2p/go-libp2p/p2p/net/swarm"
+	pb "github.com/mediachain/concat/proto"
 	"log"
-	//	pb "github.com/mediachain/concat/proto"
 )
 
 type Directory struct {
@@ -22,8 +24,49 @@ type Directory struct {
 	nodes map[p2p_peer.ID]p2p_pstore.PeerInfo
 }
 
-func (dir *Directory) registerHandler(s p2p_net.Stream) {
+const MaxMessageSize = 2 << 20 // 1 MB
 
+func pbToPeerInfo(pb *pb.PeerInfo) (p2p_pstore.PeerInfo, error) {
+	return p2p_pstore.PeerInfo{}, errors.New("FIXME")
+}
+
+func (dir *Directory) registerHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	pid := s.Conn().RemotePeer()
+	log.Printf("directory/register: new stream from %s\n", pid.Pretty())
+
+	reader := ggio.NewDelimitedReader(s, MaxMessageSize)
+	req := new(pb.RegisterPeer)
+
+	for {
+		err := reader.ReadMsg(req)
+		if err != nil {
+			break
+		}
+
+		if req.Info == nil {
+			log.Printf("directory/register: empty peer info from %s\n", pid.Pretty())
+			break
+		}
+
+		pinfo, err := pbToPeerInfo(req.Info)
+		if err != nil {
+			log.Printf("directory/register: bad peer info from %s\n", pid.Pretty())
+			break
+		}
+
+		if pinfo.ID != pid {
+			log.Printf("directory/register: bogus peer info from %s\n", pid.Pretty())
+			break
+		}
+
+		dir.registerPeer(pinfo)
+
+		req.Reset()
+	}
+
+	dir.unregisterPeer(pid)
 }
 
 func (dir *Directory) lookupHandler(s p2p_net.Stream) {
@@ -31,6 +74,14 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) listHandler(s p2p_net.Stream) {
+
+}
+
+func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
+
+}
+
+func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
 
 }
 
