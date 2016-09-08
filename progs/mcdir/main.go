@@ -89,12 +89,14 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
+	log.Printf("directory: register %s\n", info.ID.Pretty())
 	dir.mx.Lock()
 	dir.peers[info.ID] = info
 	dir.mx.Unlock()
 }
 
 func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
+	log.Printf("directory: unregister %s\n", pid.Pretty())
 	dir.mx.Lock()
 	delete(dir.peers, pid)
 	dir.mx.Unlock()
