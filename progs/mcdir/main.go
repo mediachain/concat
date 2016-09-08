@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	ggio "github.com/gogo/protobuf/io"
 	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
@@ -28,8 +27,18 @@ type Directory struct {
 
 const MaxMessageSize = 2 << 20 // 1 MB
 
-func pbToPeerInfo(pb *pb.PeerInfo) (p2p_pstore.PeerInfo, error) {
-	return p2p_pstore.PeerInfo{}, errors.New("FIXME")
+func pbToPeerInfo(pbpi *pb.PeerInfo) (empty p2p_pstore.PeerInfo, err error) {
+	pid := p2p_peer.ID(pbpi.Id)
+	addrs := make([]multiaddr.Multiaddr, len(pbpi.Addr))
+	for x, bytes := range pbpi.Addr {
+		addr, err := multiaddr.NewMultiaddrBytes(bytes)
+		if err != nil {
+			return empty, err
+		}
+		addrs[x] = addr
+	}
+
+	return p2p_pstore.PeerInfo{ID: pid, Addrs: addrs}, nil
 }
 
 func (dir *Directory) registerHandler(s p2p_net.Stream) {
