@@ -102,7 +102,7 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = node.doPing(pid)
+	err = node.doPing(r.Context(), pid)
 	if err != nil {
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
@@ -111,9 +111,7 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK\n")
 }
 
-func (node *Node) doPing(pid p2p_peer.ID) error {
-	ctx := context.Background()
-
+func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	pinfo, err := node.doLookup(ctx, pid)
 	if err != nil {
 		return err
@@ -144,8 +142,39 @@ func (node *Node) doPing(pid p2p_peer.ID) error {
 	return err
 }
 
+var UnknownPeer = errors.New("Unknown peer")
+
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	return empty, errors.New("doLookup: Implement me!")
+	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/lookup")
+	if err != nil {
+		return empty, err
+	}
+	defer s.Close()
+
+	req := pb.LookupPeerRequest{string(pid)}
+	w := ggio.NewDelimitedWriter(s)
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return empty, err
+	}
+
+	var resp pb.LookupPeerResponse
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	err = r.ReadMsg(&resp)
+	if err != nil {
+		return empty, err
+	}
+
+	if resp.Peer == nil {
+		return empty, UnknownPeer
+	}
+
+	pinfo, err := mc.PBToPeerInfo(resp.Peer)
+	if err != nil {
+		return empty, err
+	}
+
+	return pinfo, nil
 }
 
 func main() {
