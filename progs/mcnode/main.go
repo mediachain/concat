@@ -83,7 +83,8 @@ func main() {
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		fmt.Printf("Usage: %s [-l port] directory\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [-l port] [-c port] directory\n", os.Args[0])
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
