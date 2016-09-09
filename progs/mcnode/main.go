@@ -71,12 +71,9 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 	defer s.Close()
 
-	pbpi := pb.PeerInfo{}
-	pbpi.Id = string(node.id)
-	pbpi.Addr = make([][]byte, len(addrs))
-	for x, addr := range addrs {
-		pbpi.Addr[x] = addr.Bytes()
-	}
+	pinfo := p2p_pstore.PeerInfo{node.id, addrs}
+	var pbpi pb.PeerInfo
+	mc.PBFromPeerInfo(&pbpi, pinfo)
 	msg := pb.RegisterPeer{&pbpi}
 
 	w := ggio.NewDelimitedWriter(s)

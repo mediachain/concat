@@ -7,7 +7,6 @@ import (
 	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
-	multiaddr "github.com/jbenet/go-multiaddr"
 	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
@@ -22,20 +21,6 @@ type Directory struct {
 	host  p2p_host.Host
 	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
 	mx    sync.Mutex
-}
-
-func pbToPeerInfo(pbpi *pb.PeerInfo) (empty p2p_pstore.PeerInfo, err error) {
-	pid := p2p_peer.ID(pbpi.Id)
-	addrs := make([]multiaddr.Multiaddr, len(pbpi.Addr))
-	for x, bytes := range pbpi.Addr {
-		addr, err := multiaddr.NewMultiaddrBytes(bytes)
-		if err != nil {
-			return empty, err
-		}
-		addrs[x] = addr
-	}
-
-	return p2p_pstore.PeerInfo{ID: pid, Addrs: addrs}, nil
 }
 
 func (dir *Directory) registerHandler(s p2p_net.Stream) {
@@ -58,7 +43,7 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 			break
 		}
 
-		pinfo, err := pbToPeerInfo(req.Info)
+		pinfo, err := mc.PBToPeerInfo(req.Info)
 		if err != nil {
 			log.Printf("directory/register: bad peer info from %s\n", pid.Pretty())
 			break
