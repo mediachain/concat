@@ -127,7 +127,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{pkey: privk, id: id, host: host}
+	dir := &Directory{pkey: privk, id: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
