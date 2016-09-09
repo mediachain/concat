@@ -131,6 +131,10 @@ func main() {
 		pstore,
 		p2p_metrics.NewBandwidthCounter())
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	host := p2p_bhost.New(netw)
 	dir := &Directory{pkey: privk, id: id, host: host}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
