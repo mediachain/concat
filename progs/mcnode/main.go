@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
+	mux "github.com/gorilla/mux"
 	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
@@ -14,6 +15,7 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	"log"
+	"net/http"
 	"os"
 	"time"
 )
@@ -67,8 +69,17 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 }
 
+func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, node.id.Pretty())
+}
+
+func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Implement me!")
+}
+
 func main() {
-	port := flag.Int("l", 9001, "Listen port")
+	pport := flag.Int("l", 9001, "Peer listen port")
+	cport := flag.Int("c", 9002, "Peer control interface port [http]")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -76,7 +87,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *port))
+	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *pport))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -108,5 +119,17 @@ func main() {
 	go node.registerPeer(addr)
 
 	log.Printf("I am %s/%s", addr, id.Pretty())
+
+	haddr := fmt.Sprintf("127.0.0.1:%d", *cport)
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/id", node.httpId)
+	router.HandleFunc("/ping/{peerId}", node.httpPing)
+
+	log.Printf("Serving client interface at %s", haddr)
+	err = http.ListenAndServe(haddr, router)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	select {}
 }
