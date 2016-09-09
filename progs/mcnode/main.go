@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
@@ -74,7 +75,25 @@ func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Implement me!")
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		fmt.Fprintf(w, "Error: Bad id: %s\n", err.Error())
+		return
+	}
+
+	err = node.doPing(pid)
+	if err != nil {
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	fmt.Fprintf(w, "OK\n")
+}
+
+func (node *Node) doPing(pid p2p_peer.ID) error {
+	return errors.New("Implement me!")
 }
 
 func main() {
