@@ -29,7 +29,29 @@ type Node struct {
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
+	defer s.Close()
 
+	pid := s.Conn().RemotePeer()
+	log.Printf("node/ping: new stream from %s", pid.Pretty())
+
+	var ping pb.Ping
+	var pong pb.Pong
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	for {
+		err := r.ReadMsg(&ping)
+		if err != nil {
+			return
+		}
+
+		log.Printf("node/ping: ping from %s; ponging", pid.Pretty())
+
+		err = w.WriteMsg(&pong)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
@@ -59,7 +81,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 
 	w := ggio.NewDelimitedWriter(s)
 	for {
-		log.Printf("registering with directory")
+		log.Printf("Registering with directory")
 		err = w.WriteMsg(&msg)
 		if err != nil {
 			log.Printf("Failed to register with directory")
@@ -93,7 +115,40 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) doPing(pid p2p_peer.ID) error {
-	return errors.New("Implement me!")
+	ctx := context.Background()
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		return err
+	}
+
+	err = node.host.Connect(ctx, pinfo)
+	if err != nil {
+		return err
+	}
+
+	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/node/ping")
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	var ping pb.Ping
+	w := ggio.NewDelimitedWriter(s)
+	err = w.WriteMsg(&ping)
+	if err != nil {
+		return err
+	}
+
+	var pong pb.Pong
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	err = r.ReadMsg(&pong)
+
+	return err
+}
+
+func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
+	return empty, errors.New("doLookup: Implement me!")
 }
 
 func main() {

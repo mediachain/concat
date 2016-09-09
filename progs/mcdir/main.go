@@ -24,8 +24,6 @@ type Directory struct {
 	mx    sync.Mutex
 }
 
-const MaxMessageSize = 2 << 20 // 1 MB
-
 func pbToPeerInfo(pbpi *pb.PeerInfo) (empty p2p_pstore.PeerInfo, err error) {
 	pid := p2p_peer.ID(pbpi.Id)
 	addrs := make([]multiaddr.Multiaddr, len(pbpi.Addr))
@@ -46,7 +44,7 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 	pid := s.Conn().RemotePeer()
 	log.Printf("directory/register: new stream from %s\n", pid.Pretty())
 
-	reader := ggio.NewDelimitedReader(s, MaxMessageSize)
+	reader := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
 	req := new(pb.RegisterPeer)
 
 	for {
