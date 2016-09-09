@@ -29,11 +29,11 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 	pid := s.Conn().RemotePeer()
 	log.Printf("directory/register: new stream from %s\n", pid.Pretty())
 
-	reader := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
 	req := new(pb.RegisterPeer)
 
 	for {
-		err := reader.ReadMsg(req)
+		err := r.ReadMsg(req)
 		if err != nil {
 			break
 		}
@@ -63,7 +63,43 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) lookupHandler(s p2p_net.Stream) {
+	defer s.Close()
 
+	pid := s.Conn().RemotePeer()
+	log.Printf("directory/lookup: new stream from %s\n", pid.Pretty())
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+	req := new(pb.LookupPeerRequest)
+	resp := new(pb.LookupPeerResponse)
+
+	for {
+		err := r.ReadMsg(req)
+		if err != nil {
+			break
+		}
+
+		pid, err := p2p_peer.IDFromString(req.Id)
+		if err != nil {
+			log.Printf("directory/lookup: bad request from %s\n", pid.Pretty())
+			break
+		}
+
+		pinfo, ok := dir.lookupPeer(pid)
+		if ok {
+			var pbpi pb.PeerInfo
+			mc.PBFromPeerInfo(&pbpi, pinfo)
+			resp.Peer = &pbpi
+		}
+
+		err = w.WriteMsg(resp)
+		if err != nil {
+			break
+		}
+
+		req.Reset()
+		resp.Reset()
+	}
 }
 
 func (dir *Directory) listHandler(s p2p_net.Stream) {
@@ -82,6 +118,13 @@ func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
 	dir.mx.Lock()
 	delete(dir.peers, pid)
 	dir.mx.Unlock()
+}
+
+func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
+	dir.mx.Lock()
+	pinfo, ok := dir.peers[pid]
+	dir.mx.Unlock()
+	return pinfo, ok
 }
 
 func main() {

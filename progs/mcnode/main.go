@@ -122,7 +122,7 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 		return err
 	}
 
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/node/ping")
+	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/ping")
 	if err != nil {
 		return err
 	}
