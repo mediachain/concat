@@ -22,23 +22,24 @@ type Node struct {
 	id    p2p_peer.ID
 	privk p2p_crypto.PrivKey
 	host  p2p_host.Host
+	dir   p2p_pstore.PeerInfo
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
 
 }
 
-func (node *Node) registerPeer(dir p2p_pstore.PeerInfo, addrs ...multiaddr.Multiaddr) {
+func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	// directory failure is a fatality for now
 	ctx := context.Background()
 
-	err := node.host.Connect(ctx, dir)
+	err := node.host.Connect(ctx, node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory")
 		log.Fatal(err)
 	}
 
-	s, err := node.host.NewStream(ctx, dir.ID, "/mediachain/dir/register")
+	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/register")
 	if err != nil {
 		log.Printf("Failed to open directory stream")
 		log.Fatal(err)
@@ -102,9 +103,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node := &Node{id: id, privk: privk, host: host}
+	node := &Node{id: id, privk: privk, host: host, dir: dir}
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
-	go node.registerPeer(dir, addr)
+	go node.registerPeer(addr)
 
 	log.Printf("I am %s/%s", addr, id.Pretty())
 	select {}
