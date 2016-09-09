@@ -37,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
+	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *port))
 	if err != nil {
 		log.Fatal(err)
 	}
