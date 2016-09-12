@@ -1,0 +1,29 @@
+syntax = "proto3";
+package proto;
+
+message PeerInfo {
+  string id = 1;            // peer id
+  repeated bytes addr = 2;  // peer multiaddrs
+}
+
+// directory/register
+message RegisterPeer {
+  PeerInfo info = 1;
+}
+
+// directory/lookup
+message LookupPeerRequest {
+  string id = 1;
+}
+
+message LookupPeerResponse {
+  PeerInfo peer = 1;       // abset if peer not found
+}
+
+// directory/list
+message ListPeersRequest {
+}
+
+message ListPeersResponse {
+  repeated PeerInfo peers = 1;
+}

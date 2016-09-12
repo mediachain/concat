@@ -1,0 +1,22 @@
+{
+  "author": "vyzo",
+  "bugs": {
+    "url": "github.com/mediachain/concat"
+  },
+  "gx": {
+    "dvcsimport": "github.com/mediachain/concat"
+  },
+  "gxDependencies": [
+    {
+      "author": "whyrusleeping",
+      "hash": "QmXnaDLonE9YBTVDdWBM6Jb5YxxmW1MHMkXzgsnu1jTEmK",
+      "name": "go-libp2p",
+      "version": "3.4.3"
+    }
+  ],
+  "gxVersion": "0.9.0",
+  "language": "go",
+  "license": "",
+  "name": "concat",
+  "version": "0.0.0"
+}
