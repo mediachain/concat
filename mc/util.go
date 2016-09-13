@@ -121,25 +121,6 @@ func generateKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
 	return p2p_crypto.GenerateKeyPair(p2p_crypto.RSA, 1024)
 }
 
-var NotDirectory = errors.New("File is not a directory")
-
-func EnsureDirectory(path string, perm os.FileMode) error {
-	finfo, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return os.MkdirAll(path, perm)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if finfo.IsDir() {
-		return nil
-	}
-
-	return NotDirectory
-}
-
 func NewHost(id Identity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, error) {
 	pstore := p2p_pstore.NewPeerstore()
 	pstore.AddPrivKey(id.ID, id.PrivKey)

@@ -12,6 +12,7 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	"log"
+	"os"
 	"sync"
 )
 
@@ -132,7 +133,7 @@ func main() {
 	home := flag.String("d", "/tmp/mcdir", "Directory home")
 	flag.Parse()
 
-	mc.EnsureDirectory(*home, 0755)
+	os.MkdirAll(*home, 0755)
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
