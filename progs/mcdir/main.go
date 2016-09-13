@@ -132,6 +132,7 @@ func main() {
 	home := flag.String("d", "/tmp/mcdir", "Directory home")
 	flag.Parse()
 
+	mc.EnsureDirectory(*home, 0755)
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)

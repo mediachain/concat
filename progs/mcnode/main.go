@@ -199,6 +199,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	mc.EnsureDirectory(*home, 0755)
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
