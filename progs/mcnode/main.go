@@ -7,7 +7,6 @@ import (
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
 	mux "github.com/gorilla/mux"
-	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
 	multiaddr "github.com/jbenet/go-multiaddr"
@@ -22,10 +21,9 @@ import (
 )
 
 type Node struct {
-	id    p2p_peer.ID
-	privk p2p_crypto.PrivKey
-	host  p2p_host.Host
-	dir   p2p_pstore.PeerInfo
+	mc.Identity
+	host p2p_host.Host
+	dir  p2p_pstore.PeerInfo
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
@@ -71,7 +69,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 	defer s.Close()
 
-	pinfo := p2p_pstore.PeerInfo{node.id, addrs}
+	pinfo := p2p_pstore.PeerInfo{node.ID, addrs}
 	var pbpi pb.PeerInfo
 	mc.PBFromPeerInfo(&pbpi, pinfo)
 	msg := pb.RegisterPeer{&pbpi}
@@ -90,7 +88,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 }
 
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, node.id.Pretty())
+	fmt.Fprintln(w, node.Identity.Pretty())
 }
 
 func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +208,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node := &Node{id: id.ID, privk: id.PrivKey, host: host, dir: dir}
+	node := &Node{Identity: id, host: host, dir: dir}
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)
 
