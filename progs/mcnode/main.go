@@ -180,6 +180,7 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
+	home := flag.String("d", "/tmp/mcnode", "Node home")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -198,24 +199,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Generating key pair\n")
-	privk, pubk, err := mc.GenerateKeyPair()
+	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	id, err := p2p_peer.IDFromPublicKey(pubk)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("ID: %s\n", id.Pretty())
-
-	host, err := mc.NewHost(privk, addr)
+	host, err := mc.NewHost(id, addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node := &Node{id: id, privk: privk, host: host, dir: dir}
+	node := &Node{id: id.ID, privk: id.PrivKey, host: host, dir: dir}
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)
 

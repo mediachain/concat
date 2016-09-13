@@ -129,31 +129,25 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 
 func main() {
 	port := flag.Int("l", 9000, "Listen port")
+	home := flag.String("d", "/tmp/mcdir", "Directory home")
 	flag.Parse()
 
-	log.Printf("Generating key pair\n")
-	privk, pubk, err := mc.GenerateKeyPair()
+	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	id, err := p2p_peer.IDFromPublicKey(pubk)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("ID: %s\n", id.Pretty())
 
 	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *port))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	host, err := mc.NewHost(privk, addr)
+	host, err := mc.NewHost(id, addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{pkey: privk, id: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{pkey: id.PrivKey, id: id.ID, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
