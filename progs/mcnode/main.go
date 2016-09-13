@@ -197,7 +197,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	os.MkdirAll(*home, 0755)
+	err = os.MkdirAll(*home, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)

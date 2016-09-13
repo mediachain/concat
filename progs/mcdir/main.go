@@ -131,7 +131,11 @@ func main() {
 	home := flag.String("d", "/tmp/mcdir", "Directory home")
 	flag.Parse()
 
-	os.MkdirAll(*home, 0755)
+	err := os.MkdirAll(*home, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
