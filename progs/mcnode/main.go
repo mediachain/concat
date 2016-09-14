@@ -19,13 +19,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
 type Node struct {
 	mc.Identity
-	host p2p_host.Host
-	dir  p2p_pstore.PeerInfo
+	host    p2p_host.Host
+	dir     p2p_pstore.PeerInfo
+	home    string
+	mx      sync.Mutex
+	stmt    map[string]*pb.Statement
+	counter int
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
@@ -208,8 +213,37 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(w, sid)
 }
 
+var BadStatementBody = errors.New("Unrecognized statement body")
+
 func (node *Node) doPublish(ns string, body interface{}) (string, error) {
-	return "", errors.New("Implement me!")
+	stmt := new(pb.Statement)
+	pid := node.ID.Pretty()
+	ts := time.Now().Unix()
+	counter := node.stmtCounter()
+	stmt.Id = fmt.Sprintf("%s:%d:%d", pid, ts, counter)
+	stmt.Publisher = pid // this should be the pubkey when we have ECC keys
+	stmt.Namespace = ns
+	switch body := body.(type) {
+	case *pb.SimpleStatement:
+		stmt.Body = &pb.Statement_Simple{body}
+
+	default:
+		return "", BadStatementBody
+	}
+	// only sign it with shiny ECC keys, don't bother with RSA
+	node.mx.Lock()
+	node.stmt[stmt.Id] = stmt
+	node.mx.Unlock()
+
+	return stmt.Id, nil
+}
+
+func (node *Node) stmtCounter() int {
+	node.mx.Lock()
+	counter := node.counter
+	node.counter++
+	node.mx.Unlock()
+	return counter
 }
 
 func main() {
@@ -249,7 +283,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node := &Node{Identity: id, host: host, dir: dir}
+	node := &Node{Identity: id, host: host, dir: dir, home: *home, stmt: make(map[string]*pb.Statement)}
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)
 
