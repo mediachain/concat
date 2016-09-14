@@ -230,6 +230,15 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	case *pb.SimpleStatement:
 		stmt.Body = &pb.Statement_Simple{body}
 
+	case *pb.CompoundStatement:
+		stmt.Body = &pb.Statement_Compound{body}
+
+	case *pb.ArchiveStatement:
+		stmt.Body = &pb.Statement_Archive{body}
+
+	case *pb.Statement:
+		stmt.Body = &pb.Statement_Envelope{body}
+
 	default:
 		return "", BadStatementBody
 	}
