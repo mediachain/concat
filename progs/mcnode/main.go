@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
+	ggproto "github.com/gogo/protobuf/proto"
 	mux "github.com/gorilla/mux"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
@@ -19,6 +20,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -231,11 +234,16 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 		return "", BadStatementBody
 	}
 	// only sign it with shiny ECC keys, don't bother with RSA
+	log.Printf("Publish statement %s", stmt.Id)
+
 	node.mx.Lock()
 	node.stmt[stmt.Id] = stmt
 	node.mx.Unlock()
 
-	log.Printf("Published statement %s", stmt.Id)
+	err := node.saveStatement(stmt)
+	if err != nil {
+		log.Printf("Warning: Failed to save statement: %s", err.Error())
+	}
 
 	return stmt.Id, nil
 }
@@ -271,6 +279,50 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (node *Node) saveStatement(stmt *pb.Statement) error {
+	spath := path.Join(node.home, "stmt", stmt.Id)
+
+	bytes, err := ggproto.Marshal(stmt)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Writing statement %s", spath)
+	return ioutil.WriteFile(spath, bytes, 0644)
+}
+
+func (node *Node) loadStatements() {
+	sdir := path.Join(node.home, "stmt")
+	err := filepath.Walk(sdir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		log.Printf("Loading statement %s", path)
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		stmt := new(pb.Statement)
+		err = ggproto.Unmarshal(bytes, stmt)
+		if err != nil {
+			return err
+		}
+
+		node.stmt[stmt.Id] = stmt
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
@@ -298,6 +350,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = os.MkdirAll(path.Join(*home, "stmt"), 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
@@ -309,6 +366,9 @@ func main() {
 	}
 
 	node := &Node{Identity: id, host: host, dir: dir, home: *home, stmt: make(map[string]*pb.Statement)}
+
+	node.loadStatements()
+
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)
 
