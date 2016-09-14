@@ -191,11 +191,19 @@ func (m *SimpleStatement) String() string { return proto1.CompactTextString(m) }
 func (*SimpleStatement) ProtoMessage()    {}
 
 type CompoundStatement struct {
+	Statements []*SimpleStatement `protobuf:"bytes,1,rep,name=statements" json:"statements,omitempty"`
 }
 
 func (m *CompoundStatement) Reset()         { *m = CompoundStatement{} }
 func (m *CompoundStatement) String() string { return proto1.CompactTextString(m) }
 func (*CompoundStatement) ProtoMessage()    {}
+
+func (m *CompoundStatement) GetStatements() []*SimpleStatement {
+	if m != nil {
+		return m.Statements
+	}
+	return nil
+}
 
 type ArchiveStatement struct {
 }

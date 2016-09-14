@@ -22,7 +22,7 @@ message SimpleStatement {
 }
 
 message CompoundStatement {
-
+  repeated SimpleStatement statements = 1;
 }
 
 message ArchiveStatement {
