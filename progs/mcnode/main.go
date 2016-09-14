@@ -96,12 +96,14 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	peerId := vars["peerId"]
 	pid, err := p2p_peer.IDB58Decode(peerId)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Error: Bad id: %s\n", err.Error())
 		return
 	}
 
 	err = node.doPing(r.Context(), pid)
 	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
