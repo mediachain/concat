@@ -12,7 +12,9 @@ message Statement {
     ArchiveStatement archive = 6;
     Statement envelope = 7;
   }
-  bytes sig = 8;
+
+  int64 timestamp = 8;
+  bytes signature = 9;
 }
 
 message SimpleStatement {

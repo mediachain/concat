@@ -34,8 +34,9 @@ type Statement struct {
 	//	*Statement_Compound
 	//	*Statement_Archive
 	//	*Statement_Envelope
-	Body isStatement_Body `protobuf_oneof:"body"`
-	Sig  []byte           `protobuf:"bytes,8,opt,name=sig,proto3" json:"sig,omitempty"`
+	Body      isStatement_Body `protobuf_oneof:"body"`
+	Timestamp int64            `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Signature []byte           `protobuf:"bytes,9,opt,name=signature,proto3" json:"signature,omitempty"`
 }
 
 func (m *Statement) Reset()         { *m = Statement{} }

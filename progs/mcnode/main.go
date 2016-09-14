@@ -226,6 +226,7 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	stmt.Id = fmt.Sprintf("%s:%d:%d", pid, ts, counter)
 	stmt.Publisher = pid // this should be the pubkey when we have ECC keys
 	stmt.Namespace = ns
+	stmt.Timestamp = ts
 	switch body := body.(type) {
 	case *pb.SimpleStatement:
 		stmt.Body = &pb.Statement_Simple{body}
