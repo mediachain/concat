@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -177,6 +179,39 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 	return pinfo, nil
 }
 
+func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ns := vars["namespace"]
+
+	rbody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/publish: Error reading request body: %s", err.Error())
+		return
+	}
+
+	// just simple statements for now
+	sbody := new(pb.SimpleStatement)
+	err = json.Unmarshal(rbody, sbody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	sid, err := node.doPublish(ns, sbody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	fmt.Println(w, sid)
+}
+
+func (node *Node) doPublish(ns string, body interface{}) (string, error) {
+	return "", errors.New("Implement me!")
+}
+
 func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
@@ -224,6 +259,7 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/id", node.httpId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
+	router.HandleFunc("/publish/{namespace}", node.httpPublish)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)
