@@ -210,7 +210,7 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(w, sid)
+	fmt.Fprintln(w, sid)
 }
 
 var BadStatementBody = errors.New("Unrecognized statement body")
@@ -235,6 +235,8 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	node.stmt[stmt.Id] = stmt
 	node.mx.Unlock()
 
+	log.Printf("Published statement %s", stmt.Id)
+
 	return stmt.Id, nil
 }
 
@@ -244,6 +246,29 @@ func (node *Node) stmtCounter() int {
 	node.counter++
 	node.mx.Unlock()
 	return counter
+}
+
+func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["statementId"]
+
+	var stmt *pb.Statement
+	node.mx.Lock()
+	stmt = node.stmt[id]
+	node.mx.Unlock()
+
+	if stmt == nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "No such statement\n")
+		return
+	}
+
+	err := json.NewEncoder(w).Encode(stmt)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
 }
 
 func main() {
@@ -294,6 +319,7 @@ func main() {
 	router.HandleFunc("/id", node.httpId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
+	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)
