@@ -24,7 +24,7 @@ message SimpleStatement {
 }
 
 message CompoundStatement {
-  repeated SimpleStatement statements = 1;
+  repeated SimpleStatement body = 1;
 }
 
 message ArchiveStatement {
