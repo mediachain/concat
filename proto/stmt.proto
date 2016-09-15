@@ -9,8 +9,8 @@ message Statement {
   oneof body {
     SimpleStatement simple = 4;
     CompoundStatement compound = 5;
-    ArchiveStatement archive = 6;
-    Statement envelope = 7;
+    EnvelopeStatement envelope = 6;
+    ArchiveStatement archive = 7;
   }
 
   int64 timestamp = 8;
@@ -25,6 +25,10 @@ message SimpleStatement {
 
 message CompoundStatement {
   repeated SimpleStatement body = 1;
+}
+
+message EnvelopeStatement {
+  repeated Statement body = 1;
 }
 
 message ArchiveStatement {
