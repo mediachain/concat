@@ -13,6 +13,7 @@ var simpleq []string = []string{
 	"SELECT (body, source) FROM foo.bar",
 	"SELECT COUNT(*) FROM foo.bar",
 	"SELECT * FROM foo.bar.*",
+	"SELECT * FROM foo.bar-baz-with-dashes",
 	"SELECT * FROM foo.bar WHERE id = abc",
 	"SELECT * FROM foo.bar WHERE publisher = abc",
 	"SELECT * FROM foo.bar WHERE source = abc",
