@@ -38,7 +38,7 @@ Source <- 'FROM' WS Namespace
 
 Namespace <- < NamespacePart ( '.' NamespacePart )* Wildcard? >
 
-NamespacePart <- [a-zA-Z0-9]+
+NamespacePart <- [a-zA-Z0-9-]+
 Wildcard <- '.*'
 
 Criteria <- 'WHERE' WS MultiCriteria

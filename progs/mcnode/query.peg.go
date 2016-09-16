@@ -1030,7 +1030,7 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 7 Namespace <- <<(NamespacePart ('.' NamespacePart)* Wildcard?)>> */
 		nil,
-		/* 8 NamespacePart <- <((&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
+		/* 8 NamespacePart <- <((&('-') '-') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
 		func() bool {
 			position37, tokenIndex37, depth37 := position, tokenIndex, depth
 			{
@@ -1038,6 +1038,12 @@ func (p *QueryParser) Init() {
 				depth++
 				{
 					switch buffer[position] {
+					case '-':
+						if buffer[position] != rune('-') {
+							goto l37
+						}
+						position++
+						break
 					case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
 							goto l37
@@ -1064,6 +1070,12 @@ func (p *QueryParser) Init() {
 					position40, tokenIndex40, depth40 := position, tokenIndex, depth
 					{
 						switch buffer[position] {
+						case '-':
+							if buffer[position] != rune('-') {
+								goto l40
+							}
+							position++
+							break
 						case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 							if c := buffer[position]; c < rune('0') || c > rune('9') {
 								goto l40
