@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
+	ggproto "github.com/gogo/protobuf/proto"
 	mux "github.com/gorilla/mux"
-	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
 	multiaddr "github.com/jbenet/go-multiaddr"
@@ -15,17 +16,24 @@ import (
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
+	"sync"
 	"time"
 )
 
 type Node struct {
-	id    p2p_peer.ID
-	privk p2p_crypto.PrivKey
-	host  p2p_host.Host
-	dir   p2p_pstore.PeerInfo
+	mc.Identity
+	host    p2p_host.Host
+	dir     p2p_pstore.PeerInfo
+	home    string
+	mx      sync.Mutex
+	stmt    map[string]*pb.Statement
+	counter int
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
@@ -71,7 +79,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 	defer s.Close()
 
-	pinfo := p2p_pstore.PeerInfo{node.id, addrs}
+	pinfo := p2p_pstore.PeerInfo{node.ID, addrs}
 	var pbpi pb.PeerInfo
 	mc.PBFromPeerInfo(&pbpi, pinfo)
 	msg := pb.RegisterPeer{&pbpi}
@@ -90,7 +98,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 }
 
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, node.id.Pretty())
+	fmt.Fprintln(w, node.Identity.Pretty())
 }
 
 func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
@@ -98,12 +106,14 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	peerId := vars["peerId"]
 	pid, err := p2p_peer.IDB58Decode(peerId)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Error: Bad id: %s\n", err.Error())
 		return
 	}
 
 	err = node.doPing(r.Context(), pid)
 	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
@@ -177,13 +187,160 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 	return pinfo, nil
 }
 
+func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ns := vars["namespace"]
+
+	rbody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/publish: Error reading request body: %s", err.Error())
+		return
+	}
+
+	// just simple statements for now
+	sbody := new(pb.SimpleStatement)
+	err = json.Unmarshal(rbody, sbody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	sid, err := node.doPublish(ns, sbody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	fmt.Fprintln(w, sid)
+}
+
+var BadStatementBody = errors.New("Unrecognized statement body")
+
+func (node *Node) doPublish(ns string, body interface{}) (string, error) {
+	stmt := new(pb.Statement)
+	pid := node.ID.Pretty()
+	ts := time.Now().Unix()
+	counter := node.stmtCounter()
+	stmt.Id = fmt.Sprintf("%s:%d:%d", pid, ts, counter)
+	stmt.Publisher = pid // this should be the pubkey when we have ECC keys
+	stmt.Namespace = ns
+	stmt.Timestamp = ts
+	switch body := body.(type) {
+	case *pb.SimpleStatement:
+		stmt.Body = &pb.Statement_Simple{body}
+
+	case *pb.CompoundStatement:
+		stmt.Body = &pb.Statement_Compound{body}
+
+	case *pb.EnvelopeStatement:
+		stmt.Body = &pb.Statement_Envelope{body}
+
+	case *pb.ArchiveStatement:
+		stmt.Body = &pb.Statement_Archive{body}
+
+	default:
+		return "", BadStatementBody
+	}
+	// only sign it with shiny ECC keys, don't bother with RSA
+	log.Printf("Publish statement %s", stmt.Id)
+
+	node.mx.Lock()
+	node.stmt[stmt.Id] = stmt
+	node.mx.Unlock()
+
+	err := node.saveStatement(stmt)
+	if err != nil {
+		log.Printf("Warning: Failed to save statement: %s", err.Error())
+	}
+
+	return stmt.Id, nil
+}
+
+func (node *Node) stmtCounter() int {
+	node.mx.Lock()
+	counter := node.counter
+	node.counter++
+	node.mx.Unlock()
+	return counter
+}
+
+func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["statementId"]
+
+	var stmt *pb.Statement
+	node.mx.Lock()
+	stmt = node.stmt[id]
+	node.mx.Unlock()
+
+	if stmt == nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "No such statement\n")
+		return
+	}
+
+	err := json.NewEncoder(w).Encode(stmt)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+}
+
+func (node *Node) saveStatement(stmt *pb.Statement) error {
+	spath := path.Join(node.home, "stmt", stmt.Id)
+
+	bytes, err := ggproto.Marshal(stmt)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Writing statement %s", spath)
+	return ioutil.WriteFile(spath, bytes, 0644)
+}
+
+func (node *Node) loadStatements() {
+	sdir := path.Join(node.home, "stmt")
+	err := filepath.Walk(sdir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		log.Printf("Loading statement %s", path)
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		stmt := new(pb.Statement)
+		err = ggproto.Unmarshal(bytes, stmt)
+		if err != nil {
+			return err
+		}
+
+		node.stmt[stmt.Id] = stmt
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
+	home := flag.String("d", "/tmp/mcnode", "Node home")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-l port] [-c port] directory\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options ...] directory\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -198,24 +355,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Generating key pair\n")
-	privk, pubk, err := mc.GenerateKeyPair()
+	err = os.MkdirAll(*home, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	id, err := p2p_peer.IDFromPublicKey(pubk)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("ID: %s\n", id.Pretty())
-
-	host, err := mc.NewHost(privk, addr)
+	err = os.MkdirAll(path.Join(*home, "stmt"), 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node := &Node{id: id, privk: privk, host: host, dir: dir}
+	id, err := mc.NodeIdentity(*home)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	host, err := mc.NewHost(id, addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node := &Node{Identity: id, host: host, dir: dir, home: *home, stmt: make(map[string]*pb.Statement)}
+
+	node.loadStatements()
+
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)
 
@@ -225,6 +388,8 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/id", node.httpId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
+	router.HandleFunc("/publish/{namespace}", node.httpPublish)
+	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)

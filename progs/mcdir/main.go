@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
-	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
 	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
@@ -12,12 +11,12 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	"log"
+	"os"
 	"sync"
 )
 
 type Directory struct {
-	pkey  p2p_crypto.PrivKey
-	id    p2p_peer.ID
+	mc.Identity
 	host  p2p_host.Host
 	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
 	mx    sync.Mutex
@@ -129,31 +128,30 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 
 func main() {
 	port := flag.Int("l", 9000, "Listen port")
+	home := flag.String("d", "/tmp/mcdir", "Directory home")
 	flag.Parse()
 
-	log.Printf("Generating key pair\n")
-	privk, pubk, err := mc.GenerateKeyPair()
+	err := os.MkdirAll(*home, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	id, err := p2p_peer.IDFromPublicKey(pubk)
+	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("ID: %s\n", id.Pretty())
 
 	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *port))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	host, err := mc.NewHost(privk, addr)
+	host, err := mc.NewHost(id, addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{pkey: privk, id: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{Identity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)

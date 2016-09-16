@@ -1,0 +1,36 @@
+syntax = "proto3";
+package proto;
+
+message Statement {
+  string id = 1;
+  string publisher = 2;
+  string namespace = 3;
+  
+  oneof body {
+    SimpleStatement simple = 4;
+    CompoundStatement compound = 5;
+    EnvelopeStatement envelope = 6;
+    ArchiveStatement archive = 7;
+  }
+
+  int64 timestamp = 8;
+  bytes signature = 9;
+}
+
+message SimpleStatement {
+  string object = 1;
+  repeated string refs = 2;
+  repeated string tags = 3;
+}
+
+message CompoundStatement {
+  repeated SimpleStatement body = 1;
+}
+
+message EnvelopeStatement {
+  repeated Statement body = 1;
+}
+
+message ArchiveStatement {
+
+}
