@@ -12,6 +12,7 @@ It has these top-level messages:
 	Statement
 	SimpleStatement
 	CompoundStatement
+	EnvelopeStatement
 	ArchiveStatement
 */
 package proto
@@ -32,8 +33,8 @@ type Statement struct {
 	// Types that are valid to be assigned to Body:
 	//	*Statement_Simple
 	//	*Statement_Compound
-	//	*Statement_Archive
 	//	*Statement_Envelope
+	//	*Statement_Archive
 	Body      isStatement_Body `protobuf_oneof:"body"`
 	Timestamp int64            `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	Signature []byte           `protobuf:"bytes,9,opt,name=signature,proto3" json:"signature,omitempty"`
@@ -53,17 +54,17 @@ type Statement_Simple struct {
 type Statement_Compound struct {
 	Compound *CompoundStatement `protobuf:"bytes,5,opt,name=compound,oneof"`
 }
-type Statement_Archive struct {
-	Archive *ArchiveStatement `protobuf:"bytes,6,opt,name=archive,oneof"`
-}
 type Statement_Envelope struct {
-	Envelope *Statement `protobuf:"bytes,7,opt,name=envelope,oneof"`
+	Envelope *EnvelopeStatement `protobuf:"bytes,6,opt,name=envelope,oneof"`
+}
+type Statement_Archive struct {
+	Archive *ArchiveStatement `protobuf:"bytes,7,opt,name=archive,oneof"`
 }
 
 func (*Statement_Simple) isStatement_Body()   {}
 func (*Statement_Compound) isStatement_Body() {}
-func (*Statement_Archive) isStatement_Body()  {}
 func (*Statement_Envelope) isStatement_Body() {}
+func (*Statement_Archive) isStatement_Body()  {}
 
 func (m *Statement) GetBody() isStatement_Body {
 	if m != nil {
@@ -86,16 +87,16 @@ func (m *Statement) GetCompound() *CompoundStatement {
 	return nil
 }
 
-func (m *Statement) GetArchive() *ArchiveStatement {
-	if x, ok := m.GetBody().(*Statement_Archive); ok {
-		return x.Archive
+func (m *Statement) GetEnvelope() *EnvelopeStatement {
+	if x, ok := m.GetBody().(*Statement_Envelope); ok {
+		return x.Envelope
 	}
 	return nil
 }
 
-func (m *Statement) GetEnvelope() *Statement {
-	if x, ok := m.GetBody().(*Statement_Envelope); ok {
-		return x.Envelope
+func (m *Statement) GetArchive() *ArchiveStatement {
+	if x, ok := m.GetBody().(*Statement_Archive); ok {
+		return x.Archive
 	}
 	return nil
 }
@@ -105,8 +106,8 @@ func (*Statement) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) e
 	return _Statement_OneofMarshaler, _Statement_OneofUnmarshaler, []interface{}{
 		(*Statement_Simple)(nil),
 		(*Statement_Compound)(nil),
-		(*Statement_Archive)(nil),
 		(*Statement_Envelope)(nil),
+		(*Statement_Archive)(nil),
 	}
 }
 
@@ -124,14 +125,14 @@ func _Statement_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 		if err := b.EncodeMessage(x.Compound); err != nil {
 			return err
 		}
-	case *Statement_Archive:
+	case *Statement_Envelope:
 		_ = b.EncodeVarint(6<<3 | proto1.WireBytes)
-		if err := b.EncodeMessage(x.Archive); err != nil {
+		if err := b.EncodeMessage(x.Envelope); err != nil {
 			return err
 		}
-	case *Statement_Envelope:
+	case *Statement_Archive:
 		_ = b.EncodeVarint(7<<3 | proto1.WireBytes)
-		if err := b.EncodeMessage(x.Envelope); err != nil {
+		if err := b.EncodeMessage(x.Archive); err != nil {
 			return err
 		}
 	case nil:
@@ -160,21 +161,21 @@ func _Statement_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Bu
 		err := b.DecodeMessage(msg)
 		m.Body = &Statement_Compound{msg}
 		return true, err
-	case 6: // body.archive
+	case 6: // body.envelope
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(EnvelopeStatement)
+		err := b.DecodeMessage(msg)
+		m.Body = &Statement_Envelope{msg}
+		return true, err
+	case 7: // body.archive
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
 		msg := new(ArchiveStatement)
 		err := b.DecodeMessage(msg)
 		m.Body = &Statement_Archive{msg}
-		return true, err
-	case 7: // body.envelope
-		if wire != proto1.WireBytes {
-			return true, proto1.ErrInternalBadWireType
-		}
-		msg := new(Statement)
-		err := b.DecodeMessage(msg)
-		m.Body = &Statement_Envelope{msg}
 		return true, err
 	default:
 		return false, nil
@@ -192,16 +193,31 @@ func (m *SimpleStatement) String() string { return proto1.CompactTextString(m) }
 func (*SimpleStatement) ProtoMessage()    {}
 
 type CompoundStatement struct {
-	Statements []*SimpleStatement `protobuf:"bytes,1,rep,name=statements" json:"statements,omitempty"`
+	Body []*SimpleStatement `protobuf:"bytes,1,rep,name=body" json:"body,omitempty"`
 }
 
 func (m *CompoundStatement) Reset()         { *m = CompoundStatement{} }
 func (m *CompoundStatement) String() string { return proto1.CompactTextString(m) }
 func (*CompoundStatement) ProtoMessage()    {}
 
-func (m *CompoundStatement) GetStatements() []*SimpleStatement {
+func (m *CompoundStatement) GetBody() []*SimpleStatement {
 	if m != nil {
-		return m.Statements
+		return m.Body
+	}
+	return nil
+}
+
+type EnvelopeStatement struct {
+	Body []*Statement `protobuf:"bytes,1,rep,name=body" json:"body,omitempty"`
+}
+
+func (m *EnvelopeStatement) Reset()         { *m = EnvelopeStatement{} }
+func (m *EnvelopeStatement) String() string { return proto1.CompactTextString(m) }
+func (*EnvelopeStatement) ProtoMessage()    {}
+
+func (m *EnvelopeStatement) GetBody() []*Statement {
+	if m != nil {
+		return m.Body
 	}
 	return nil
 }
@@ -217,5 +233,6 @@ func init() {
 	proto1.RegisterType((*Statement)(nil), "proto.Statement")
 	proto1.RegisterType((*SimpleStatement)(nil), "proto.SimpleStatement")
 	proto1.RegisterType((*CompoundStatement)(nil), "proto.CompoundStatement")
+	proto1.RegisterType((*EnvelopeStatement)(nil), "proto.EnvelopeStatement")
 	proto1.RegisterType((*ArchiveStatement)(nil), "proto.ArchiveStatement")
 }
