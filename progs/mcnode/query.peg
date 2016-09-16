@@ -1,0 +1,85 @@
+# Grammar for statement query language
+# just simple statements with no joins for now
+#
+# Compilation to query.peg.go:
+#  go get github.com/pointlander/peg
+#  peg -inline -switch query.peg
+
+package main
+
+type QueryParser Peg {
+
+}
+
+Grammar <- 'SELECT' WS Selector
+                    WS Source
+                    (WS Criteria)?
+                    (WS Limit)?
+                    WSX EOF
+
+Selector <- SimpleSelector
+          / CompoundSelector
+          / FunctionSelector
+
+SimpleSelector <- '*'
+                / 'body'
+                / 'id'
+                / 'publisher'
+                / 'source'
+                / 'timestamp'               
+
+CompoundSelector <- '(' SimpleSelector ( ',' WSX SimpleSelector )* ')'
+
+FunctionSelector <- Function '(' SimpleSelector ')'
+
+Function <- 'COUNT'
+
+Source <- 'FROM' WS Namespace
+
+Namespace <- SimpleNamespace
+           / WildcardNamespace
+
+SimpleNamespace <- < NamespacePart ( '.' NamespacePart )* >
+
+NamespacePart <- [a-zA-Z0-9]+
+
+WildcardNamespace <- < SimpleNamespace '.*' >
+
+Criteria <- 'WHERE' WS CriteriaSpec
+
+CriteriaSpec <- SimpleCriteria
+              / MultiCriteria
+
+SimpleCriteria <- IdCriteria
+                / PublisherCriteria
+                / SourceCriteria
+                / TimeCriteria
+
+MultiCriteria <- SimpleCriteria (WS 'AND' WS SimpleCriteria)*
+
+IdCriteria <- 'id' WSX '=' WSX StatementId
+PublisherCriteria <- 'publisher' WSX '=' WSX PublisherId
+SourceCriteria <- 'source' WSX '=' WSX PublisherId
+TimeCriteria <- 'timestamp' WSX Comparison WSX UInt
+
+StatementId <- < [a-zA-Z0-9:]+ >
+PublisherId <- < [a-zA-Z0-9]+ >
+
+Comparison   <- < ComparisonOp >
+ComparisonOp <- '<'
+              / '<='
+              / '='
+              / '>='
+              / '>'
+
+Limit <- 'LIMIT' WS UInt
+
+# Lexemes
+UInt       <- < [0-9]+ >
+WS         <- WhiteSpace+
+WSX        <- WhiteSpace*
+WhiteSpace <- ' ' / '\t' / EOL
+EOL        <- '\r\n' / '\n' / '\r'
+EOF	       <- !.
+
+
