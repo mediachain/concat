@@ -45,17 +45,24 @@ Wildcard <- '*'
 
 Criteria <- 'WHERE' WS MultiCriteria
 
-MultiCriteria <- SimpleCriteria (WS 'AND' WS SimpleCriteria)*
+MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria)*
+
+CompoundCriteria <- SimpleCriteria
+                  / '(' MultiCriteria ')'
 
 SimpleCriteria <- IdCriteria
                 / PublisherCriteria
                 / SourceCriteria
                 / TimeCriteria
 
-IdCriteria <- 'id' WSX '=' WSX StatementId
+IdCriteria        <- 'id' WSX '=' WSX StatementId
 PublisherCriteria <- 'publisher' WSX '=' WSX PublisherId
-SourceCriteria <- 'source' WSX '=' WSX PublisherId
-TimeCriteria <- 'timestamp' WSX Comparison WSX UInt
+SourceCriteria    <- 'source' WSX '=' WSX PublisherId
+TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt
+
+Boolean   <- < BooleanOp >
+BooleanOp <- 'AND'
+           / 'OR'
 
 StatementId <- < [a-zA-Z0-9:]+ >
 PublisherId <- < [a-zA-Z0-9]+ >

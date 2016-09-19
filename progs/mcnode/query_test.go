@@ -24,6 +24,8 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE timestamp >= 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
+	"SELECT * FROM foo.bar WHERE publisher = abc OR timestamp > 1474000000",
+	"SELECT * FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR timestamp < 1474000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
 	"SELECT * FROM foo.bar LIMIT 10"}
 
