@@ -8,7 +8,7 @@
 package main
 
 type QueryParser Peg {
-
+    *Query
 }
 
 Grammar <- 'SELECT' WS Selector

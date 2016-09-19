@@ -31,9 +31,7 @@ var simpleq []string = []string{
 
 func TestQuerySyntax(t *testing.T) {
 	for _, q := range simpleq {
-		p := &QueryParser{Buffer: q}
-		p.Init()
-		err := p.Parse()
+		q, err := ParseQuery(q)
 		if err != nil {
 			t.Logf("QUERY: %s", q)
 			t.Error(err)
