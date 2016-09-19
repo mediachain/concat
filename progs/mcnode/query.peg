@@ -8,7 +8,7 @@
 package main
 
 type QueryParser Peg {
-    *Query
+    *ParseState
 }
 
 Grammar <- 'SELECT' WS Selector
@@ -45,31 +45,31 @@ Namespace <- < NamespacePart ( '.' NamespacePart )* ('.' Wildcard)? >
 NamespacePart <- [a-zA-Z0-9-]+
 Wildcard <- '*'
 
-Criteria <- 'WHERE' WS MultiCriteria
+Criteria <- 'WHERE' WS MultiCriteria { p.setCriteria() }
 
-MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria)*
+MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCriteriaCombinator() })*
 
 CompoundCriteria <- SimpleCriteria
                   / '(' MultiCriteria ')'
 
-SimpleCriteria <- IdCriteria
-                / PublisherCriteria
-                / SourceCriteria
-                / TimeCriteria
+SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
+                / TimeCriteria  { p.addTimeCriteria() }  
 
-IdCriteria        <- 'id' WSX '=' WSX StatementId
-PublisherCriteria <- 'publisher' WSX '=' WSX PublisherId
-SourceCriteria    <- 'source' WSX '=' WSX PublisherId
-TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt
+ValueCriteria <- IdCriteria
+               / PublisherCriteria 
+               / SourceCriteria
 
-Boolean   <- < BooleanOp >
+IdCriteria        <- < 'id' >        { p.push(text) } WSX '=' WSX StatementId { p.push(text) }
+PublisherCriteria <- < 'publisher' > { p.push(text) } WSX '=' WSX PublisherId { p.push(text) }
+SourceCriteria    <- < 'source' >    { p.push(text) } WSX '=' WSX PublisherId { p.push(text) }
+
+TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt { p.push(text) }
+
+Boolean   <- < BooleanOp > { p.push(text) }
 BooleanOp <- 'AND'
            / 'OR'
 
-StatementId <- < [a-zA-Z0-9:]+ >
-PublisherId <- < [a-zA-Z0-9]+ >
-
-Comparison   <- < ComparisonOp >
+Comparison   <- < ComparisonOp > { p.push(text) }
 ComparisonOp <- '<='
               / '<'
               / '='
@@ -79,11 +79,13 @@ ComparisonOp <- '<='
 Limit <- 'LIMIT' WS UInt
 
 # Lexemes
-UInt       <- < [0-9]+ >
-WS         <- WhiteSpace+
-WSX        <- WhiteSpace*
-WhiteSpace <- ' ' / '\t' / EOL
-EOL        <- '\r\n' / '\n' / '\r'
-EOF	       <- !.
+StatementId <- < [a-zA-Z0-9:]+ >
+PublisherId <- < [a-zA-Z0-9]+ >
+UInt        <- < [0-9]+ >
+WS          <- WhiteSpace+
+WSX         <- WhiteSpace*
+WhiteSpace  <- ' ' / '\t' / EOL
+EOL         <- '\r\n' / '\n' / '\r'
+EOF	        <- !.
 
 
