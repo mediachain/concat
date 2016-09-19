@@ -25,6 +25,7 @@ SimpleSelector <- '*'
                 / 'body'
                 / 'id'
                 / 'publisher'
+                / 'namespace'
                 / 'source'
                 / 'timestamp'               
 
@@ -36,10 +37,11 @@ Function <- 'COUNT'
 
 Source <- 'FROM' WS Namespace
 
-Namespace <- < NamespacePart ( '.' NamespacePart )* Wildcard? >
+Namespace <- < NamespacePart ( '.' NamespacePart )* ('.' Wildcard)? >
+           / < Wildcard >
 
 NamespacePart <- [a-zA-Z0-9-]+
-Wildcard <- '.*'
+Wildcard <- '*'
 
 Criteria <- 'WHERE' WS MultiCriteria
 

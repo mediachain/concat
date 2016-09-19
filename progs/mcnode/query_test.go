@@ -12,6 +12,7 @@ var simpleq []string = []string{
 	"SELECT timestamp FROM foo.bar",
 	"SELECT (body, source) FROM foo.bar",
 	"SELECT COUNT(*) FROM foo.bar",
+	"SELECT namespace FROM *",
 	"SELECT * FROM foo.bar.*",
 	"SELECT * FROM foo.bar-baz-with-dashes",
 	"SELECT * FROM foo.bar WHERE id = abc",
@@ -32,6 +33,7 @@ func TestQuerySyntax(t *testing.T) {
 		p.Init()
 		err := p.Parse()
 		if err != nil {
+			t.Logf("QUERY: %s", q)
 			t.Error(err)
 		}
 	}
