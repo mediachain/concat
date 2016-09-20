@@ -47,7 +47,7 @@ Wildcard <- '*'
 
 Criteria <- 'WHERE' WS MultiCriteria { p.setCriteria() }
 
-MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCriteriaCombinator() })*
+MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCompoundCriteria() })*
 
 CompoundCriteria <- SimpleCriteria
                   / '(' MultiCriteria ')'

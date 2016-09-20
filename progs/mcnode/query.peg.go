@@ -526,7 +526,7 @@ func (p *QueryParser) Execute() {
 		case ruleAction6:
 			p.setCriteria()
 		case ruleAction7:
-			p.addCriteriaCombinator()
+			p.addCompoundCriteria()
 		case ruleAction8:
 			p.addValueCriteria()
 		case ruleAction9:
@@ -2077,7 +2077,7 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 42 Action6 <- <{ p.setCriteria() }> */
 		nil,
-		/* 43 Action7 <- <{ p.addCriteriaCombinator() }> */
+		/* 43 Action7 <- <{ p.addCompoundCriteria() }> */
 		nil,
 		/* 44 Action8 <- <{ p.addValueCriteria() }> */
 		nil,
