@@ -1,6 +1,8 @@
 package main
 
-import ()
+import (
+	"strconv"
+)
 
 type Query struct {
 	namespace string
@@ -16,8 +18,8 @@ type QuerySelector interface {
 type SimpleSelector string
 type CompoundSelector []SimpleSelector
 type FunctionSelector struct {
-	function string
-	selector SimpleSelector
+	op  string
+	sel SimpleSelector
 }
 
 func (s SimpleSelector) SelectorType() string {
@@ -37,8 +39,8 @@ type QueryCriteria interface {
 }
 
 type ValueCriteria struct {
-	selector string
-	value    string
+	sel string
+	val string
 }
 
 type TimeCriteria struct {
@@ -71,42 +73,79 @@ type ConsCell struct {
 type ParseState struct {
 	query *Query
 	stack *ConsCell
+	err   error
 }
 
 func (ps *ParseState) setSimpleSelector() {
 	// stack: simple-selector
+	sel := ps.pop().(string)
+	ps.query.selector = SimpleSelector(sel)
 }
 
 func (ps *ParseState) setCompoundSelector() {
 	// stack: simple-selector ...
+	count := ps.sklen()
+	sels := make([]SimpleSelector, count)
+	for x := 0; x < count; x++ {
+		sel := ps.pop().(string)
+		sels[count-x-1] = SimpleSelector(sel)
+	}
+	ps.query.selector = CompoundSelector(sels)
 }
 
 func (ps *ParseState) setFunctionSelector() {
 	// stack: simple-selector function
+	sel := ps.pop().(string)
+	op := ps.pop().(string)
+	ps.query.selector = &FunctionSelector{op: op, sel: SimpleSelector(sel)}
 }
 
 func (ps *ParseState) setNamespace(ns string) {
-
+	ps.query.namespace = ns
 }
 
 func (ps *ParseState) setCriteria() {
 	// stack: criteria
+	ps.query.criteria = ps.pop().(QueryCriteria)
 }
 
 func (ps *ParseState) addValueCriteria() {
 	// stack: value value-selector ...
+	val := ps.pop().(string)
+	sel := ps.pop().(string)
+	crit := &ValueCriteria{sel: sel, val: val}
+	ps.push(crit)
 }
 
 func (ps *ParseState) addTimeCriteria() {
-	// stack: time comparison-op ...
+	// stack: time op ...
+	tstr := ps.pop().(string)
+	op := ps.pop().(string)
+	ts, err := strconv.Atoi(tstr)
+	if err != nil {
+		ps.err = err
+		ts = 0
+	}
+	crit := &TimeCriteria{op: op, ts: int64(ts)}
+	ps.push(crit)
 }
 
 func (ps *ParseState) addCompoundCriteria() {
-	// stack: criteria combinator criteria ...
+	// stack: criteria op criteria ...
+	right := ps.pop().(QueryCriteria)
+	op := ps.pop().(string)
+	left := ps.pop().(QueryCriteria)
+	crit := &CompoundCriteria{op: op, left: left, right: right}
+	ps.push(crit)
 }
 
 func (ps *ParseState) setLimit(x string) {
-
+	lim, err := strconv.Atoi(x)
+	if err != nil {
+		ps.err = err
+		lim = 0
+	}
+	ps.query.limit = lim
 }
 
 func (ps *ParseState) push(val interface{}) {
@@ -120,13 +159,25 @@ func (ps *ParseState) pop() interface{} {
 	return top
 }
 
-func ParseQuery(qstr string) (*Query, error) {
+func (ps *ParseState) sklen() (x int) {
+	for next := ps.stack; next != nil; next = next.cdr {
+		x++
+	}
+	return x
+}
+
+func ParseQuery(qs string) (*Query, error) {
 	ps := &ParseState{query: &Query{}}
-	p := &QueryParser{Buffer: qstr, ParseState: ps}
+	p := &QueryParser{Buffer: qs, ParseState: ps}
 	p.Init()
 	err := p.Parse()
 	if err != nil {
 		return nil, err
+	}
+
+	p.Execute()
+	if ps.err != nil {
+		return nil, ps.err
 	}
 
 	return ps.query, nil

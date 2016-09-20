@@ -30,10 +30,10 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar LIMIT 10"}
 
 func TestQuerySyntax(t *testing.T) {
-	for _, q := range simpleq {
-		q, err := ParseQuery(q)
+	for _, qs := range simpleq {
+		_, err := ParseQuery(qs)
 		if err != nil {
-			t.Logf("QUERY: %s", q)
+			t.Logf("QUERY: %s", qs)
 			t.Error(err)
 		}
 	}
