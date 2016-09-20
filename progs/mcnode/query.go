@@ -1,6 +1,7 @@
 package main
 
 import (
+	pb "github.com/mediachain/concat/proto"
 	"strconv"
 )
 
@@ -166,6 +167,7 @@ func (ps *ParseState) sklen() (x int) {
 	return x
 }
 
+// query parsing
 func ParseQuery(qs string) (*Query, error) {
 	ps := &ParseState{query: &Query{}}
 	p := &QueryParser{Buffer: qs, ParseState: ps}
@@ -181,4 +183,27 @@ func ParseQuery(qs string) (*Query, error) {
 	}
 
 	return ps.query, nil
+}
+
+// query evaluation: very primitive eval, until we have an index and we
+// can compile to sql.
+func EvalQuery(query *Query, stmts []*pb.Statement) []interface{} {
+	qe := prepareEval(query)
+	qe.begin(len(stmts))
+	for _, stmt := range stmts {
+		qe.eval(stmt)
+	}
+	qe.end()
+	return qe.result()
+}
+
+type QueryEval interface {
+	begin(hint int)
+	eval(*pb.Statement)
+	end()
+	result() []interface{}
+}
+
+func prepareEval(query *Query) QueryEval {
+	return nil
 }
