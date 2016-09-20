@@ -17,11 +17,11 @@ Grammar <- 'SELECT' WS Selector
                     (WS Limit)?
                     WSX EOF
 
-Selector <- SimpleSelector
-          / CompoundSelector
-          / FunctionSelector
+Selector <- SimpleSelector   { p.setSimpleSelector() }
+          / CompoundSelector { p.setCompoundSelector() }
+          / FunctionSelector { p.setFunctionSelector() }
 
-SimpleSelector <- < SimpleSelectorOp >
+SimpleSelector <- < SimpleSelectorOp > { p.push(text) }
 SimpleSelectorOp <- '*'
                   / 'body'
                   / 'id'
@@ -34,10 +34,10 @@ CompoundSelector <- '(' SimpleSelector ( ',' WSX SimpleSelector )* ')'
 
 FunctionSelector <- Function '(' SimpleSelector ')'
 
-Function   <- < FunctionOp >
+Function   <- < FunctionOp > { p.push(text) }
 FunctionOp <- 'COUNT'
 
-Source <- 'FROM' WS Namespace
+Source <- 'FROM' WS Namespace { p.setNamespace(text) }
 
 Namespace <- < NamespacePart ( '.' NamespacePart )* ('.' Wildcard)? >
            / < Wildcard >
@@ -76,7 +76,7 @@ ComparisonOp <- '<='
               / '>='
               / '>'
 
-Limit <- 'LIMIT' WS UInt
+Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
 
 # Lexemes
 StatementId <- < [a-zA-Z0-9:]+ >

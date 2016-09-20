@@ -15,24 +15,45 @@ type ParseState struct {
 	stack *ConsCell
 }
 
-func (ps *ParseState) setCriteria() {
+func (ps *ParseState) setSimpleSelector() {
+	// stack: simple-selector
+}
 
+func (ps *ParseState) setCompoundSelector() {
+	// stack: simple-selector ...
+}
+
+func (ps *ParseState) setFunctionSelector() {
+	// stack: simple-selector function
+}
+
+func (ps *ParseState) setNamespace(ns string) {
+
+}
+
+func (ps *ParseState) setCriteria() {
+	// stack: criteria
 }
 
 func (ps *ParseState) addValueCriteria() {
-
+	// stack: value value-selector ...
 }
 
 func (ps *ParseState) addTimeCriteria() {
-
+	// stack: time comparison-op ...
 }
 
 func (ps *ParseState) addCriteriaCombinator() {
+	// stack: criteria combinator criteria ...
+}
+
+func (ps *ParseState) setLimit(x string) {
 
 }
 
 func (ps *ParseState) push(val interface{}) {
-
+	cell := &ConsCell{car: val, cdr: ps.stack}
+	ps.stack = cell
 }
 
 func (ps *ParseState) pop() interface{} {
