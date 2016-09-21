@@ -225,6 +225,18 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, 1)
 	}
 
+	// check the limits -- order is unpredictable, so just check the count
+	qs = "SELECT COUNT(*) FROM * LIMIT 1"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 1)
+	}
+
 	// check simple selection criteria
 	qs = "SELECT * FROM * WHERE id = a"
 	q, err = ParseQuery(qs)
