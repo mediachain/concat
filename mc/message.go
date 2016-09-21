@@ -10,7 +10,7 @@ import (
 const MaxMessageSize = 2 << 20 // 1 MB
 
 func PBFromPeerInfo(pbpi *pb.PeerInfo, pinfo p2p_pstore.PeerInfo) {
-	pbpi.Id = string(pinfo.ID)
+	pbpi.Id = pinfo.ID.Pretty()
 	pbpi.Addr = make([][]byte, len(pinfo.Addrs))
 	for x, addr := range pinfo.Addrs {
 		pbpi.Addr[x] = addr.Bytes()
@@ -18,7 +18,10 @@ func PBFromPeerInfo(pbpi *pb.PeerInfo, pinfo p2p_pstore.PeerInfo) {
 }
 
 func PBToPeerInfo(pbpi *pb.PeerInfo) (empty p2p_pstore.PeerInfo, err error) {
-	pid := p2p_peer.ID(pbpi.Id)
+	pid, err := p2p_peer.IDB58Decode(pbpi.Id)
+	if err != nil {
+		return empty, err
+	}
 	addrs := make([]multiaddr.Multiaddr, len(pbpi.Addr))
 	for x, bytes := range pbpi.Addr {
 		addr, err := multiaddr.NewMultiaddrBytes(bytes)

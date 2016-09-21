@@ -162,7 +162,7 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 	}
 	defer s.Close()
 
-	req := pb.LookupPeerRequest{string(pid)}
+	req := pb.LookupPeerRequest{pid.Pretty()}
 	w := ggio.NewDelimitedWriter(s)
 	err = w.WriteMsg(&req)
 	if err != nil {
