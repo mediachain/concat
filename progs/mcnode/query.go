@@ -324,43 +324,43 @@ func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 	switch c := c.(type) {
 	case *ValueCriteria:
 		filter, ok := valueCriteriaFilters[c.sel]
-		if ok {
-			return func(stmt *pb.Statement) bool {
-				return filter(stmt, c.val)
-			}, nil
-		} else {
+		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria selector: %s", c.sel))
 		}
 
+		return func(stmt *pb.Statement) bool {
+			return filter(stmt, c.val)
+		}, nil
+
 	case *TimeCriteria:
 		filter, ok := timeCriteriaFilters[c.op]
-		if ok {
-			return func(stmt *pb.Statement) bool {
-				return filter(stmt, c.ts)
-			}, nil
-		} else {
+		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria time op: %s", c.op))
 		}
 
+		return func(stmt *pb.Statement) bool {
+			return filter(stmt, c.ts)
+		}, nil
+
 	case *CompoundCriteria:
 		filter, ok := compoundCriteriaFilters[c.op]
-		if ok {
-			left, err := makeCriteriaFilterF(c.left)
-			if err != nil {
-				return nil, err
-			}
-
-			right, err := makeCriteriaFilterF(c.right)
-			if err != nil {
-				return nil, err
-			}
-
-			return func(stmt *pb.Statement) bool {
-				return filter(stmt, left, right)
-			}, nil
-		} else {
+		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria combinator: %s", c.op))
 		}
+
+		left, err := makeCriteriaFilterF(c.left)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := makeCriteriaFilterF(c.right)
+		if err != nil {
+			return nil, err
+		}
+
+		return func(stmt *pb.Statement) bool {
+			return filter(stmt, left, right)
+		}, nil
 
 	default:
 		return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria type: %T", c))
@@ -416,21 +416,20 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 	switch sel := sel.(type) {
 	case SimpleSelector:
 		getf, ok := simpleSelectors[string(sel)]
-		if ok {
-			return makeSimpleResultSet(getf, query.limit), nil
-		} else {
+		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel))
 		}
+
+		return makeSimpleResultSet(getf, query.limit), nil
 
 	case CompoundSelector:
 		getfs := make([]StatementSelector, len(sel))
 		for x, key := range sel {
 			getf, ok := simpleSelectors[string(key)]
-			if ok {
-				getfs[x] = getf
-			} else {
+			if !ok {
 				return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", key))
 			}
+			getfs[x] = getf
 		}
 
 		compf := makeCompoundStatementSelector(sel, getfs)
@@ -438,16 +437,16 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 
 	case *FunctionSelector:
 		fun, ok := functionSelectors[sel.op]
-		if ok {
-			getf, ok := simpleSelectors[string(sel.sel)]
-			if ok {
-				return makeFunctionResultSet(fun, getf, query.limit), nil
-			} else {
-				return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.sel))
-			}
-		} else {
+		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.op))
 		}
+
+		getf, ok := simpleSelectors[string(sel.sel)]
+		if !ok {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.sel))
+		}
+
+		return makeFunctionResultSet(fun, getf, query.limit), nil
 
 	default:
 		return nil, QueryEvalError(fmt.Sprintf("Unexpected selector type: %T", sel))
