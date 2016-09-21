@@ -4,6 +4,7 @@ import (
 	pb "github.com/mediachain/concat/proto"
 	"log"
 	"strconv"
+	"strings"
 )
 
 type Query struct {
@@ -189,12 +190,13 @@ func ParseQuery(qs string) (*Query, error) {
 // query evaluation: very primitive eval with only simple statements
 // will have to do until we have an index and we can compile to sql.
 func EvalQuery(query *Query, stmts []*pb.Statement) []interface{} {
-	filter := makeCriteriaFilter(query)
+	nsfilter := makeNamespaceFilter(query)
+	cfilter := makeCriteriaFilter(query)
 	rs := makeResultSet(query)
 
 	rs.begin(len(stmts))
 	for _, stmt := range stmts {
-		if filter(stmt) {
+		if nsfilter(stmt) && cfilter(stmt) {
 			rs.add(stmt)
 		}
 	}
@@ -210,10 +212,10 @@ type QueryResultSet interface {
 	result() []interface{}
 }
 
-type CriteriaFilter func(*pb.Statement) bool
+type StatementFilter func(*pb.Statement) bool
 type ValueCriteriaFilter func(*pb.Statement, string) bool
 type TimeCriteriaFilter func(*pb.Statement, int64) bool
-type CompoundCriteriaFilter func(stmt *pb.Statement, left, right CriteriaFilter) bool
+type CompoundCriteriaFilter func(stmt *pb.Statement, left, right StatementFilter) bool
 
 func idCriteriaFilter(stmt *pb.Statement, id string) bool {
 	return stmt.Id == id
@@ -260,11 +262,11 @@ var timeCriteriaFilters = map[string]TimeCriteriaFilter{
 	">=": timestampFilterGTEQ,
 	">":  timestampFilterGT}
 
-func compoundCriteriaAND(stmt *pb.Statement, left, right CriteriaFilter) bool {
+func compoundCriteriaAND(stmt *pb.Statement, left, right StatementFilter) bool {
 	return left(stmt) && right(stmt)
 }
 
-func compoundCriteriaOR(stmt *pb.Statement, left, right CriteriaFilter) bool {
+func compoundCriteriaOR(stmt *pb.Statement, left, right StatementFilter) bool {
 	return left(stmt) || right(stmt)
 }
 
@@ -272,16 +274,39 @@ var compoundCriteriaFilters = map[string]CompoundCriteriaFilter{
 	"AND": compoundCriteriaAND,
 	"OR":  compoundCriteriaOR}
 
-func makeCriteriaFilter(query *Query) CriteriaFilter {
+func emptyFilter(*pb.Statement) bool {
+	return true
+}
+
+func makeNamespaceFilter(query *Query) StatementFilter {
+	ns := query.namespace
+	switch {
+	case ns == "*":
+		return emptyFilter
+
+	case ns[len(ns)-1] == '*':
+		prefix := ns[:len(ns)-2]
+		return func(stmt *pb.Statement) bool {
+			return strings.HasPrefix(stmt.Namespace, prefix)
+		}
+
+	default:
+		return func(stmt *pb.Statement) bool {
+			return stmt.Namespace == ns
+		}
+	}
+}
+
+func makeCriteriaFilter(query *Query) StatementFilter {
 	c := query.criteria
 	if c == nil {
-		return func(*pb.Statement) bool { return true }
+		return emptyFilter
 	}
 
 	return makeCriteriaFilterF(c)
 }
 
-func makeCriteriaFilterF(c QueryCriteria) CriteriaFilter {
+func makeCriteriaFilterF(c QueryCriteria) StatementFilter {
 	switch c := c.(type) {
 	case *ValueCriteria:
 		filter, ok := valueCriteriaFilters[c.sel]
