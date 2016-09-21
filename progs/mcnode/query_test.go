@@ -213,6 +213,18 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A"})
 	}
 
+	// check the function
+	qs = "SELECT COUNT(*) FROM foo.a"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 1)
+	}
+
 	// check simple selection criteria
 	qs = "SELECT * FROM * WHERE id = a"
 	q, err = ParseQuery(qs)
