@@ -402,6 +402,15 @@ var simpleSelectors = map[string]StatementSelector{
 	"source":    simpleSelectorSource,
 	"timestamp": simpleSelectorTimestamp}
 
+type FunctionStatementSelector func([]interface{}) []interface{}
+
+func countFunctionSelector(res []interface{}) []interface{} {
+	return []interface{}{len(res)}
+}
+
+var functionSelectors = map[string]FunctionStatementSelector{
+	"COUNT": countFunctionSelector}
+
 func makeResultSet(query *Query) (QueryResultSet, error) {
 	sel := query.selector
 	switch sel := sel.(type) {
@@ -414,13 +423,44 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 		}
 
 	case CompoundSelector:
-		return nil, QueryEvalError("Implement me!")
+		getfs := make([]StatementSelector, len(sel))
+		for x, key := range sel {
+			getf, ok := simpleSelectors[string(key)]
+			if ok {
+				getfs[x] = getf
+			} else {
+				return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", key))
+			}
+		}
+
+		compf := makeCompoundStatementSelector(sel, getfs)
+		return makeSimpleResultSet(compf, query.limit), nil
 
 	case *FunctionSelector:
-		return nil, QueryEvalError("Implement me!")
+		fun, ok := functionSelectors[sel.op]
+		if ok {
+			getf, ok := simpleSelectors[string(sel.sel)]
+			if ok {
+				return makeFunctionResultSet(fun, getf, query.limit), nil
+			} else {
+				return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.sel))
+			}
+		} else {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.op))
+		}
 
 	default:
 		return nil, QueryEvalError(fmt.Sprintf("Unexpected selector type: %T", sel))
+	}
+}
+
+func makeCompoundStatementSelector(sels []SimpleSelector, getfs []StatementSelector) StatementSelector {
+	return func(stmt *pb.Statement) interface{} {
+		val := make(map[string]interface{})
+		for x, sel := range sels {
+			val[string(sel)] = getfs[x](stmt)
+		}
+		return val
 	}
 }
 
@@ -454,5 +494,32 @@ func (rs *SimpleResultSet) end() {
 }
 
 func (rs *SimpleResultSet) result() []interface{} {
+	return rs.res
+}
+
+func makeFunctionResultSet(fun FunctionStatementSelector, getf StatementSelector, limit int) QueryResultSet {
+	return &FunctionResultSet{rset: makeSimpleResultSet(getf, limit), fun: fun}
+}
+
+type FunctionResultSet struct {
+	rset QueryResultSet
+	fun  FunctionStatementSelector
+	res  []interface{}
+}
+
+func (rs *FunctionResultSet) begin(hint int) {
+	rs.rset.begin(hint)
+}
+
+func (rs *FunctionResultSet) add(stmt *pb.Statement) {
+	rs.rset.add(stmt)
+}
+
+func (rs *FunctionResultSet) end() {
+	rs.rset.end()
+	rs.res = rs.fun(rs.rset.result())
+}
+
+func (rs *FunctionResultSet) result() []interface{} {
 	return rs.res
 }
