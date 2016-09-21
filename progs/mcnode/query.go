@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	pb "github.com/mediachain/concat/proto"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -189,10 +189,18 @@ func ParseQuery(qs string) (*Query, error) {
 
 // query evaluation: very primitive eval with only simple statements
 // will have to do until we have an index and we can compile to sql.
-func EvalQuery(query *Query, stmts []*pb.Statement) []interface{} {
+func EvalQuery(query *Query, stmts []*pb.Statement) ([]interface{}, error) {
 	nsfilter := makeNamespaceFilter(query)
-	cfilter := makeCriteriaFilter(query)
-	rs := makeResultSet(query)
+
+	cfilter, err := makeCriteriaFilter(query)
+	if err != nil {
+		return nil, err
+	}
+
+	rs, err := makeResultSet(query)
+	if err != nil {
+		return nil, err
+	}
 
 	rs.begin(len(stmts))
 	for _, stmt := range stmts {
@@ -202,7 +210,7 @@ func EvalQuery(query *Query, stmts []*pb.Statement) []interface{} {
 	}
 	rs.end()
 
-	return rs.result()
+	return rs.result(), nil
 }
 
 type QueryResultSet interface {
@@ -210,6 +218,12 @@ type QueryResultSet interface {
 	add(*pb.Statement)
 	end()
 	result() []interface{}
+}
+
+type QueryEvalError string
+
+func (e QueryEvalError) Error() string {
+	return string(e)
 }
 
 type StatementFilter func(*pb.Statement) bool
@@ -297,26 +311,25 @@ func makeNamespaceFilter(query *Query) StatementFilter {
 	}
 }
 
-func makeCriteriaFilter(query *Query) StatementFilter {
+func makeCriteriaFilter(query *Query) (StatementFilter, error) {
 	c := query.criteria
 	if c == nil {
-		return emptyFilter
+		return emptyFilter, nil
 	}
 
 	return makeCriteriaFilterF(c)
 }
 
-func makeCriteriaFilterF(c QueryCriteria) StatementFilter {
+func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 	switch c := c.(type) {
 	case *ValueCriteria:
 		filter, ok := valueCriteriaFilters[c.sel]
 		if ok {
 			return func(stmt *pb.Statement) bool {
 				return filter(stmt, c.val)
-			}
+			}, nil
 		} else {
-			log.Fatalf("Unexpected criteria selector: %s", c.sel)
-			return nil
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria selector: %s", c.sel))
 		}
 
 	case *TimeCriteria:
@@ -324,28 +337,33 @@ func makeCriteriaFilterF(c QueryCriteria) StatementFilter {
 		if ok {
 			return func(stmt *pb.Statement) bool {
 				return filter(stmt, c.ts)
-			}
+			}, nil
 		} else {
-			log.Fatalf("Unexpected criteria time op: %s", c.op)
-			return nil
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria time op: %s", c.op))
 		}
 
 	case *CompoundCriteria:
 		filter, ok := compoundCriteriaFilters[c.op]
 		if ok {
-			left := makeCriteriaFilterF(c.left)
-			right := makeCriteriaFilterF(c.right)
+			left, err := makeCriteriaFilterF(c.left)
+			if err != nil {
+				return nil, err
+			}
+
+			right, err := makeCriteriaFilterF(c.right)
+			if err != nil {
+				return nil, err
+			}
+
 			return func(stmt *pb.Statement) bool {
 				return filter(stmt, left, right)
-			}
+			}, nil
 		} else {
-			log.Fatalf("Unexpected criteria combinator: %s", c.op)
-			return nil
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria combinator: %s", c.op))
 		}
 
 	default:
-		log.Fatalf("Unexpected criteria type: %T", c)
-		return nil
+		return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria type: %T", c))
 	}
 }
 
@@ -384,27 +402,25 @@ var simpleSelectors = map[string]StatementSelector{
 	"source":    simpleSelectorSource,
 	"timestamp": simpleSelectorTimestamp}
 
-func makeResultSet(query *Query) QueryResultSet {
+func makeResultSet(query *Query) (QueryResultSet, error) {
 	sel := query.selector
 	switch sel := sel.(type) {
 	case SimpleSelector:
 		getf, ok := simpleSelectors[string(sel)]
 		if ok {
-			return makeSimpleResultSet(getf, query.limit)
+			return makeSimpleResultSet(getf, query.limit), nil
 		} else {
-			log.Fatalf("Unexpected selector: %s", sel)
-			return nil
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel))
 		}
 
 	case CompoundSelector:
-		return nil
+		return nil, QueryEvalError("Implement me!")
 
 	case *FunctionSelector:
-		return nil
+		return nil, QueryEvalError("Implement me!")
 
 	default:
-		log.Fatalf("Unexpected selector type: %T", sel)
-		return nil
+		return nil, QueryEvalError(fmt.Sprintf("Unexpected selector type: %T", sel))
 	}
 }
 
