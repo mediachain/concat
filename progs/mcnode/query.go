@@ -266,7 +266,7 @@ func timestampFilterGTEQ(stmt *pb.Statement, ts int64) bool {
 }
 
 func timestampFilterGT(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp >= ts
+	return stmt.Timestamp > ts
 }
 
 var timeCriteriaFilters = map[string]TimeCriteriaFilter{
@@ -377,6 +377,10 @@ func simpleSelectorBody(stmt *pb.Statement) interface{} {
 	return stmt.Body
 }
 
+func simpleSelectorId(stmt *pb.Statement) interface{} {
+	return stmt.Id
+}
+
 func simpleSelectorPublisher(stmt *pb.Statement) interface{} {
 	return stmt.Publisher
 }
@@ -397,7 +401,8 @@ func simpleSelectorTimestamp(stmt *pb.Statement) interface{} {
 var simpleSelectors = map[string]StatementSelector{
 	"*":         simpleSelectorAll,
 	"body":      simpleSelectorBody,
-	"id":        simpleSelectorPublisher,
+	"id":        simpleSelectorId,
+	"publisher": simpleSelectorPublisher,
 	"namespace": simpleSelectorNamespace,
 	"source":    simpleSelectorSource,
 	"timestamp": simpleSelectorTimestamp}
@@ -432,8 +437,7 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 			getfs[x] = getf
 		}
 
-		compf := makeCompoundStatementSelector(sel, getfs)
-		return makeSimpleResultSet(compf, query.limit), nil
+		return makeCompoundResultSet(sel, getfs, query.limit), nil
 
 	case *FunctionSelector:
 		fun, ok := functionSelectors[sel.op]
@@ -450,16 +454,6 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 
 	default:
 		return nil, QueryEvalError(fmt.Sprintf("Unexpected selector type: %T", sel))
-	}
-}
-
-func makeCompoundStatementSelector(sels []SimpleSelector, getfs []StatementSelector) StatementSelector {
-	return func(stmt *pb.Statement) interface{} {
-		val := make(map[string]interface{})
-		for x, sel := range sels {
-			val[string(sel)] = getfs[x](stmt)
-		}
-		return val
 	}
 }
 
@@ -494,6 +488,41 @@ func (rs *SimpleResultSet) end() {
 
 func (rs *SimpleResultSet) result() []interface{} {
 	return rs.res
+}
+
+func makeCompoundResultSet(sels []SimpleSelector, getfs []StatementSelector, limit int) QueryResultSet {
+	compf := makeCompoundStatementSelector(sels, getfs)
+	return &CompoundResultSet{getf: compf, limit: limit}
+}
+
+func makeCompoundStatementSelector(sels []SimpleSelector, getfs []StatementSelector) StatementSelector {
+	return func(stmt *pb.Statement) interface{} {
+		val := make(map[string]interface{})
+		for x, sel := range sels {
+			val[string(sel)] = getfs[x](stmt)
+		}
+		return val
+	}
+}
+
+type CompoundResultSet struct {
+	rset  []interface{}
+	getf  StatementSelector
+	limit int
+}
+
+func (rs *CompoundResultSet) begin(hint int) {
+	rs.rset = make([]interface{}, 0, hint)
+}
+
+func (rs *CompoundResultSet) add(stmt *pb.Statement) {
+	rs.rset = append(rs.rset, rs.getf(stmt))
+}
+
+func (rs *CompoundResultSet) end() {}
+
+func (rs *CompoundResultSet) result() []interface{} {
+	return rs.rset
 }
 
 func makeFunctionResultSet(fun FunctionStatementSelector, getf StatementSelector, limit int) QueryResultSet {
