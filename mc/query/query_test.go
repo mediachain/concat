@@ -1,4 +1,4 @@
-package main
+package query
 
 import (
 	pb "github.com/mediachain/concat/proto"

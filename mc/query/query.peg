@@ -5,7 +5,7 @@
 #  go get github.com/pointlander/peg
 #  peg -inline -switch query.peg
 
-package main
+package query
 
 type QueryParser Peg {
     *ParseState
