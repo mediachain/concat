@@ -15,6 +15,7 @@ import (
 	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
+	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	"io/ioutil"
 	"log"
@@ -289,6 +290,50 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/query: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q, err := mcq.ParseQuery(string(body))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	res, err := node.doQuery(q)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+}
+
+func (node *Node) doQuery(q *mcq.Query) ([]interface{}, error) {
+	var stmts []*pb.Statement
+
+	node.mx.Lock()
+	stmts = make([]*pb.Statement, len(node.stmt))
+	x := 0
+	for _, stmt := range node.stmt {
+		stmts[x] = stmt
+		x++
+	}
+	node.mx.Unlock()
+
+	return mcq.EvalQuery(q, stmts)
+}
+
 func (node *Node) saveStatement(stmt *pb.Statement) error {
 	spath := path.Join(node.home, "stmt", stmt.Id)
 
@@ -390,6 +435,7 @@ func main() {
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
 	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
+	router.HandleFunc("/query", node.httpQuery)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)
