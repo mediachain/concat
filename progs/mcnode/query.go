@@ -344,11 +344,99 @@ func makeCriteriaFilterF(c QueryCriteria) StatementFilter {
 		}
 
 	default:
-		log.Fatalf("Unexpected criteria type: %t", c)
+		log.Fatalf("Unexpected criteria type: %T", c)
 		return nil
 	}
 }
 
+type StatementSelector func(*pb.Statement) interface{}
+
+func simpleSelectorAll(stmt *pb.Statement) interface{} {
+	return stmt
+}
+
+func simpleSelectorBody(stmt *pb.Statement) interface{} {
+	return stmt.Body
+}
+
+func simpleSelectorPublisher(stmt *pb.Statement) interface{} {
+	return stmt.Publisher
+}
+
+func simpleSelectorNamespace(stmt *pb.Statement) interface{} {
+	return stmt.Namespace
+}
+
+func simpleSelectorSource(stmt *pb.Statement) interface{} {
+	// simple statements, source = publisher
+	return stmt.Publisher
+}
+
+func simpleSelectorTimestamp(stmt *pb.Statement) interface{} {
+	return stmt.Timestamp
+}
+
+var simpleSelectors = map[string]StatementSelector{
+	"*":         simpleSelectorAll,
+	"body":      simpleSelectorBody,
+	"id":        simpleSelectorPublisher,
+	"namespace": simpleSelectorNamespace,
+	"source":    simpleSelectorSource,
+	"timestamp": simpleSelectorTimestamp}
+
 func makeResultSet(query *Query) QueryResultSet {
-	return nil
+	sel := query.selector
+	switch sel := sel.(type) {
+	case SimpleSelector:
+		getf, ok := simpleSelectors[string(sel)]
+		if ok {
+			return makeSimpleResultSet(getf, query.limit)
+		} else {
+			log.Fatalf("Unexpected selector: %s", sel)
+			return nil
+		}
+
+	case CompoundSelector:
+		return nil
+
+	case *FunctionSelector:
+		return nil
+
+	default:
+		log.Fatalf("Unexpected selector type: %T", sel)
+		return nil
+	}
+}
+
+func makeSimpleResultSet(getf StatementSelector, limit int) QueryResultSet {
+	return &SimpleResultSet{rset: make(map[interface{}]bool), getf: getf, limit: limit}
+}
+
+type SimpleResultSet struct {
+	rset  map[interface{}]bool
+	res   []interface{}
+	getf  StatementSelector
+	limit int
+}
+
+func (rs *SimpleResultSet) begin(hint int) {}
+
+func (rs *SimpleResultSet) add(stmt *pb.Statement) {
+	if rs.limit == 0 || len(rs.rset) < rs.limit {
+		rs.rset[rs.getf(stmt)] = true
+	}
+}
+
+func (rs *SimpleResultSet) end() {
+	rs.res = make([]interface{}, len(rs.rset))
+	x := 0
+	for obj, _ := range rs.rset {
+		rs.res[x] = obj
+		x++
+	}
+	rs.rset = nil
+}
+
+func (rs *SimpleResultSet) result() []interface{} {
+	return rs.res
 }
