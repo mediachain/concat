@@ -235,6 +235,23 @@ func countFunctionSelector(res []interface{}) []interface{} {
 var functionSelectors = map[string]FunctionStatementSelector{
 	"COUNT": countFunctionSelector}
 
+// The difference between the types of result set:
+//  Simple selectors (SimpleResultSet) have unique (set) semantics.
+//  Compound selectors (CompoundResultSet) create objects with fields named by
+//   their selector, and have distinct semantics.
+//  Function selectors (FunctionResultSet) perform a selection and apply a
+//   function on the simple result set.
+// The difference is illustrated with these two expressions
+//  SELECT namespace FROM *
+//  SELECT (namespace) FROM *
+//  SELECT COUNT(namespace) FROM *
+// The first form, will return a set of unique namespaces from all statements
+// as flat strings
+// The second form will return a list of objects, with a field named namespace
+//  containing the namespace of some statement. There are as many objects in
+//  the result set as statements.
+// The third form will return a list with one element, which will be the count
+//  of distinct namespaces.
 func makeResultSet(query *Query) (QueryResultSet, error) {
 	sel := query.selector
 	switch sel := sel.(type) {
