@@ -78,13 +78,13 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 			break
 		}
 
-		pid, err := p2p_peer.IDFromString(req.Id)
+		xid, err := p2p_peer.IDB58Decode(req.Id)
 		if err != nil {
 			log.Printf("directory/lookup: bad request from %s\n", pid.Pretty())
 			break
 		}
 
-		pinfo, ok := dir.lookupPeer(pid)
+		pinfo, ok := dir.lookupPeer(xid)
 		if ok {
 			var pbpi pb.PeerInfo
 			mc.PBFromPeerInfo(&pbpi, pinfo)
