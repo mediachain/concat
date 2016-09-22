@@ -1,0 +1,97 @@
+# Grammar for statement query language
+# just simple statements with no joins for now
+#
+# Compilation to query.peg.go:
+#  go get github.com/pointlander/peg
+#  peg -inline -switch query.peg
+
+package query
+
+type QueryParser Peg {
+    *ParseState
+}
+
+Grammar <- 'SELECT' WS Selector
+                    WS Source
+                    (WS Criteria)?
+                    (WS Limit)?
+                    WSX EOF
+
+Selector <- SimpleSelector   { p.setSimpleSelector() }
+          / CompoundSelector { p.setCompoundSelector() }
+          / FunctionSelector { p.setFunctionSelector() }
+
+SimpleSelector <- < SimpleSelectorOp > { p.push(text) }
+SimpleSelectorOp <- '*'
+                  / 'body'
+                  / 'id'
+                  / 'publisher'
+                  / 'namespace'
+                  / 'source'
+                  / 'timestamp'               
+
+CompoundSelector <- '(' SimpleSelector ( ',' WSX SimpleSelector )* ')'
+
+FunctionSelector <- Function '(' SimpleSelector ')'
+
+Function   <- < FunctionOp > { p.push(text) }
+FunctionOp <- 'COUNT'
+
+Source <- 'FROM' WS Namespace { p.setNamespace(text) }
+
+Namespace <- < NamespacePart ( '.' NamespacePart )* ('.' Wildcard)? >
+           / < Wildcard >
+
+NamespacePart <- [a-zA-Z0-9-]+
+Wildcard <- '*'
+
+Criteria <- 'WHERE' WS MultiCriteria { p.setCriteria() }
+
+MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCompoundCriteria() })*
+
+CompoundCriteria <- SimpleCriteria
+                  / '(' MultiCriteria ')'
+                  / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
+
+SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
+                / TimeCriteria  { p.addTimeCriteria() }  
+
+ValueCriteria <- IdCriteria
+               / PublisherCriteria 
+               / SourceCriteria
+
+IdCriteria        <- < 'id' >        { p.push(text) } WSX ValueCompare WSX StatementId { p.push(text) }
+PublisherCriteria <- < 'publisher' > { p.push(text) } WSX ValueCompare WSX PublisherId { p.push(text) }
+SourceCriteria    <- < 'source' >    { p.push(text) } WSX ValueCompare WSX PublisherId { p.push(text) }
+
+ValueCompare   <- < ValueCompareOp > { p.push(text) }
+ValueCompareOp <- '='
+                / '!='
+
+TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt { p.push(text) }
+
+Boolean   <- < BooleanOp > { p.push(text) }
+BooleanOp <- 'AND'
+           / 'OR'
+
+Comparison   <- < ComparisonOp > { p.push(text) }
+ComparisonOp <- '<='
+              / '<'
+              / '='
+              / '!='
+              / '>='
+              / '>'
+
+Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
+
+# Lexemes
+StatementId <- < [a-zA-Z0-9:]+ >
+PublisherId <- < [a-zA-Z0-9]+ >
+UInt        <- < [0-9]+ >
+WS          <- WhiteSpace+
+WSX         <- WhiteSpace*
+WhiteSpace  <- ' ' / '\t' / EOL
+EOL         <- '\r\n' / '\n' / '\r'
+EOF	        <- !.
+
+
