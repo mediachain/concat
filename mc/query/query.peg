@@ -48,11 +48,10 @@ Wildcard <- '*'
 Criteria <- 'WHERE' WS MultiCriteria { p.setCriteria() }
 
 MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCompoundCriteria() })*
-               / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 CompoundCriteria <- SimpleCriteria
                   / '(' MultiCriteria ')'
-                  / 'NOT' WS MultiCriteria { p.addNegatedCriteria() }
+                  / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
                 / TimeCriteria  { p.addTimeCriteria() }  
