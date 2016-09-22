@@ -18,8 +18,11 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar.*",
 	"SELECT * FROM foo.bar-baz-with-dashes",
 	"SELECT * FROM foo.bar WHERE id = abc",
+	"SELECT * FROM foo.bar WHERE id != abc",
 	"SELECT * FROM foo.bar WHERE publisher = abc",
+	"SELECT * FROM foo.bar WHERE publisher != abc",
 	"SELECT * FROM foo.bar WHERE source = abc",
+	"SELECT * FROM foo.bar WHERE source != abc",
 	"SELECT * FROM foo.bar WHERE timestamp < 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp <= 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp = 1474000000",
@@ -29,6 +32,11 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc OR timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR timestamp < 1474000000",
+	"SELECT * FROM foo.bar WHERE NOT id = abc",
+	"SELECT * FROM foo.bar WHERE NOT (id = abc AND publisher = def)",
+	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000",
+	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR timestamp > 1475000000",
+	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR timestamp > 1475000000)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
 	"SELECT * FROM foo.bar LIMIT 10"}
 
@@ -388,6 +396,28 @@ func TestQueryEval(t *testing.T) {
 	if checkResultLen(t, qs, res, 2) {
 		checkContains(t, qs, res, a)
 		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp > 100 AND NOT publisher = A"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE NOT (timestamp < 200 OR publisher = B)"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
 	}
 
 }

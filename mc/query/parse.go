@@ -97,6 +97,13 @@ func (ps *ParseState) addCompoundCriteria() {
 	ps.push(crit)
 }
 
+func (ps *ParseState) addNegatedCriteria() {
+	// stack: criteria ...
+	e := ps.pop().(QueryCriteria)
+	crit := &NegatedCriteria{e}
+	ps.push(crit)
+}
+
 func (ps *ParseState) setLimit(x string) {
 	lim, err := strconv.Atoi(x)
 	if err != nil {

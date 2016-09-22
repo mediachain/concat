@@ -204,6 +204,16 @@ func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 			return filter(stmt, left, right)
 		}, nil
 
+	case *NegatedCriteria:
+		filter, err := makeCriteriaFilterF(c.e)
+		if err != nil {
+			return nil, err
+		}
+
+		return func(stmt *pb.Statement) bool {
+			return !filter(stmt)
+		}, nil
+
 	default:
 		return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria type: %T", c))
 	}
