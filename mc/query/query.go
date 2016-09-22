@@ -37,6 +37,7 @@ type QueryCriteria interface {
 }
 
 type ValueCriteria struct {
+	op  string
 	sel string
 	val string
 }
@@ -51,6 +52,10 @@ type CompoundCriteria struct {
 	left, right QueryCriteria
 }
 
+type NegatedCriteria struct {
+	e QueryCriteria
+}
+
 func (c *ValueCriteria) CriteriaType() string {
 	return "value"
 }
@@ -61,4 +66,8 @@ func (c *TimeCriteria) CriteriaType() string {
 
 func (c *CompoundCriteria) CriteriaType() string {
 	return "compound"
+}
+
+func (c *NegatedCriteria) CriteriaType() string {
+	return "negated"
 }

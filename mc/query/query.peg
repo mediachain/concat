@@ -51,6 +51,7 @@ MultiCriteria <- CompoundCriteria (WS Boolean WS CompoundCriteria { p.addCompoun
 
 CompoundCriteria <- SimpleCriteria
                   / '(' MultiCriteria ')'
+                  / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
                 / TimeCriteria  { p.addTimeCriteria() }  
@@ -59,9 +60,13 @@ ValueCriteria <- IdCriteria
                / PublisherCriteria 
                / SourceCriteria
 
-IdCriteria        <- < 'id' >        { p.push(text) } WSX '=' WSX StatementId { p.push(text) }
-PublisherCriteria <- < 'publisher' > { p.push(text) } WSX '=' WSX PublisherId { p.push(text) }
-SourceCriteria    <- < 'source' >    { p.push(text) } WSX '=' WSX PublisherId { p.push(text) }
+IdCriteria        <- < 'id' >        { p.push(text) } WSX ValueCompare WSX StatementId { p.push(text) }
+PublisherCriteria <- < 'publisher' > { p.push(text) } WSX ValueCompare WSX PublisherId { p.push(text) }
+SourceCriteria    <- < 'source' >    { p.push(text) } WSX ValueCompare WSX PublisherId { p.push(text) }
+
+ValueCompare   <- < ValueCompareOp > { p.push(text) }
+ValueCompareOp <- '='
+                / '!='
 
 TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt { p.push(text) }
 
@@ -73,6 +78,7 @@ Comparison   <- < ComparisonOp > { p.push(text) }
 ComparisonOp <- '<='
               / '<'
               / '='
+              / '!='
               / '>='
               / '>'
 

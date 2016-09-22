@@ -67,10 +67,11 @@ func (ps *ParseState) setCriteria() {
 }
 
 func (ps *ParseState) addValueCriteria() {
-	// stack: value value-selector ...
+	// stack: value op selector ...
 	val := ps.pop().(string)
+	op := ps.pop().(string)
 	sel := ps.pop().(string)
-	crit := &ValueCriteria{sel: sel, val: val}
+	crit := &ValueCriteria{op: op, sel: sel, val: val}
 	ps.push(crit)
 }
 
@@ -93,6 +94,13 @@ func (ps *ParseState) addCompoundCriteria() {
 	op := ps.pop().(string)
 	left := ps.pop().(QueryCriteria)
 	crit := &CompoundCriteria{op: op, left: left, right: right}
+	ps.push(crit)
+}
+
+func (ps *ParseState) addNegatedCriteria() {
+	// stack: criteria ...
+	e := ps.pop().(QueryCriteria)
+	crit := &NegatedCriteria{e}
 	ps.push(crit)
 }
 

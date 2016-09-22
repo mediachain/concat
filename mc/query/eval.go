@@ -46,27 +46,40 @@ func (e QueryEvalError) Error() string {
 }
 
 type StatementFilter func(*pb.Statement) bool
-type ValueCriteriaFilter func(*pb.Statement, string) bool
+type ValueCriteriaFilterSelect func(*pb.Statement) string
+type ValueCriteriaFilterCompare func(a, b string) bool
 type TimeCriteriaFilter func(*pb.Statement, int64) bool
 type CompoundCriteriaFilter func(stmt *pb.Statement, left, right StatementFilter) bool
 
-func idCriteriaFilter(stmt *pb.Statement, id string) bool {
-	return stmt.Id == id
+func idCriteriaFilter(stmt *pb.Statement) string {
+	return stmt.Id
 }
 
-func publisherCriteriaFilter(stmt *pb.Statement, pub string) bool {
-	return stmt.Publisher == pub
+func publisherCriteriaFilter(stmt *pb.Statement) string {
+	return stmt.Publisher
 }
 
-func sourceCriteriaFilter(stmt *pb.Statement, src string) bool {
+func sourceCriteriaFilter(stmt *pb.Statement) string {
 	// only support simple statements for now, so src = publisher
-	return stmt.Publisher == src
+	return stmt.Publisher
 }
 
-var valueCriteriaFilters = map[string]ValueCriteriaFilter{
+var valueCriteriaFilterSelect = map[string]ValueCriteriaFilterSelect{
 	"id":        idCriteriaFilter,
 	"publisher": publisherCriteriaFilter,
 	"source":    sourceCriteriaFilter}
+
+func valueCriteriaEQ(a, b string) bool {
+	return a == b
+}
+
+func valueCriteriaNE(a, b string) bool {
+	return a != b
+}
+
+var valueCriteriaFilterCompare = map[string]ValueCriteriaFilterCompare{
+	"=":  valueCriteriaEQ,
+	"!=": valueCriteriaNE}
 
 func timestampFilterLTEQ(stmt *pb.Statement, ts int64) bool {
 	return stmt.Timestamp <= ts
@@ -78,6 +91,10 @@ func timestampFilterLT(stmt *pb.Statement, ts int64) bool {
 
 func timestampFilterEQ(stmt *pb.Statement, ts int64) bool {
 	return stmt.Timestamp == ts
+}
+
+func timestampFilterNE(stmt *pb.Statement, ts int64) bool {
+	return stmt.Timestamp != ts
 }
 
 func timestampFilterGTEQ(stmt *pb.Statement, ts int64) bool {
@@ -92,6 +109,7 @@ var timeCriteriaFilters = map[string]TimeCriteriaFilter{
 	"<=": timestampFilterLTEQ,
 	"<":  timestampFilterLT,
 	"=":  timestampFilterEQ,
+	"!=": timestampFilterNE,
 	">=": timestampFilterGTEQ,
 	">":  timestampFilterGT}
 
@@ -142,13 +160,18 @@ func makeCriteriaFilter(query *Query) (StatementFilter, error) {
 func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 	switch c := c.(type) {
 	case *ValueCriteria:
-		filter, ok := valueCriteriaFilters[c.sel]
+		getf, ok := valueCriteriaFilterSelect[c.sel]
 		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria selector: %s", c.sel))
 		}
 
+		cmpf, ok := valueCriteriaFilterCompare[c.op]
+		if !ok {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria operator: %s", c.op))
+		}
+
 		return func(stmt *pb.Statement) bool {
-			return filter(stmt, c.val)
+			return cmpf(getf(stmt), c.val)
 		}, nil
 
 	case *TimeCriteria:
@@ -179,6 +202,16 @@ func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 
 		return func(stmt *pb.Statement) bool {
 			return filter(stmt, left, right)
+		}, nil
+
+	case *NegatedCriteria:
+		filter, err := makeCriteriaFilterF(c.e)
+		if err != nil {
+			return nil, err
+		}
+
+		return func(stmt *pb.Statement) bool {
+			return !filter(stmt)
 		}, nil
 
 	default:
@@ -235,6 +268,23 @@ func countFunctionSelector(res []interface{}) []interface{} {
 var functionSelectors = map[string]FunctionStatementSelector{
 	"COUNT": countFunctionSelector}
 
+// The difference between the types of result set:
+//  Simple selectors (SimpleResultSet) have unique (set) semantics.
+//  Compound selectors (CompoundResultSet) create objects with fields named by
+//   their selector, and have distinct semantics.
+//  Function selectors (FunctionResultSet) perform a selection and apply a
+//   function on the simple result set.
+// The difference is illustrated with these two expressions
+//  SELECT namespace FROM *
+//  SELECT (namespace) FROM *
+//  SELECT COUNT(namespace) FROM *
+// The first form, will return a set of unique namespaces from all statements
+// as flat strings
+// The second form will return a list of objects, with a field named namespace
+//  containing the namespace of some statement. There are as many objects in
+//  the result set as statements.
+// The third form will return a list with one element, which will be the count
+//  of distinct namespaces.
 func makeResultSet(query *Query) (QueryResultSet, error) {
 	sel := query.selector
 	switch sel := sel.(type) {
