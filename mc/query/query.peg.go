@@ -1741,6 +1741,16 @@ func (p *QueryParser) Init() {
 														}
 														position++
 														break
+													case '!':
+														if buffer[position] != rune('!') {
+															goto l73
+														}
+														position++
+														if buffer[position] != rune('=') {
+															goto l73
+														}
+														position++
+														break
 													case '=':
 														if buffer[position] != rune('=') {
 															goto l73
@@ -1832,7 +1842,7 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 23 Comparison <- <(<ComparisonOp> Action18)> */
 		nil,
-		/* 24 ComparisonOp <- <(('<' '=') / ('>' '=') / ((&('>') '>') | (&('=') '=') | (&('<') '<')))> */
+		/* 24 ComparisonOp <- <(('<' '=') / ('>' '=') / ((&('>') '>') | (&('!') ('!' '=')) | (&('=') '=') | (&('<') '<')))> */
 		nil,
 		/* 25 Limit <- <('L' 'I' 'M' 'I' 'T' WS UInt Action19)> */
 		nil,

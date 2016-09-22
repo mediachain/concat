@@ -73,6 +73,7 @@ Comparison   <- < ComparisonOp > { p.push(text) }
 ComparisonOp <- '<='
               / '<'
               / '='
+              / '!='
               / '>='
               / '>'
 

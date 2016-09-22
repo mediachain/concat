@@ -23,6 +23,7 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE timestamp < 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp <= 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp = 1474000000",
+	"SELECT * FROM foo.bar WHERE timestamp != 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp >= 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
@@ -305,6 +306,18 @@ func TestQueryEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp != 200"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
 	}
 
 	qs = "SELECT * FROM * WHERE timestamp >= 200"

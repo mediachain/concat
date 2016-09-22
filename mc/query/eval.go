@@ -80,6 +80,10 @@ func timestampFilterEQ(stmt *pb.Statement, ts int64) bool {
 	return stmt.Timestamp == ts
 }
 
+func timestampFilterNE(stmt *pb.Statement, ts int64) bool {
+	return stmt.Timestamp != ts
+}
+
 func timestampFilterGTEQ(stmt *pb.Statement, ts int64) bool {
 	return stmt.Timestamp >= ts
 }
@@ -92,6 +96,7 @@ var timeCriteriaFilters = map[string]TimeCriteriaFilter{
 	"<=": timestampFilterLTEQ,
 	"<":  timestampFilterLT,
 	"=":  timestampFilterEQ,
+	"!=": timestampFilterNE,
 	">=": timestampFilterGTEQ,
 	">":  timestampFilterGT}
 
