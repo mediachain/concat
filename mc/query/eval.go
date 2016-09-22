@@ -46,27 +46,40 @@ func (e QueryEvalError) Error() string {
 }
 
 type StatementFilter func(*pb.Statement) bool
-type ValueCriteriaFilter func(*pb.Statement, string) bool
+type ValueCriteriaFilterSelect func(*pb.Statement) string
+type ValueCriteriaFilterCompare func(a, b string) bool
 type TimeCriteriaFilter func(*pb.Statement, int64) bool
 type CompoundCriteriaFilter func(stmt *pb.Statement, left, right StatementFilter) bool
 
-func idCriteriaFilter(stmt *pb.Statement, id string) bool {
-	return stmt.Id == id
+func idCriteriaFilter(stmt *pb.Statement) string {
+	return stmt.Id
 }
 
-func publisherCriteriaFilter(stmt *pb.Statement, pub string) bool {
-	return stmt.Publisher == pub
+func publisherCriteriaFilter(stmt *pb.Statement) string {
+	return stmt.Publisher
 }
 
-func sourceCriteriaFilter(stmt *pb.Statement, src string) bool {
+func sourceCriteriaFilter(stmt *pb.Statement) string {
 	// only support simple statements for now, so src = publisher
-	return stmt.Publisher == src
+	return stmt.Publisher
 }
 
-var valueCriteriaFilters = map[string]ValueCriteriaFilter{
+var valueCriteriaFilterSelect = map[string]ValueCriteriaFilterSelect{
 	"id":        idCriteriaFilter,
 	"publisher": publisherCriteriaFilter,
 	"source":    sourceCriteriaFilter}
+
+func valueCriteriaEQ(a, b string) bool {
+	return a == b
+}
+
+func valueCriteriaNE(a, b string) bool {
+	return a != b
+}
+
+var valueCriteriaFilterCompare = map[string]ValueCriteriaFilterCompare{
+	"=":  valueCriteriaEQ,
+	"!=": valueCriteriaNE}
 
 func timestampFilterLTEQ(stmt *pb.Statement, ts int64) bool {
 	return stmt.Timestamp <= ts
@@ -147,13 +160,18 @@ func makeCriteriaFilter(query *Query) (StatementFilter, error) {
 func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 	switch c := c.(type) {
 	case *ValueCriteria:
-		filter, ok := valueCriteriaFilters[c.sel]
+		getf, ok := valueCriteriaFilterSelect[c.sel]
 		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria selector: %s", c.sel))
 		}
 
+		cmpf, ok := valueCriteriaFilterCompare[c.op]
+		if !ok {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria operator: %s", c.op))
+		}
+
 		return func(stmt *pb.Statement) bool {
-			return filter(stmt, c.val)
+			return cmpf(getf(stmt), c.val)
 		}, nil
 
 	case *TimeCriteria:

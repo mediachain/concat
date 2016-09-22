@@ -274,6 +274,17 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
+	qs = "SELECT * FROM * WHERE publisher != A"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
 	qs = "SELECT * FROM * WHERE timestamp < 200"
 	q, err = ParseQuery(qs)
 	checkErrorNow(t, qs, err)

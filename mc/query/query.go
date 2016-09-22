@@ -37,6 +37,7 @@ type QueryCriteria interface {
 }
 
 type ValueCriteria struct {
+	op  string
 	sel string
 	val string
 }

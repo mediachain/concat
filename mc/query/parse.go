@@ -67,10 +67,11 @@ func (ps *ParseState) setCriteria() {
 }
 
 func (ps *ParseState) addValueCriteria() {
-	// stack: value value-selector ...
+	// stack: value op selector ...
 	val := ps.pop().(string)
+	op := ps.pop().(string)
 	sel := ps.pop().(string)
-	crit := &ValueCriteria{sel: sel, val: val}
+	crit := &ValueCriteria{op: op, sel: sel, val: val}
 	ps.push(crit)
 }
 
