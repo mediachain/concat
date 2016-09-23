@@ -20,7 +20,22 @@ var UnknownPeer = errors.New("Unknown peer")
 var IllegalState = errors.New("Illegal node state")
 
 func (node *Node) goOffline() error {
-	return nil
+	node.mx.Lock()
+	defer node.mx.Unlock()
+
+	switch node.status {
+	case StatusPublic:
+		node.dirCancel()
+		fallthrough
+	case StatusOnline:
+		err := node.host.Close()
+		node.status = StatusOffline
+		log.Println("Node is offline")
+		return err
+
+	default:
+		return nil
+	}
 }
 
 func (node *Node) goOnline() error {
