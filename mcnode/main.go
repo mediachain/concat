@@ -44,7 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("I am %s/%s", addr, id.Pretty())
+	log.Printf("I am %s", id.Pretty())
 
 	haddr := fmt.Sprintf("127.0.0.1:%d", *cport)
 	router := mux.NewRouter().StrictSlash(true)
@@ -55,6 +55,7 @@ func main() {
 	router.HandleFunc("/query", node.httpQuery)
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
+	router.HandleFunc("/config/dir", node.httpConfigDir)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)

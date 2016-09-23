@@ -17,6 +17,7 @@ import (
 var NodeOffline = errors.New("Node is offline")
 var NoDirectory = errors.New("No directory server")
 var UnknownPeer = errors.New("Unknown peer")
+var IllegalState = errors.New("Illegal node state")
 
 func (node *Node) goOffline() error {
 	return nil
@@ -34,17 +35,48 @@ func (node *Node) goOnline() error {
 		}
 
 		host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
+
 		node.host = host
 		node.status = StatusOnline
-		log.Printf("Node is online\n")
+
+		log.Println("Node is online")
+		return nil
+
+	default:
 		return nil
 	}
-
-	return nil
 }
 
 func (node *Node) goPublic() error {
-	return nil
+	err := node.goOnline()
+	if err != nil {
+		return err
+	}
+
+	node.mx.Lock()
+	defer node.mx.Unlock()
+
+	switch node.status {
+	case StatusPublic:
+		return nil
+
+	case StatusOnline:
+		if node.dir == nil {
+			return NoDirectory
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go node.registerPeer(ctx, node.laddr)
+
+		node.dirCancel = cancel
+		node.status = StatusPublic
+
+		log.Println("Node is public")
+		return nil
+
+	default:
+		return IllegalState
+	}
 }
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
@@ -73,20 +105,17 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 	}
 }
 
-func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
-	// directory failure is a fatality for now
-	ctx := context.Background()
-
+func (node *Node) registerPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) {
 	err := node.host.Connect(ctx, *node.dir)
 	if err != nil {
-		log.Printf("Failed to connect to directory")
-		log.Fatal(err)
+		log.Printf("Failed to connect to directory: %s", err.Error())
+		return
 	}
 
 	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/register")
 	if err != nil {
-		log.Printf("Failed to open directory stream")
-		log.Fatal(err)
+		log.Printf("Failed to open directory stream: %s", err.Error())
+		return
 	}
 	defer s.Close()
 
@@ -100,11 +129,16 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 		log.Printf("Registering with directory")
 		err = w.WriteMsg(&msg)
 		if err != nil {
-			log.Printf("Failed to register with directory")
-			log.Fatal(err)
+			log.Printf("Failed to register with directory: %s", err.Error())
 		}
 
-		time.Sleep(5 * time.Minute)
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-time.After(5 * time.Minute):
+			continue
+		}
 	}
 }
 

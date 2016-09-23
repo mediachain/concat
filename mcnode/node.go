@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
@@ -21,14 +22,15 @@ import (
 
 type Node struct {
 	mc.Identity
-	status  int
-	laddr   multiaddr.Multiaddr
-	host    p2p_host.Host
-	dir     *p2p_pstore.PeerInfo
-	home    string
-	mx      sync.Mutex
-	stmt    map[string]*pb.Statement
-	counter int
+	status    int
+	laddr     multiaddr.Multiaddr
+	host      p2p_host.Host
+	dir       *p2p_pstore.PeerInfo
+	dirCancel context.CancelFunc
+	home      string
+	mx        sync.Mutex
+	stmt      map[string]*pb.Statement
+	counter   int
 }
 
 const (

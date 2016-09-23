@@ -5,11 +5,13 @@ import (
 	"fmt"
 	mux "github.com/gorilla/mux"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
+	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +133,6 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 		err = node.goOnline()
 
 	case "public":
-		// FIXME: get the directory from input
 		err = node.goPublic()
 
 	default:
@@ -146,5 +147,25 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Fprintln(w, statusString[node.status])
+}
+
+func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/query: Error reading request body: %s", err.Error())
+		return
+	}
+
+	handle := strings.TrimSpace(string(body))
+	pinfo, err := mc.ParseHandle(handle)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	node.dir = &pinfo
 	fmt.Fprintln(w, "OK")
 }
