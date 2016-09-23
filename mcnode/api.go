@@ -151,6 +151,25 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodHead:
+		return
+	case http.MethodGet:
+		if node.dir != nil {
+			fmt.Fprintln(w, mc.FormatHandle(*node.dir))
+		} else {
+			fmt.Fprintln(w, "nil")
+		}
+	case http.MethodPost:
+		node.httpConfigDirSet(w, r)
+
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Unsupported method: %s", r.Method)
+	}
+}
+
+func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("http/query: Error reading request body: %s", err.Error())
