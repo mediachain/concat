@@ -14,11 +14,32 @@ import (
 	"time"
 )
 
+var NodeOffline = errors.New("Node is offline")
+var NoDirectory = errors.New("No directory server")
+var UnknownPeer = errors.New("Unknown peer")
+
 func (node *Node) goOffline() error {
 	return nil
 }
 
 func (node *Node) goOnline() error {
+	node.mx.Lock()
+	defer node.mx.Unlock()
+
+	switch node.status {
+	case StatusOffline:
+		host, err := mc.NewHost(node.Identity, node.laddr)
+		if err != nil {
+			return err
+		}
+
+		host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
+		node.host = host
+		node.status = StatusOnline
+		log.Printf("Node is online\n")
+		return nil
+	}
+
 	return nil
 }
 
@@ -87,8 +108,6 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 }
 
-var NodeOffline = errors.New("Node is offline")
-
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	if node.status == StatusOffline {
 		return NodeOffline
@@ -123,9 +142,6 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 
 	return err
 }
-
-var NoDirectory = errors.New("No directory server")
-var UnknownPeer = errors.New("Unknown peer")
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
 	if node.status == StatusOffline {
