@@ -3,6 +3,7 @@ package mc
 import (
 	"context"
 	"errors"
+	"fmt"
 	p2p_crypto "github.com/ipfs/go-libp2p-crypto"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
@@ -25,10 +26,18 @@ func ParseAddress(str string) (multiaddr.Multiaddr, error) {
 var BadHandle = errors.New("Bad handle")
 
 // handle: multiaddr/id
+func FormatHandle(pi p2p_pstore.PeerInfo) string {
+	if len(pi.Addrs) > 0 {
+		return fmt.Sprintf("%s/%s", pi.Addrs[0].String(), pi.ID.Pretty())
+	} else {
+		return pi.ID.Pretty()
+	}
+}
+
 func ParseHandle(str string) (empty p2p_pstore.PeerInfo, err error) {
 	ix := strings.LastIndex(str, "/")
 	if ix < 0 {
-		return empty, BadHandle
+		return ParseHandleId(str)
 	}
 
 	addr, id := str[:ix], str[ix+1:]
@@ -44,6 +53,15 @@ func ParseHandle(str string) (empty p2p_pstore.PeerInfo, err error) {
 	}
 
 	return p2p_pstore.PeerInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}, nil
+}
+
+func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
+	pid, err := p2p_peer.IDB58Decode(str)
+	if err != nil {
+		return empty, err
+	}
+
+	return p2p_pstore.PeerInfo{ID: pid}, nil
 }
 
 // node identities
