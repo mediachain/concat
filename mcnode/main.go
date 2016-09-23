@@ -44,7 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("I am %s", id.Pretty())
+	log.Println("Node is offline")
 
 	haddr := fmt.Sprintf("127.0.0.1:%d", *cport)
 	router := mux.NewRouter().StrictSlash(true)
