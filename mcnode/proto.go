@@ -19,6 +19,7 @@ var NoDirectory = errors.New("No directory server")
 var UnknownPeer = errors.New("Unknown peer")
 var IllegalState = errors.New("Illegal node state")
 
+// goOffline stops the network
 func (node *Node) goOffline() error {
 	node.mx.Lock()
 	defer node.mx.Unlock()
@@ -38,22 +39,19 @@ func (node *Node) goOffline() error {
 	}
 }
 
+// goOnline starts the network; if the node is already public, it stays public
 func (node *Node) goOnline() error {
 	node.mx.Lock()
 	defer node.mx.Unlock()
 
 	switch node.status {
 	case StatusOffline:
-		host, err := mc.NewHost(node.Identity, node.laddr)
+		err := node._goOnline()
 		if err != nil {
 			return err
 		}
 
-		host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
-
-		node.host = host
 		node.status = StatusOnline
-
 		log.Println("Node is online")
 		return nil
 
@@ -62,24 +60,37 @@ func (node *Node) goOnline() error {
 	}
 }
 
-func (node *Node) goPublic() error {
-	err := node.goOnline()
+func (node *Node) _goOnline() error {
+	host, err := mc.NewHost(node.Identity, node.laddr)
 	if err != nil {
 		return err
+	}
+
+	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
+	node.host = host
+
+	return nil
+}
+
+// goPublic starts the network if it's not already up and registers with the
+// directory; fails with NoDirectory if that hasn't been configured.
+func (node *Node) goPublic() error {
+	if node.dir == nil {
+		return NoDirectory
 	}
 
 	node.mx.Lock()
 	defer node.mx.Unlock()
 
 	switch node.status {
-	case StatusPublic:
-		return nil
+	case StatusOffline:
+		err := node._goOnline()
+		if err != nil {
+			return err
+		}
+		fallthrough
 
 	case StatusOnline:
-		if node.dir == nil {
-			return NoDirectory
-		}
-
 		ctx, cancel := context.WithCancel(context.Background())
 		go node.registerPeer(ctx, node.laddr)
 
@@ -90,7 +101,7 @@ func (node *Node) goPublic() error {
 		return nil
 
 	default:
-		return IllegalState
+		return nil
 	}
 }
 
