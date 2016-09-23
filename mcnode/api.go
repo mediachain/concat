@@ -33,7 +33,7 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "OK\n")
+	fmt.Fprintln(w, "OK")
 }
 
 func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
@@ -111,4 +111,40 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
+}
+
+func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {
+	status := statusString[node.status]
+	fmt.Fprintln(w, status)
+}
+
+func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	state := vars["state"]
+
+	var err error
+	switch state {
+	case "offline":
+		err = node.goOffline()
+
+	case "online":
+		err = node.goOnline()
+
+	case "public":
+		// FIXME: get the directory from input
+		err = node.goPublic()
+
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Bad state: %s\n", state)
+		return
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
 }

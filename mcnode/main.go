@@ -16,18 +16,13 @@ func main() {
 	home := flag.String("d", "/tmp/mcnode", "Node home")
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options ...] directory\nOptions:\n", os.Args[0])
+	if len(flag.Args()) != 0 {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options ...]\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
 	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *pport))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dir, err := mc.ParseHandle(flag.Arg(0))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,20 +37,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	host, err := mc.NewHost(id, addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	node := &Node{Identity: id, host: host, dir: dir, home: *home}
+	node := &Node{Identity: id, home: *home, laddr: addr}
 
 	err = node.loadIndex()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
-	go node.registerPeer(addr)
 
 	log.Printf("I am %s/%s", addr, id.Pretty())
 
@@ -66,6 +53,8 @@ func main() {
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
 	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
 	router.HandleFunc("/query", node.httpQuery)
+	router.HandleFunc("/status", node.httpStatus)
+	router.HandleFunc("/status/{state}", node.httpStatusSet)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)

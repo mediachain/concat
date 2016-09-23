@@ -14,6 +14,18 @@ import (
 	"time"
 )
 
+func (node *Node) goOffline() error {
+	return nil
+}
+
+func (node *Node) goOnline() error {
+	return nil
+}
+
+func (node *Node) goPublic() error {
+	return nil
+}
+
 func (node *Node) pingHandler(s p2p_net.Stream) {
 	defer s.Close()
 
@@ -44,7 +56,7 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	// directory failure is a fatality for now
 	ctx := context.Background()
 
-	err := node.host.Connect(ctx, node.dir)
+	err := node.host.Connect(ctx, *node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory")
 		log.Fatal(err)
@@ -75,7 +87,13 @@ func (node *Node) registerPeer(addrs ...multiaddr.Multiaddr) {
 	}
 }
 
+var NodeOffline = errors.New("Node is offline")
+
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
+	if node.status == StatusOffline {
+		return NodeOffline
+	}
+
 	pinfo, err := node.doLookup(ctx, pid)
 	if err != nil {
 		return err
@@ -106,9 +124,18 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	return err
 }
 
+var NoDirectory = errors.New("No directory server")
 var UnknownPeer = errors.New("Unknown peer")
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
+	if node.status == StatusOffline {
+		return empty, NodeOffline
+	}
+
+	if node.dir == nil {
+		return empty, NoDirectory
+	}
+
 	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/lookup")
 	if err != nil {
 		return empty, err

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
+	multiaddr "github.com/jbenet/go-multiaddr"
 	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -20,13 +21,23 @@ import (
 
 type Node struct {
 	mc.Identity
+	status  int
+	laddr   multiaddr.Multiaddr
 	host    p2p_host.Host
-	dir     p2p_pstore.PeerInfo
+	dir     *p2p_pstore.PeerInfo
 	home    string
 	mx      sync.Mutex
 	stmt    map[string]*pb.Statement
 	counter int
 }
+
+const (
+	StatusOffline = iota
+	StatusOnline
+	StatusPublic
+)
+
+var statusString = []string{"offline", "online", "public"}
 
 func (node *Node) stmtCounter() int {
 	node.mx.Lock()
