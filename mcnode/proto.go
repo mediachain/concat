@@ -121,16 +121,35 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 }
 
 func (node *Node) registerPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) {
+	for {
+		err := node.registerPeerImpl(ctx, addrs...)
+		if err == nil {
+			return
+		}
+
+		// sleep and retry
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-time.After(5 * time.Minute):
+			log.Println("Retrying to register with directory")
+			continue
+		}
+	}
+}
+
+func (node *Node) registerPeerImpl(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
 	err := node.host.Connect(ctx, *node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
-		return
+		return err
 	}
 
 	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/register")
 	if err != nil {
 		log.Printf("Failed to open directory stream: %s", err.Error())
-		return
+		return err
 	}
 	defer s.Close()
 
@@ -145,11 +164,12 @@ func (node *Node) registerPeer(ctx context.Context, addrs ...multiaddr.Multiaddr
 		err = w.WriteMsg(&msg)
 		if err != nil {
 			log.Printf("Failed to register with directory: %s", err.Error())
+			return err
 		}
 
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 
 		case <-time.After(5 * time.Minute):
 			continue
