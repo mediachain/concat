@@ -5,11 +5,9 @@ import (
 	"fmt"
 	mux "github.com/gorilla/mux"
 	mc "github.com/mediachain/concat/mc"
-	pb "github.com/mediachain/concat/proto"
 	"log"
 	"net/http"
 	"os"
-	"path"
 )
 
 func main() {
@@ -39,11 +37,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = os.MkdirAll(path.Join(*home, "stmt"), 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	id, err := mc.NodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
@@ -54,9 +47,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node := &Node{Identity: id, host: host, dir: dir, home: *home, stmt: make(map[string]*pb.Statement)}
+	node := &Node{Identity: id, host: host, dir: dir, home: *home}
 
-	node.loadStatements()
+	err = node.loadIndex()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	go node.registerPeer(addr)

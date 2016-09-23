@@ -118,8 +118,7 @@ func (node *Node) saveStatement(stmt *pb.Statement) error {
 	return ioutil.WriteFile(spath, bytes, 0644)
 }
 
-func (node *Node) loadStatements() {
-	sdir := path.Join(node.home, "stmt")
+func (node *Node) loadStatements(sdir string) error {
 	err := filepath.Walk(sdir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -145,7 +144,17 @@ func (node *Node) loadStatements() {
 		return nil
 	})
 
+	return err
+}
+
+func (node *Node) loadIndex() error {
+	node.stmt = make(map[string]*pb.Statement)
+
+	sdir := path.Join(node.home, "stmt")
+	err := os.MkdirAll(sdir, 0755)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return node.loadStatements(sdir)
 }
