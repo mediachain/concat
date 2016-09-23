@@ -7,12 +7,10 @@ import (
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
-	ggproto "github.com/gogo/protobuf/proto"
 	mux "github.com/gorilla/mux"
 	p2p_peer "github.com/ipfs/go-libp2p-peer"
 	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
 	multiaddr "github.com/jbenet/go-multiaddr"
-	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -22,20 +20,8 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
-	"sync"
 	"time"
 )
-
-type Node struct {
-	mc.Identity
-	host    p2p_host.Host
-	dir     p2p_pstore.PeerInfo
-	home    string
-	mx      sync.Mutex
-	stmt    map[string]*pb.Statement
-	counter int
-}
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
 	defer s.Close()
@@ -209,7 +195,7 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 
 	sid, err := node.doPublish(ns, sbody)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
@@ -217,66 +203,12 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, sid)
 }
 
-var BadStatementBody = errors.New("Unrecognized statement body")
-
-func (node *Node) doPublish(ns string, body interface{}) (string, error) {
-	stmt := new(pb.Statement)
-	pid := node.ID.Pretty()
-	ts := time.Now().Unix()
-	counter := node.stmtCounter()
-	stmt.Id = fmt.Sprintf("%s:%d:%d", pid, ts, counter)
-	stmt.Publisher = pid // this should be the pubkey when we have ECC keys
-	stmt.Namespace = ns
-	stmt.Timestamp = ts
-	switch body := body.(type) {
-	case *pb.SimpleStatement:
-		stmt.Body = &pb.Statement_Simple{body}
-
-	case *pb.CompoundStatement:
-		stmt.Body = &pb.Statement_Compound{body}
-
-	case *pb.EnvelopeStatement:
-		stmt.Body = &pb.Statement_Envelope{body}
-
-	case *pb.ArchiveStatement:
-		stmt.Body = &pb.Statement_Archive{body}
-
-	default:
-		return "", BadStatementBody
-	}
-	// only sign it with shiny ECC keys, don't bother with RSA
-	log.Printf("Publish statement %s", stmt.Id)
-
-	node.mx.Lock()
-	node.stmt[stmt.Id] = stmt
-	node.mx.Unlock()
-
-	err := node.saveStatement(stmt)
-	if err != nil {
-		log.Printf("Warning: Failed to save statement: %s", err.Error())
-	}
-
-	return stmt.Id, nil
-}
-
-func (node *Node) stmtCounter() int {
-	node.mx.Lock()
-	counter := node.counter
-	node.counter++
-	node.mx.Unlock()
-	return counter
-}
-
 func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["statementId"]
 
-	var stmt *pb.Statement
-	node.mx.Lock()
-	stmt = node.stmt[id]
-	node.mx.Unlock()
-
-	if stmt == nil {
+	stmt, ok := node.getStatement(id)
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "No such statement\n")
 		return
@@ -316,65 +248,6 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
-	}
-}
-
-func (node *Node) doQuery(q *mcq.Query) ([]interface{}, error) {
-	var stmts []*pb.Statement
-
-	node.mx.Lock()
-	stmts = make([]*pb.Statement, len(node.stmt))
-	x := 0
-	for _, stmt := range node.stmt {
-		stmts[x] = stmt
-		x++
-	}
-	node.mx.Unlock()
-
-	return mcq.EvalQuery(q, stmts)
-}
-
-func (node *Node) saveStatement(stmt *pb.Statement) error {
-	spath := path.Join(node.home, "stmt", stmt.Id)
-
-	bytes, err := ggproto.Marshal(stmt)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Writing statement %s", spath)
-	return ioutil.WriteFile(spath, bytes, 0644)
-}
-
-func (node *Node) loadStatements() {
-	sdir := path.Join(node.home, "stmt")
-	err := filepath.Walk(sdir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		log.Printf("Loading statement %s", path)
-		bytes, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		stmt := new(pb.Statement)
-		err = ggproto.Unmarshal(bytes, stmt)
-		if err != nil {
-			return err
-		}
-
-		node.stmt[stmt.Id] = stmt
-		return nil
-	})
-
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 
