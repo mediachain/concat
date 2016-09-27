@@ -395,11 +395,8 @@ func isStatementQuery(q *Query) bool {
 }
 
 func isEnvelopeQuery(q *Query) bool {
-	// namespace != * or envelope selector or any criteria
 	// id acts as envelope column
-	return q.namespace != "*" ||
-		q.criteria != nil ||
-		isEnvelopeSelector(q.selector)
+	return isEnvelopeSelector(q.selector)
 }
 
 var statementSelectorp = map[string]bool{
@@ -421,11 +418,11 @@ func selectorp(sel QuerySelector, tbl map[string]bool) bool {
 
 	case CompoundSelector:
 		for _, ssel := range sel {
-			if tbl[string(ssel)] {
-				return true
+			if !tbl[string(ssel)] {
+				return false
 			}
 		}
-		return false
+		return true
 
 	case *FunctionSelector:
 		return tbl[string(sel.sel)]

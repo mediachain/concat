@@ -13,8 +13,11 @@ var simpleq []string = []string{
 	"SELECT source FROM foo.bar",
 	"SELECT timestamp FROM foo.bar",
 	"SELECT (body, source) FROM foo.bar",
+	"SELECT (id, namespace, publisher) FROM foo.bar",
 	"SELECT COUNT(*) FROM foo.bar",
+	"SELECT COUNT(publisher) FROM foo.bar",
 	"SELECT namespace FROM *",
+	"SELECT (id, namespace, publisher) FROM *",
 	"SELECT * FROM foo.bar.*",
 	"SELECT * FROM foo.bar-baz-with-dashes",
 	"SELECT * FROM foo.bar WHERE id = abc",
@@ -38,7 +41,8 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR timestamp > 1475000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR timestamp > 1475000000)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
-	"SELECT * FROM foo.bar LIMIT 10"}
+	"SELECT * FROM foo.bar LIMIT 10",
+	"SELECT * FROM * WHERE id = abc"}
 
 func checkError(t *testing.T, where string, err error) {
 	if err != nil {
@@ -75,7 +79,7 @@ func checkContains(t *testing.T, where string, res []interface{}, val interface{
 	t.Errorf("%v is not in result set", val)
 }
 
-func TestQuerySyntax(t *testing.T) {
+func TestQueryParse(t *testing.T) {
 	for _, qs := range simpleq {
 		_, err := ParseQuery(qs)
 		checkError(t, qs, err)
@@ -420,4 +424,14 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
+}
+
+func TestQueryCompile(t *testing.T) {
+	for _, qs := range simpleq {
+		q, err := ParseQuery(qs)
+		checkErrorNow(t, qs, err)
+		_, _, err = CompileQuery(q)
+		checkErrorNow(t, qs, err)
+		//fmt.Printf("Compile %s -> %s\n", qs, sqlq)
+	}
 }
