@@ -204,7 +204,12 @@ func compileQueryRowSelector(q *Query) (RowSelector, error) {
 		return &RowSelectCompound{sel, srs, ptrs}, nil
 
 	case *FunctionSelector:
-		return nil, QueryCompileError("Implement me!")
+		makef, ok := makeFunRowSelector[sel.op]
+		if !ok {
+			return nil, QueryCompileError(fmt.Sprintf("Unexpected function: %s", sel.op))
+		}
+
+		return makef(), nil
 
 	default:
 		return nil, QueryCompileError(fmt.Sprintf("Unexpected selector type: %T", sel))
@@ -309,6 +314,26 @@ func (rs *RowSelectString) Scan(src RowScanner) (interface{}, error) {
 	return rs.val, nil
 }
 
+type RowSelectInt struct {
+	val int
+}
+
+func (rs *RowSelectInt) ptr() interface{} {
+	return &rs.val
+}
+
+func (rs *RowSelectInt) value() (interface{}, error) {
+	return rs.val, nil
+}
+
+func (rs *RowSelectInt) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.val, nil
+}
+
 type RowSelectInt64 struct {
 	val int64
 }
@@ -341,6 +366,10 @@ func makeRowSelectString() SimpleRowSelector {
 	return &RowSelectString{}
 }
 
+func makeRowSelectInt() SimpleRowSelector {
+	return &RowSelectInt{}
+}
+
 func makeRowSelectInt64() SimpleRowSelector {
 	return &RowSelectInt64{}
 }
@@ -353,6 +382,9 @@ var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
 	"publisher": makeRowSelectString,
 	"source":    makeRowSelectString,
 	"timestamp": makeRowSelectInt64}
+
+var makeFunRowSelector = map[string]MakeSimpleRowSelector{
+	"COUNT": makeRowSelectInt}
 
 func isStatementQuery(q *Query) bool {
 	// namespace = * and only has statement selector (*, id, body) and id criteria
