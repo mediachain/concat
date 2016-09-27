@@ -1,7 +1,10 @@
 package query
 
 import (
+	"database/sql"
 	"fmt"
+	ggproto "github.com/gogo/protobuf/proto"
+	pb "github.com/mediachain/concat/proto"
 	"strings"
 )
 
@@ -54,8 +57,12 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 		sqlq = fmt.Sprintf("%s LIMIT %d", sqlq, q.limit)
 	}
 
-	// TODO RowSelector!
-	return sqlq, nil, nil
+	rsel, err := compileQueryRowSelector(q)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return sqlq, rsel, nil
 }
 
 func compileQueryColumns(q *Query) (string, error) {
@@ -171,6 +178,158 @@ func compileSelectorCriteria(c QueryCriteria) (string, error) {
 		return "", QueryCompileError(fmt.Sprintf("Unexpected criteria type: %T", c))
 	}
 }
+
+func compileQueryRowSelector(q *Query) (RowSelector, error) {
+	switch sel := q.selector.(type) {
+	case SimpleSelector:
+		makef, ok := makeSimpleRowSelector[string(sel)]
+		if !ok {
+			return nil, QueryCompileError(fmt.Sprintf("Unexpected selector: %s", sel))
+		}
+
+		return makef(string(sel)), nil
+
+	case CompoundSelector:
+		return nil, QueryCompileError("Implement me!")
+
+	case *FunctionSelector:
+		return nil, QueryCompileError("Implement me!")
+
+	default:
+		return nil, QueryCompileError(fmt.Sprintf("Unexpected selector type: %T", sel))
+	}
+}
+
+type MakeSimpleRowSelector func(sel string) SimpleRowSelector
+
+type SimpleRowSelector interface {
+	RowSelector
+	sel() string
+	ptr() interface{}
+	value() (interface{}, error)
+}
+
+type RowSelectBase struct {
+	id string
+}
+
+func (rs *RowSelectBase) sel() string {
+	return rs.id
+}
+
+type RowSelectStatement struct {
+	RowSelectBase
+	val sql.RawBytes
+}
+
+func (rs *RowSelectStatement) ptr() interface{} {
+	return &rs.val
+}
+
+func (rs *RowSelectStatement) value() (interface{}, error) {
+	stmt := new(pb.Statement)
+	err := ggproto.Unmarshal(rs.val, stmt)
+	if err != nil {
+		return nil, err
+	}
+	return stmt, nil
+}
+
+func (rs *RowSelectStatement) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.value()
+}
+
+type RowSelectBody struct {
+	RowSelectStatement
+}
+
+func (rs *RowSelectBody) value() (interface{}, error) {
+	stmt, err := rs.RowSelectStatement.value()
+	if err != nil {
+		return nil, err
+	}
+
+	return stmt.(*pb.Statement).Body, nil
+}
+
+func (rs *RowSelectBody) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.value()
+}
+
+type RowSelectString struct {
+	RowSelectBase
+	val string
+}
+
+func (rs *RowSelectString) ptr() interface{} {
+	return &rs.val
+}
+
+func (rs *RowSelectString) value() (interface{}, error) {
+	return rs.val, nil
+}
+
+func (rs *RowSelectString) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.val, nil
+}
+
+type RowSelectInt64 struct {
+	RowSelectBase
+	val int64
+}
+
+func (rs *RowSelectInt64) ptr() interface{} {
+	return &rs.val
+}
+
+func (rs *RowSelectInt64) value() (interface{}, error) {
+	return rs.val, nil
+}
+
+func (rs *RowSelectInt64) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.val, nil
+}
+
+func makeRowSelectStatement(sel string) SimpleRowSelector {
+	return &RowSelectStatement{RowSelectBase: RowSelectBase{id: sel}}
+}
+
+func makeRowSelectBody(sel string) SimpleRowSelector {
+	return &RowSelectBody{RowSelectStatement: RowSelectStatement{RowSelectBase: RowSelectBase{id: sel}}}
+}
+
+func makeRowSelectString(sel string) SimpleRowSelector {
+	return &RowSelectString{RowSelectBase: RowSelectBase{id: sel}}
+}
+
+func makeRowSelectInt64(sel string) SimpleRowSelector {
+	return &RowSelectInt64{RowSelectBase: RowSelectBase{id: sel}}
+}
+
+var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
+	"*":         makeRowSelectStatement,
+	"body":      makeRowSelectBody,
+	"id":        makeRowSelectString,
+	"namespace": makeRowSelectString,
+	"publisher": makeRowSelectString,
+	"source":    makeRowSelectString,
+	"timestamp": makeRowSelectInt64}
 
 func isStatementQuery(q *Query) bool {
 	// namespace = * and only has statement selector (*, id, body) and id criteria
