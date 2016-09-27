@@ -2,6 +2,8 @@ package query
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 )
 
 // A RowSelector extracts the next value from an sql result set
@@ -14,25 +16,87 @@ type RowScanner interface {
 	Scan(res ...interface{}) error
 }
 
+type QueryCompileError string
+
+func (e QueryCompileError) Error() string {
+	return string(e)
+}
+
 // CompileQuery compiles a query to sql.
 // Returns the compiled sql query and a selector for extracting
 // values from an sql result set
 // Note: The row selector should be used in single-threaded context
 func CompileQuery(q *Query) (string, RowSelector, error) {
-	var baseq string
+	var sqlq string
 	switch {
 	case isStatementQuery(q):
-		baseq = "SELECT %s FROM Statement"
+		sqlq = "SELECT %s FROM Statement"
 	case isEnvelopeQuery(q):
-		baseq = "SELECT %s FROM Envelope"
+		sqlq = "SELECT %s FROM Envelope"
 	default:
-		baseq = "SELECT %s FROM Statement JOIN Envelope ON Statement.id = Envelope.id"
+		sqlq = "SELECT %s FROM Statement JOIN Envelope ON Statement.id = Envelope.id"
 	}
 
-	return baseq, nil, errors.New("CompileQuery: Implement Me!")
+	cols, err := compileQueryColumns(q)
+	if err != nil {
+		return "", nil, err
+	}
+	sqlq = fmt.Sprintf(sqlq, cols)
+
+	return sqlq, nil, errors.New("CompileQuery: Implement Me!")
 }
 
-// Implementation
+func compileQueryColumns(q *Query) (string, error) {
+	switch sel := q.selector.(type) {
+	case SimpleSelector:
+		return selectorColumnRename(sel, selectorColumnSimple), nil
+
+	case CompoundSelector:
+		if len(sel) == 1 {
+			return selectorColumnRename(sel[0], selectorColumnSimple), nil
+		}
+
+		cols := make([]string, len(sel))
+		for x := 0; x < len(sel); x++ {
+			cols[x] = selectorColumnRename(sel[x], selectorColumnCompound)
+		}
+		return strings.Join(cols, ", "), nil
+
+	case *FunctionSelector:
+		col := selectorColumnRename(sel.sel, selectorColumnFun)
+		return fmt.Sprintf("%s(%s)", sel.op, col), nil
+
+	default:
+		return "", QueryCompileError(fmt.Sprintf("Unexpected selector type: %T", sel))
+	}
+}
+
+func selectorColumnRename(sel SimpleSelector, rename map[string]string) string {
+	col, ok := rename[string(sel)]
+	if !ok {
+		col = string(sel)
+	}
+	return col
+}
+
+var selectorColumnSimple = map[string]string{
+	"*":         "data",
+	"body":      "data",
+	"namespace": "DISTINCT namespace",
+	"publisher": "DISTINCT publisher",
+	"source":    "DISTINCT source"}
+
+var selectorColumnCompound = map[string]string{
+	"*":    "data",
+	"body": "data"}
+
+var selectorColumnFun = map[string]string{
+	"*":         "*",
+	"body":      "data",
+	"namespace": "DISTINCT namespace",
+	"publisher": "DISTINCT publisher",
+	"source":    "DISTINCT source"}
+
 func isStatementQuery(q *Query) bool {
 	// namespace = * and only has statement selector (*, id, body) and id criteria
 	// id acts as statement column
