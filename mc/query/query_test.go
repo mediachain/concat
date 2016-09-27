@@ -427,7 +427,7 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
-	// compound selection
+	// check compound selection
 	qs = "SELECT (id, publisher, timestamp) FROM foo.a"
 	q, err = ParseQuery(qs)
 	checkErrorNow(t, qs, err)
@@ -728,6 +728,199 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, int64(300))
 	}
 
+	// check compound selection
+	qs = "SELECT (id, publisher, timestamp) FROM foo.a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "timestamp": int64(100)})
+	}
+
+	qs = "SELECT (id, publisher, body) FROM foo.a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "body": a.Body})
+	}
+
+	qs = "SELECT (*, id, publisher, body) FROM foo.a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "*": a, "body": a.Body})
+	}
+
+	// check criteria
+	qs = "SELECT * FROM * WHERE publisher = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE publisher = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE publisher != A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE publisher != A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE source = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE source = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE source != A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE source != A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp < 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp <= 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp = 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp != 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp >= 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp > 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp >= 200 AND publisher = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp < 200 OR publisher = B"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE publisher = B OR (publisher = A AND timestamp < 200)"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE timestamp > 100 AND NOT publisher = A"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE NOT (timestamp < 200 OR publisher = B)"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	// check limit
+	qs = "SELECT * FROM * LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
 }
 
 func makeStmtDb() (*sql.DB, error) {
