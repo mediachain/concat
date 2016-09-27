@@ -427,6 +427,40 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
+	// compound selection
+	qs = "SELECT (id, publisher, timestamp) FROM foo.a"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "timestamp": int64(100)})
+	}
+
+	qs = "SELECT (id, publisher, body) FROM foo.a"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "body": a.Body})
+	}
+
+	qs = "SELECT (*, id, publisher, body) FROM foo.a"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "*": a, "body": a.Body})
+	}
+
 }
 
 func TestQueryCompile(t *testing.T) {
@@ -598,6 +632,100 @@ func TestQueryCompileEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, 2)
+	}
+
+	// all simple selectors
+	qs = "SELECT body FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a.Body)
+		checkContains(t, qs, res, b.Body)
+	}
+
+	qs = "SELECT body FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, a.Body)
+		checkContains(t, qs, res, b.Body)
+		checkContains(t, qs, res, c.Body)
+	}
+
+	qs = "SELECT id FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, "a")
+		checkContains(t, qs, res, "b")
+	}
+
+	qs = "SELECT id FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, "a")
+		checkContains(t, qs, res, "b")
+		checkContains(t, qs, res, "c")
+	}
+
+	qs = "SELECT publisher FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, "A")
+		checkContains(t, qs, res, "B")
+	}
+
+	qs = "SELECT publisher FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, "A")
+		checkContains(t, qs, res, "B")
+	}
+
+	qs = "SELECT source FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, "A")
+		checkContains(t, qs, res, "B")
+	}
+
+	qs = "SELECT source FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, "A")
+		checkContains(t, qs, res, "B")
+	}
+
+	qs = "SELECT timestamp FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, int64(100))
+		checkContains(t, qs, res, int64(200))
+	}
+
+	qs = "SELECT timestamp FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, int64(100))
+		checkContains(t, qs, res, int64(200))
+		checkContains(t, qs, res, int64(300))
 	}
 
 }
