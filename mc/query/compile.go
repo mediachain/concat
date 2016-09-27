@@ -190,7 +190,18 @@ func compileQueryRowSelector(q *Query) (RowSelector, error) {
 		return makef(), nil
 
 	case CompoundSelector:
-		return nil, QueryCompileError("Implement me!")
+		srs := make([]SimpleRowSelector, len(sel))
+		ptrs := make([]interface{}, len(sel))
+		for x, ssel := range sel {
+			makef, ok := makeSimpleRowSelector[string(ssel)]
+			if !ok {
+				return nil, QueryCompileError(fmt.Sprintf("Unexpected selector: %s", sel))
+			}
+			srs[x] = makef()
+			ptrs[x] = srs[x].ptr()
+		}
+
+		return &RowSelectCompound{sel, srs, ptrs}, nil
 
 	case *FunctionSelector:
 		return nil, QueryCompileError("Implement me!")
@@ -206,6 +217,30 @@ type SimpleRowSelector interface {
 	RowSelector
 	ptr() interface{}
 	value() (interface{}, error)
+}
+
+type RowSelectCompound struct {
+	sel  []SimpleSelector
+	srs  []SimpleRowSelector
+	ptrs []interface{}
+}
+
+func (rs *RowSelectCompound) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(rs.ptrs...)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := make(map[string]interface{})
+	for x, sel := range rs.sel {
+		val, err := rs.srs[x].value()
+		if err != nil {
+			return nil, err
+		}
+		obj[string(sel)] = val
+	}
+
+	return obj, nil
 }
 
 type RowSelectStatement struct {
