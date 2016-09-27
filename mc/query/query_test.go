@@ -592,6 +592,14 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, 1)
 	}
 
+	qs = "SELECT COUNT(namespace) FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 2)
+	}
+
 }
 
 func makeStmtDb() (*sql.DB, error) {
