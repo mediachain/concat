@@ -518,7 +518,7 @@ func TestQueryCompileEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 2) {
 		checkContains(t, qs, res, a)
-		checkContains(t, qs, res, c)
+		checkContains(t, qs, res, b)
 	}
 
 	qs = "SELECT * FROM * WHERE id = a"
@@ -545,7 +545,7 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, a)
 	}
 
-	qs = "SELECT * FROM foo.* WHERE id = b"
+	qs = "SELECT * FROM foo.* WHERE id = c"
 	res, err = parseCompileEval(db, qs)
 	checkErrorNow(t, qs, err)
 

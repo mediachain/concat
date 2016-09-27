@@ -30,6 +30,7 @@ func (e QueryCompileError) Error() string {
 // Note: The row selector should be used in single-threaded context
 func CompileQuery(q *Query) (string, RowSelector, error) {
 	var sqlq string
+	var join bool
 	switch {
 	case isStatementQuery(q):
 		sqlq = "SELECT %s FROM Statement"
@@ -37,15 +38,16 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 		sqlq = "SELECT %s FROM Envelope"
 	default:
 		sqlq = "SELECT %s FROM Statement JOIN Envelope ON Statement.id = Envelope.id"
+		join = true
 	}
 
-	cols, err := compileQueryColumns(q)
+	cols, err := compileQueryColumns(q, join)
 	if err != nil {
 		return "", nil, err
 	}
 	sqlq = fmt.Sprintf(sqlq, cols)
 
-	crit, err := compileQueryCriteria(q)
+	crit, err := compileQueryCriteria(q, join)
 	if err != nil {
 		return "", nil, err
 	}
@@ -65,28 +67,44 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 	return sqlq, rsel, nil
 }
 
-func compileQueryColumns(q *Query) (string, error) {
+func compileQueryColumns(q *Query, join bool) (string, error) {
 	switch sel := q.selector.(type) {
 	case SimpleSelector:
-		return selectorColumn(sel, selectorColumnSimple), nil
+		col := selectorColumn(sel, selectorColumnSimple)
+		return disambigSelector(col, join), nil
 
 	case CompoundSelector:
 		if len(sel) == 1 {
-			return selectorColumn(sel[0], selectorColumnSimple), nil
+			col := selectorColumn(sel[0], selectorColumnSimple)
+			return disambigSelector(col, join), nil
 		}
 
 		cols := make([]string, len(sel))
 		for x := 0; x < len(sel); x++ {
-			cols[x] = selectorColumn(sel[x], selectorColumnCompound)
+			col := selectorColumn(sel[x], selectorColumnCompound)
+			cols[x] = disambigSelector(col, join)
 		}
 		return strings.Join(cols, ", "), nil
 
 	case *FunctionSelector:
 		col := selectorColumn(sel.sel, selectorColumnFun)
-		return fmt.Sprintf("%s(%s)", sel.op, col), nil
+		return fmt.Sprintf("%s(%s)", sel.op, disambigSelector(col, join)), nil
 
 	default:
 		return "", QueryCompileError(fmt.Sprintf("Unexpected selector type: %T", sel))
+	}
+}
+
+// when we are JOINing, id is ambiguous because it is a column in both tables;
+// this funciton disambiguates
+func disambigSelector(col string, join bool) string {
+	switch {
+	case !join:
+		return col
+	case col == "id":
+		return "Envelope.id"
+	default:
+		return col
 	}
 }
 
@@ -116,13 +134,13 @@ var selectorColumnFun = map[string]string{
 	"publisher": "DISTINCT publisher",
 	"source":    "DISTINCT source"}
 
-func compileQueryCriteria(q *Query) (string, error) {
+func compileQueryCriteria(q *Query, join bool) (string, error) {
 	nscrit := compileNamespaceCriteria(q.namespace)
 	if q.criteria == nil {
 		return nscrit, nil
 	}
 
-	scrit, err := compileSelectorCriteria(q.criteria)
+	scrit, err := compileSelectorCriteria(q.criteria, join)
 	if err != nil {
 		return "", err
 	}
@@ -145,21 +163,21 @@ func compileNamespaceCriteria(ns string) string {
 	}
 }
 
-func compileSelectorCriteria(c QueryCriteria) (string, error) {
+func compileSelectorCriteria(c QueryCriteria, join bool) (string, error) {
 	switch c := c.(type) {
 	case *ValueCriteria:
-		return fmt.Sprintf("%s %s '%s'", c.sel, c.op, c.val), nil
+		return fmt.Sprintf("%s %s '%s'", disambigSelector(c.sel, join), c.op, c.val), nil
 
 	case *TimeCriteria:
 		return fmt.Sprintf("timestamp %s %d", c.op, c.ts), nil
 
 	case *CompoundCriteria:
-		left, err := compileSelectorCriteria(c.left)
+		left, err := compileSelectorCriteria(c.left, join)
 		if err != nil {
 			return "", err
 		}
 
-		right, err := compileSelectorCriteria(c.right)
+		right, err := compileSelectorCriteria(c.right, join)
 		if err != nil {
 			return "", err
 		}
@@ -167,7 +185,7 @@ func compileSelectorCriteria(c QueryCriteria) (string, error) {
 		return fmt.Sprintf("(%s %s %s)", left, c.op, right), nil
 
 	case *NegatedCriteria:
-		expr, err := compileSelectorCriteria(c.e)
+		expr, err := compileSelectorCriteria(c.e, join)
 		if err != nil {
 			return "", err
 		}
