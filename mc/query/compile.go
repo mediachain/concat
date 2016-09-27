@@ -187,7 +187,7 @@ func compileQueryRowSelector(q *Query) (RowSelector, error) {
 			return nil, QueryCompileError(fmt.Sprintf("Unexpected selector: %s", sel))
 		}
 
-		return makef(string(sel)), nil
+		return makef(), nil
 
 	case CompoundSelector:
 		return nil, QueryCompileError("Implement me!")
@@ -200,25 +200,15 @@ func compileQueryRowSelector(q *Query) (RowSelector, error) {
 	}
 }
 
-type MakeSimpleRowSelector func(sel string) SimpleRowSelector
+type MakeSimpleRowSelector func() SimpleRowSelector
 
 type SimpleRowSelector interface {
 	RowSelector
-	sel() string
 	ptr() interface{}
 	value() (interface{}, error)
 }
 
-type RowSelectBase struct {
-	id string
-}
-
-func (rs *RowSelectBase) sel() string {
-	return rs.id
-}
-
 type RowSelectStatement struct {
-	RowSelectBase
 	val sql.RawBytes
 }
 
@@ -265,7 +255,6 @@ func (rs *RowSelectBody) Scan(src RowScanner) (interface{}, error) {
 }
 
 type RowSelectString struct {
-	RowSelectBase
 	val string
 }
 
@@ -286,7 +275,6 @@ func (rs *RowSelectString) Scan(src RowScanner) (interface{}, error) {
 }
 
 type RowSelectInt64 struct {
-	RowSelectBase
 	val int64
 }
 
@@ -306,20 +294,20 @@ func (rs *RowSelectInt64) Scan(src RowScanner) (interface{}, error) {
 	return rs.val, nil
 }
 
-func makeRowSelectStatement(sel string) SimpleRowSelector {
-	return &RowSelectStatement{RowSelectBase: RowSelectBase{id: sel}}
+func makeRowSelectStatement() SimpleRowSelector {
+	return &RowSelectStatement{}
 }
 
-func makeRowSelectBody(sel string) SimpleRowSelector {
-	return &RowSelectBody{RowSelectStatement: RowSelectStatement{RowSelectBase: RowSelectBase{id: sel}}}
+func makeRowSelectBody() SimpleRowSelector {
+	return &RowSelectBody{}
 }
 
-func makeRowSelectString(sel string) SimpleRowSelector {
-	return &RowSelectString{RowSelectBase: RowSelectBase{id: sel}}
+func makeRowSelectString() SimpleRowSelector {
+	return &RowSelectString{}
 }
 
-func makeRowSelectInt64(sel string) SimpleRowSelector {
-	return &RowSelectInt64{RowSelectBase: RowSelectBase{id: sel}}
+func makeRowSelectInt64() SimpleRowSelector {
+	return &RowSelectInt64{}
 }
 
 var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
