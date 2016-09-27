@@ -49,21 +49,21 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 func compileQueryColumns(q *Query) (string, error) {
 	switch sel := q.selector.(type) {
 	case SimpleSelector:
-		return selectorColumnRename(sel, selectorColumnSimple), nil
+		return selectorColumn(sel, selectorColumnSimple), nil
 
 	case CompoundSelector:
 		if len(sel) == 1 {
-			return selectorColumnRename(sel[0], selectorColumnSimple), nil
+			return selectorColumn(sel[0], selectorColumnSimple), nil
 		}
 
 		cols := make([]string, len(sel))
 		for x := 0; x < len(sel); x++ {
-			cols[x] = selectorColumnRename(sel[x], selectorColumnCompound)
+			cols[x] = selectorColumn(sel[x], selectorColumnCompound)
 		}
 		return strings.Join(cols, ", "), nil
 
 	case *FunctionSelector:
-		col := selectorColumnRename(sel.sel, selectorColumnFun)
+		col := selectorColumn(sel.sel, selectorColumnFun)
 		return fmt.Sprintf("%s(%s)", sel.op, col), nil
 
 	default:
@@ -71,7 +71,7 @@ func compileQueryColumns(q *Query) (string, error) {
 	}
 }
 
-func selectorColumnRename(sel SimpleSelector, rename map[string]string) string {
+func selectorColumn(sel SimpleSelector, rename map[string]string) string {
 	col, ok := rename[string(sel)]
 	if !ok {
 		col = string(sel)
