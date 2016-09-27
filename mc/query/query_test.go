@@ -1,6 +1,9 @@
 package query
 
 import (
+	"database/sql"
+	ggproto "github.com/gogo/protobuf/proto"
+	_ "github.com/mattn/go-sqlite3"
 	pb "github.com/mediachain/concat/proto"
 	"reflect"
 	"testing"
@@ -434,4 +437,226 @@ func TestQueryCompile(t *testing.T) {
 		checkErrorNow(t, qs, err)
 		//fmt.Printf("Compile %s -> %s\n", qs, sqlq)
 	}
+}
+
+func TestPBWTF(t *testing.T) {
+	a := &pb.Statement{
+		Id:        "a",
+		Publisher: "A",
+		Namespace: "foo.a",
+		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Timestamp: 100}
+
+	bytes, err := ggproto.Marshal(a)
+	checkErrorNow(t, "Marshal", err)
+
+	aa := new(pb.Statement)
+	err = ggproto.Unmarshal(bytes, aa)
+	checkErrorNow(t, "Unmarshal", err)
+
+	if !reflect.DeepEqual(a, aa) {
+		t.Log("Marshal/Unmarshal is not idempotent!!!")
+		t.Logf("Expected: %v; Got: %v", a, aa)
+		t.FailNow()
+	}
+}
+
+func TestQueryCompileEval(t *testing.T) {
+	a := &pb.Statement{
+		Id:        "a",
+		Publisher: "A",
+		Namespace: "foo.a",
+		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Timestamp: 100}
+
+	b := &pb.Statement{
+		Id:        "b",
+		Publisher: "B",
+		Namespace: "foo.b",
+		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmBBB"}},
+		Timestamp: 200}
+
+	c := &pb.Statement{
+		Id:        "c",
+		Publisher: "A",
+		Namespace: "bar.c",
+		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmCCC"}},
+		Timestamp: 300}
+
+	stmts := []*pb.Statement{a, b, c}
+
+	db, err := makeStmtDb()
+	checkErrorNow(t, "makeStmtDb", err)
+
+	for _, stmt := range stmts {
+		err = insertStmt(db, stmt)
+		checkErrorNow(t, "insertStmt", err)
+	}
+
+	// basic statement queries
+	qs := "SELECT * FROM *"
+	res, err := parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM foo.a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE id = a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM foo.a WHERE id = a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE id = a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM foo.* WHERE id = b"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	checkResultLen(t, qs, res, 0)
+
+	// basic counting
+	qs = "SELECT COUNT(*) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 3)
+	}
+
+	qs = "SELECT COUNT(id) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 3)
+	}
+
+	qs = "SELECT COUNT(namespace) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 3)
+	}
+
+	qs = "SELECT COUNT(publisher) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 2)
+	}
+
+	qs = "SELECT COUNT(id) FROM foo.a"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, 1)
+	}
+
+}
+
+func makeStmtDb() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec("CREATE TABLE Statement (id VARCHAR(32) PRIMARY KEY, data VARBINARY)")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec("CREATE TABLE Envelope (id VARCHAR(32) PRIMARY KEY, namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func insertStmt(db *sql.DB, stmt *pb.Statement) error {
+	bytes, err := ggproto.Marshal(stmt)
+	if err != nil {
+		return err
+	}
+
+	// a real index should use a transaction for both inserts...
+	_, err = db.Exec("INSERT INTO Statement VALUES (?, ?)", stmt.Id, bytes)
+	if err != nil {
+		return err
+	}
+
+	// source = publisher only for simple statements
+	_, err = db.Exec("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+
+	return err
+}
+
+func parseCompileEval(db *sql.DB, qs string) ([]interface{}, error) {
+	q, err := ParseQuery(qs)
+	if err != nil {
+		return nil, err
+	}
+
+	sqlq, rsel, err := CompileQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query(sqlq)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]interface{}, 0)
+
+	defer rows.Close()
+	for rows.Next() {
+		obj, err := rsel.Scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, obj)
+	}
+
+	return res, nil
 }
