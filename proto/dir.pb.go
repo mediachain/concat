@@ -8,6 +8,7 @@ Package proto is a generated protocol buffer package.
 It is generated from these files:
 	dir.proto
 	node.proto
+	stmt.proto
 
 It has these top-level messages:
 	PeerInfo
@@ -18,6 +19,11 @@ It has these top-level messages:
 	ListPeersResponse
 	Ping
 	Pong
+	Statement
+	SimpleStatement
+	CompoundStatement
+	EnvelopeStatement
+	ArchiveStatement
 */
 package proto
 
@@ -30,23 +36,31 @@ var _ = proto1.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto1.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+
 type PeerInfo struct {
 	Id   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Addr [][]byte `protobuf:"bytes,2,rep,name=addr" json:"addr,omitempty"`
 }
 
-func (m *PeerInfo) Reset()         { *m = PeerInfo{} }
-func (m *PeerInfo) String() string { return proto1.CompactTextString(m) }
-func (*PeerInfo) ProtoMessage()    {}
+func (m *PeerInfo) Reset()                    { *m = PeerInfo{} }
+func (m *PeerInfo) String() string            { return proto1.CompactTextString(m) }
+func (*PeerInfo) ProtoMessage()               {}
+func (*PeerInfo) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{0} }
 
 // directory/register
 type RegisterPeer struct {
 	Info *PeerInfo `protobuf:"bytes,1,opt,name=info" json:"info,omitempty"`
 }
 
-func (m *RegisterPeer) Reset()         { *m = RegisterPeer{} }
-func (m *RegisterPeer) String() string { return proto1.CompactTextString(m) }
-func (*RegisterPeer) ProtoMessage()    {}
+func (m *RegisterPeer) Reset()                    { *m = RegisterPeer{} }
+func (m *RegisterPeer) String() string            { return proto1.CompactTextString(m) }
+func (*RegisterPeer) ProtoMessage()               {}
+func (*RegisterPeer) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{1} }
 
 func (m *RegisterPeer) GetInfo() *PeerInfo {
 	if m != nil {
@@ -60,17 +74,19 @@ type LookupPeerRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (m *LookupPeerRequest) Reset()         { *m = LookupPeerRequest{} }
-func (m *LookupPeerRequest) String() string { return proto1.CompactTextString(m) }
-func (*LookupPeerRequest) ProtoMessage()    {}
+func (m *LookupPeerRequest) Reset()                    { *m = LookupPeerRequest{} }
+func (m *LookupPeerRequest) String() string            { return proto1.CompactTextString(m) }
+func (*LookupPeerRequest) ProtoMessage()               {}
+func (*LookupPeerRequest) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{2} }
 
 type LookupPeerResponse struct {
 	Peer *PeerInfo `protobuf:"bytes,1,opt,name=peer" json:"peer,omitempty"`
 }
 
-func (m *LookupPeerResponse) Reset()         { *m = LookupPeerResponse{} }
-func (m *LookupPeerResponse) String() string { return proto1.CompactTextString(m) }
-func (*LookupPeerResponse) ProtoMessage()    {}
+func (m *LookupPeerResponse) Reset()                    { *m = LookupPeerResponse{} }
+func (m *LookupPeerResponse) String() string            { return proto1.CompactTextString(m) }
+func (*LookupPeerResponse) ProtoMessage()               {}
+func (*LookupPeerResponse) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{3} }
 
 func (m *LookupPeerResponse) GetPeer() *PeerInfo {
 	if m != nil {
@@ -83,17 +99,19 @@ func (m *LookupPeerResponse) GetPeer() *PeerInfo {
 type ListPeersRequest struct {
 }
 
-func (m *ListPeersRequest) Reset()         { *m = ListPeersRequest{} }
-func (m *ListPeersRequest) String() string { return proto1.CompactTextString(m) }
-func (*ListPeersRequest) ProtoMessage()    {}
+func (m *ListPeersRequest) Reset()                    { *m = ListPeersRequest{} }
+func (m *ListPeersRequest) String() string            { return proto1.CompactTextString(m) }
+func (*ListPeersRequest) ProtoMessage()               {}
+func (*ListPeersRequest) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{4} }
 
 type ListPeersResponse struct {
 	Peers []*PeerInfo `protobuf:"bytes,1,rep,name=peers" json:"peers,omitempty"`
 }
 
-func (m *ListPeersResponse) Reset()         { *m = ListPeersResponse{} }
-func (m *ListPeersResponse) String() string { return proto1.CompactTextString(m) }
-func (*ListPeersResponse) ProtoMessage()    {}
+func (m *ListPeersResponse) Reset()                    { *m = ListPeersResponse{} }
+func (m *ListPeersResponse) String() string            { return proto1.CompactTextString(m) }
+func (*ListPeersResponse) ProtoMessage()               {}
+func (*ListPeersResponse) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{5} }
 
 func (m *ListPeersResponse) GetPeers() []*PeerInfo {
 	if m != nil {
@@ -109,4 +127,23 @@ func init() {
 	proto1.RegisterType((*LookupPeerResponse)(nil), "proto.LookupPeerResponse")
 	proto1.RegisterType((*ListPeersRequest)(nil), "proto.ListPeersRequest")
 	proto1.RegisterType((*ListPeersResponse)(nil), "proto.ListPeersResponse")
+}
+
+func init() { proto1.RegisterFile("dir.proto", fileDescriptorDir) }
+
+var fileDescriptorDir = []byte{
+	// 195 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x8d, 0x4d, 0x0a, 0xc2, 0x30,
+	0x10, 0x85, 0xe9, 0x9f, 0xd8, 0xb1, 0xa8, 0xcd, 0xaa, 0xcb, 0x92, 0x22, 0x74, 0xd5, 0x85, 0x5d,
+	0xe9, 0x0d, 0x84, 0x2e, 0x24, 0x37, 0x50, 0x32, 0x95, 0x20, 0x34, 0x31, 0x49, 0xef, 0x2f, 0x49,
+	0x2b, 0x14, 0xd1, 0xd5, 0x0c, 0xdf, 0x9b, 0xf7, 0x0d, 0xa4, 0x5c, 0xe8, 0x46, 0x69, 0x69, 0x25,
+	0x49, 0xfc, 0xa0, 0x0d, 0xac, 0xaf, 0x88, 0xfa, 0x32, 0xf4, 0x92, 0x6c, 0x21, 0x14, 0xbc, 0x08,
+	0xca, 0xa0, 0x4e, 0x59, 0x28, 0x38, 0x21, 0x10, 0xdf, 0x38, 0xd7, 0x45, 0x58, 0x46, 0x75, 0xc6,
+	0xfc, 0x4e, 0x5b, 0xc8, 0x18, 0x3e, 0x84, 0xb1, 0xa8, 0x5d, 0x8f, 0x54, 0x10, 0x8b, 0xa1, 0x97,
+	0xbe, 0xb5, 0x39, 0xee, 0x26, 0x79, 0xf3, 0x51, 0x32, 0x1f, 0xd2, 0x0a, 0xf2, 0x4e, 0xca, 0xe7,
+	0xa8, 0x1c, 0x67, 0xf8, 0x1a, 0xd1, 0xd8, 0xef, 0x6f, 0xf4, 0x04, 0x64, 0x79, 0x64, 0x94, 0x1c,
+	0x0c, 0x3a, 0xbf, 0x42, 0xd4, 0x7f, 0xfd, 0x2e, 0xa4, 0x04, 0xf6, 0x9d, 0x30, 0xd6, 0x51, 0x33,
+	0xeb, 0xe9, 0x19, 0xf2, 0x05, 0x9b, 0x6d, 0x07, 0x48, 0x5c, 0xc1, 0x14, 0x41, 0x19, 0xfd, 0xd2,
+	0x4d, 0xe9, 0x7d, 0xe5, 0x71, 0xfb, 0x0e, 0x00, 0x00, 0xff, 0xff, 0x6d, 0x6e, 0x67, 0xaf, 0x2f,
+	0x01, 0x00, 0x00,
 }
