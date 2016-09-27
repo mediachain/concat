@@ -1,7 +1,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -43,7 +42,20 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 	}
 	sqlq = fmt.Sprintf(sqlq, cols)
 
-	return sqlq, nil, errors.New("CompileQuery: Implement Me!")
+	crit, err := compileQueryCriteria(q)
+	if err != nil {
+		return "", nil, err
+	}
+	if crit != "" {
+		sqlq = fmt.Sprintf("%s WHERE %s", sqlq, crit)
+	}
+
+	if q.limit > 0 {
+		sqlq = fmt.Sprintf("%s LIMIT %d", sqlq, q.limit)
+	}
+
+	// TODO RowSelector!
+	return sqlq, nil, nil
 }
 
 func compileQueryColumns(q *Query) (string, error) {
@@ -96,6 +108,69 @@ var selectorColumnFun = map[string]string{
 	"namespace": "DISTINCT namespace",
 	"publisher": "DISTINCT publisher",
 	"source":    "DISTINCT source"}
+
+func compileQueryCriteria(q *Query) (string, error) {
+	nscrit := compileNamespaceCriteria(q.namespace)
+	if q.criteria == nil {
+		return nscrit, nil
+	}
+
+	scrit, err := compileSelectorCriteria(q.criteria)
+	if err != nil {
+		return "", err
+	}
+
+	if nscrit != "" {
+		return fmt.Sprintf("%s AND %s", nscrit, scrit), nil
+	}
+	return scrit, nil
+}
+
+func compileNamespaceCriteria(ns string) string {
+	switch {
+	case ns == "*":
+		return ""
+	case ns[len(ns)-1] == '*':
+		pre := ns[:len(ns)-2]
+		return fmt.Sprintf("namespace LIKE '%s%%'", pre)
+	default:
+		return fmt.Sprintf("namespace = '%s'", ns)
+	}
+}
+
+func compileSelectorCriteria(c QueryCriteria) (string, error) {
+	switch c := c.(type) {
+	case *ValueCriteria:
+		return fmt.Sprintf("%s %s '%s'", c.sel, c.op, c.val), nil
+
+	case *TimeCriteria:
+		return fmt.Sprintf("timestamp %s %d", c.op, c.ts), nil
+
+	case *CompoundCriteria:
+		left, err := compileSelectorCriteria(c.left)
+		if err != nil {
+			return "", err
+		}
+
+		right, err := compileSelectorCriteria(c.right)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("(%s %s %s)", left, c.op, right), nil
+
+	case *NegatedCriteria:
+		expr, err := compileSelectorCriteria(c.e)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("NOT %s", expr), nil
+
+	default:
+		return "", QueryCompileError(fmt.Sprintf("Unexpected criteria type: %T", c))
+	}
+}
 
 func isStatementQuery(q *Query) bool {
 	// namespace = * and only has statement selector (*, id, body) and id criteria
