@@ -17,6 +17,8 @@ type SQLDB struct {
 	insertStmtData     *sql.Stmt
 	insertStmtEnvelope *sql.Stmt
 	selectStmtData     *sql.Stmt
+	deleteStmtData     *sql.Stmt
+	deleteStmtEnvelope *sql.Stmt
 }
 
 func (sdb *SQLDB) Put(stmt *pb.Statement) error {
@@ -129,6 +131,46 @@ func (sdb *SQLDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interfa
 	return ch, nil
 }
 
+func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
+	if q.Op != mcq.OpDelete {
+		return 0, BadQuery
+	}
+
+	ids, err := sdb.Query(q)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	tx, err := sdb.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	delData := tx.Stmt(sdb.deleteStmtData)
+	delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
+
+	for id := range ids {
+		_, err = delData.Exec(id)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+
+		_, err = delEnvelope.Exec(id)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+
+	tx.Commit()
+	return len(ids), nil
+}
+
 func (sdb *SQLDB) Close() error {
 	return sdb.db.Close()
 }
@@ -161,6 +203,18 @@ func (sdb *SQLDB) prepareStatements() error {
 		return err
 	}
 	sdb.selectStmtData = stmt
+
+	stmt, err = sdb.db.Prepare("DELETE FROM Statement WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	sdb.deleteStmtData = stmt
+
+	stmt, err = sdb.db.Prepare("DELETE FROM Envelope WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	sdb.deleteStmtEnvelope = stmt
 
 	return nil
 }
