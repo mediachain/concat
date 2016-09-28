@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	mux "github.com/gorilla/mux"
@@ -108,18 +109,23 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := node.db.Query(q)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	ch, err := node.db.QueryStream(ctx, q)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(res)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
-		return
+	enc := json.NewEncoder(w)
+	for obj := range ch {
+		err = enc.Encode(obj)
+		if err != nil {
+			log.Printf("Error encoding query data: %s", err.Error())
+			return
+		}
 	}
 }
 
