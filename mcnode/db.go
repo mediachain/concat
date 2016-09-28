@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	ggproto "github.com/gogo/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	"log"
 	"os"
 	"path"
 )
@@ -68,7 +70,6 @@ func (sdb *SQLDB) Get(id string) (*pb.Statement, error) {
 	return stmt, nil
 }
 
-// TODO Support streaming interface (perhaps with a QueryStream method)
 func (sdb *SQLDB) Query(q *mcq.Query) ([]interface{}, error) {
 	sq, rsel, err := mcq.CompileQuery(q)
 	if err != nil {
@@ -91,6 +92,41 @@ func (sdb *SQLDB) Query(q *mcq.Query) ([]interface{}, error) {
 	}
 
 	return res, nil
+}
+
+func (sdb *SQLDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interface{}, error) {
+	sq, rsel, err := mcq.CompileQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := sdb.db.Query(sq)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan interface{})
+	go func() {
+		defer close(ch)
+		defer rows.Close()
+
+		for rows.Next() {
+			obj, err := rsel.Scan(rows)
+			if err != nil {
+				log.Printf("Error retrieving query result: %s", err.Error())
+				return
+			}
+
+			select {
+			case ch <- obj:
+				continue
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }
 
 func (sdb *SQLDB) Close() error {

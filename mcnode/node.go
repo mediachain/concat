@@ -38,6 +38,7 @@ type StatementDB interface {
 	Put(*pb.Statement) error
 	Get(id string) (*pb.Statement, error)
 	Query(*mcq.Query) ([]interface{}, error)
+	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
 	Close() error
 }
 
@@ -98,7 +99,8 @@ func (node *Node) loadDB() error {
 	return node.db.Open(node.home)
 }
 
-// dumb fs/mem db implementation
+// baseline dumb fs/mem db implementation
+// Candidate for pruning, but it serves a purpose for now.
 type DumbDB struct {
 	mx   sync.Mutex
 	stmt map[string]*pb.Statement
@@ -143,6 +145,28 @@ func (db *DumbDB) Query(q *mcq.Query) ([]interface{}, error) {
 	db.mx.Unlock()
 
 	return mcq.EvalQuery(q, stmts)
+}
+
+func (db *DumbDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interface{}, error) {
+	res, err := db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan interface{})
+	go func() {
+		defer close(ch)
+		for _, obj := range res {
+			select {
+			case ch <- obj:
+				continue
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }
 
 func (db *DumbDB) saveStatement(stmt *pb.Statement) error {
