@@ -11,12 +11,13 @@ import (
 )
 
 type SQLDB struct {
-	db *sql.DB
+	db                 *sql.DB
+	insertStmtData     *sql.Stmt
+	insertStmtEnvelope *sql.Stmt
+	selectStmtData     *sql.Stmt
 }
 
 func (sdb *SQLDB) Put(stmt *pb.Statement) error {
-	// TODO prepared statements
-
 	bytes, err := ggproto.Marshal(stmt)
 	if err != nil {
 		return err
@@ -27,14 +28,16 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 		return err
 	}
 
-	_, err = tx.Exec("INSERT INTO Statement VALUES (?, ?)", stmt.Id, bytes)
+	xstmt := tx.Stmt(sdb.insertStmtData)
+	_, err = xstmt.Exec(stmt.Id, bytes)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
+	xstmt = tx.Stmt(sdb.insertStmtEnvelope)
 	// XXX source = publisher only for simple statements
-	_, err = tx.Exec("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+	_, err = xstmt.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -44,9 +47,7 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 }
 
 func (sdb *SQLDB) Get(id string) (*pb.Statement, error) {
-	// TODO prepared statements
-
-	row := sdb.db.QueryRow("SELECT data FROM Statement WHERE id = ?", id)
+	row := sdb.selectStmtData.QueryRow(id)
 
 	var bytes []byte
 	err := row.Scan(&bytes)
@@ -106,6 +107,28 @@ func (sdb *SQLDB) createTables() error {
 	return err
 }
 
+func (sdb *SQLDB) prepareStatements() error {
+	stmt, err := sdb.db.Prepare("INSERT INTO Statement VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	sdb.insertStmtData = stmt
+
+	stmt, err = sdb.db.Prepare("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	sdb.insertStmtEnvelope = stmt
+
+	stmt, err = sdb.db.Prepare("SELECT data FROM Statement WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	sdb.selectStmtData = stmt
+
+	return nil
+}
+
 // SQLite backend
 type SQLiteDB struct {
 	SQLDB
@@ -135,10 +158,13 @@ func (sdb *SQLiteDB) Open(home string) error {
 	}
 
 	if mktables {
-		return sdb.createTables()
+		err = sdb.createTables()
+		if err != nil {
+			return err
+		}
 	}
 
-	return nil
+	return sdb.prepareStatements()
 }
 
 func (sdb *SQLiteDB) openDB(dbpath string) error {
