@@ -94,7 +94,7 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 }
 
 func (node *Node) loadDB() error {
-	node.db = &DumbDB{}
+	node.db = &SQLiteDB{}
 	return node.db.Open(node.home)
 }
 
