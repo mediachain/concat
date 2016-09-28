@@ -47,6 +47,32 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar LIMIT 10",
 	"SELECT * FROM * WHERE id = abc"}
 
+var delq []string = []string{
+	"DELETE FROM *",
+	"DELETE FROM foo.bar",
+	"DELETE FROM foo.*",
+	"DELETE FROM foo.bar WHERE id = abc",
+	"DELETE FROM foo.bar WHERE id != abc",
+	"DELETE FROM foo.bar WHERE publisher = abc",
+	"DELETE FROM foo.bar WHERE publisher != abc",
+	"DELETE FROM foo.bar WHERE source = abc",
+	"DELETE FROM foo.bar WHERE source != abc",
+	"DELETE FROM foo.bar WHERE timestamp < 1474000000",
+	"DELETE FROM foo.bar WHERE timestamp <= 1474000000",
+	"DELETE FROM foo.bar WHERE timestamp = 1474000000",
+	"DELETE FROM foo.bar WHERE timestamp != 1474000000",
+	"DELETE FROM foo.bar WHERE timestamp >= 1474000000",
+	"DELETE FROM foo.bar WHERE timestamp > 1474000000",
+	"DELETE FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
+	"DELETE FROM foo.bar WHERE publisher = abc OR timestamp > 1474000000",
+	"DELETE FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR timestamp < 1474000000",
+	"DELETE FROM foo.bar WHERE NOT id = abc",
+	"DELETE FROM foo.bar WHERE NOT (id = abc AND publisher = def)",
+	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000",
+	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR timestamp > 1475000000",
+	"DELETE FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR timestamp > 1475000000)",
+	"DELETE FROM * WHERE id = abc"}
+
 func checkError(t *testing.T, where string, err error) {
 	if err != nil {
 		t.Logf("QUERY: %s", where)
@@ -82,10 +108,26 @@ func checkContains(t *testing.T, where string, res []interface{}, val interface{
 	t.Errorf("%v is not in result set", val)
 }
 
+func checkBool(t *testing.T, where string, e bool) {
+	if !e {
+		t.Logf("QUERY: %s", where)
+		t.Errorf("boolean condition failed")
+	}
+}
+
 func TestQueryParse(t *testing.T) {
 	for _, qs := range simpleq {
-		_, err := ParseQuery(qs)
+		q, err := ParseQuery(qs)
 		checkError(t, qs, err)
+		checkBool(t, qs, q.Op == OpSelect)
+	}
+}
+
+func TestQueryParseDelete(t *testing.T) {
+	for _, qs := range delq {
+		q, err := ParseQuery(qs)
+		checkError(t, qs, err)
+		checkBool(t, qs, q.Op == OpDelete)
 	}
 }
 

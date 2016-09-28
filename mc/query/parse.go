@@ -33,6 +33,15 @@ type ParseState struct {
 	err   error
 }
 
+func (ps *ParseState) setSelectOp() {
+	ps.query.Op = OpSelect
+}
+
+func (ps *ParseState) setDeleteOp() {
+	ps.query.Op = OpDelete
+	ps.query.selector = SimpleSelector("id")
+}
+
 func (ps *ParseState) setSimpleSelector() {
 	// stack: simple-selector
 	sel := ps.pop().(string)
