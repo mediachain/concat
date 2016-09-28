@@ -123,7 +123,7 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 	for obj := range ch {
 		err = enc.Encode(obj)
 		if err != nil {
-			log.Printf("Error encoding query data: %s", err.Error())
+			log.Printf("Error encoding query result: %s", err.Error())
 			return
 		}
 	}
