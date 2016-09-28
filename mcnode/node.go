@@ -28,9 +28,17 @@ type Node struct {
 	dir       *p2p_pstore.PeerInfo
 	dirCancel context.CancelFunc
 	home      string
+	db        StatementDB
 	mx        sync.Mutex
-	stmt      map[string]*pb.Statement
 	counter   int
+}
+
+type StatementDB interface {
+	Open(home string) error
+	Put(*pb.Statement) error
+	Get(id string) (*pb.Statement, error)
+	Query(*mcq.Query) ([]interface{}, error)
+	Close() error
 }
 
 const (
@@ -40,6 +48,8 @@ const (
 )
 
 var statusString = []string{"offline", "online", "public"}
+
+var UnknownStatement = errors.New("Unknown statement")
 
 func (node *Node) stmtCounter() int {
 	node.mx.Lock()
@@ -79,48 +89,64 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	// only sign it with shiny ECC keys, don't bother with RSA
 	log.Printf("Publish statement %s", stmt.Id)
 
-	err := node.putStatement(stmt)
+	err := node.db.Put(stmt)
 	return stmt.Id, err
 }
 
-func (node *Node) doQuery(q *mcq.Query) ([]interface{}, error) {
-	var stmts []*pb.Statement
-
-	node.mx.Lock()
-	stmts = make([]*pb.Statement, len(node.stmt))
-	x := 0
-	for _, stmt := range node.stmt {
-		stmts[x] = stmt
-		x++
-	}
-	node.mx.Unlock()
-
-	return mcq.EvalQuery(q, stmts)
+func (node *Node) loadDB() error {
+	node.db = &DumbDB{}
+	return node.db.Open(node.home)
 }
 
-func (node *Node) getStatement(id string) (*pb.Statement, bool) {
-	node.mx.Lock()
-	stmt, ok := node.stmt[id]
-	node.mx.Unlock()
-
-	return stmt, ok
+// dumb fs/mem db implementation
+type DumbDB struct {
+	mx   sync.Mutex
+	stmt map[string]*pb.Statement
+	dir  string
 }
 
-func (node *Node) putStatement(stmt *pb.Statement) error {
-	err := node.saveStatement(stmt)
+func (db *DumbDB) Put(stmt *pb.Statement) error {
+	err := db.saveStatement(stmt)
 	if err != nil {
 		return err
 	}
 
-	node.mx.Lock()
-	node.stmt[stmt.Id] = stmt
-	node.mx.Unlock()
+	db.mx.Lock()
+	db.stmt[stmt.Id] = stmt
+	db.mx.Unlock()
 
 	return nil
 }
 
-func (node *Node) saveStatement(stmt *pb.Statement) error {
-	spath := path.Join(node.home, "stmt", stmt.Id)
+func (db *DumbDB) Get(id string) (*pb.Statement, error) {
+	db.mx.Lock()
+	stmt, ok := db.stmt[id]
+	db.mx.Unlock()
+
+	if ok {
+		return stmt, nil
+	} else {
+		return nil, UnknownStatement
+	}
+}
+
+func (db *DumbDB) Query(q *mcq.Query) ([]interface{}, error) {
+	var stmts []*pb.Statement
+
+	db.mx.Lock()
+	stmts = make([]*pb.Statement, len(db.stmt))
+	x := 0
+	for _, stmt := range db.stmt {
+		stmts[x] = stmt
+		x++
+	}
+	db.mx.Unlock()
+
+	return mcq.EvalQuery(q, stmts)
+}
+
+func (db *DumbDB) saveStatement(stmt *pb.Statement) error {
+	spath := path.Join(db.dir, stmt.Id)
 
 	bytes, err := ggproto.Marshal(stmt)
 	if err != nil {
@@ -131,8 +157,20 @@ func (node *Node) saveStatement(stmt *pb.Statement) error {
 	return ioutil.WriteFile(spath, bytes, 0644)
 }
 
-func (node *Node) loadStatements(sdir string) error {
-	err := filepath.Walk(sdir, func(path string, info os.FileInfo, err error) error {
+func (db *DumbDB) Open(home string) error {
+	db.stmt = make(map[string]*pb.Statement)
+	db.dir = path.Join(home, "stmt")
+
+	err := os.MkdirAll(db.dir, 0755)
+	if err != nil {
+		return err
+	}
+
+	return db.loadStatements()
+}
+
+func (db *DumbDB) loadStatements() error {
+	err := filepath.Walk(db.dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -153,21 +191,13 @@ func (node *Node) loadStatements(sdir string) error {
 			return err
 		}
 
-		node.stmt[stmt.Id] = stmt
+		db.stmt[stmt.Id] = stmt
 		return nil
 	})
 
 	return err
 }
 
-func (node *Node) loadIndex() error {
-	node.stmt = make(map[string]*pb.Statement)
-
-	sdir := path.Join(node.home, "stmt")
-	err := os.MkdirAll(sdir, 0755)
-	if err != nil {
-		return err
-	}
-
-	return node.loadStatements(sdir)
+func (db *DumbDB) Close() error {
+	return nil
 }

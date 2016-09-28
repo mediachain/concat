@@ -39,7 +39,7 @@ func main() {
 
 	node := &Node{Identity: id, home: *home, laddr: addr}
 
-	err = node.loadIndex()
+	err = node.loadDB()
 	if err != nil {
 		log.Fatal(err)
 	}

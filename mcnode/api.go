@@ -71,14 +71,22 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["statementId"]
 
-	stmt, ok := node.getStatement(id)
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "No such statement\n")
-		return
+	stmt, err := node.db.Get(id)
+	if err != nil {
+		switch err {
+		case UnknownStatement:
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Unknown statement\n")
+			return
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error: %s\n", err.Error())
+			return
+		}
 	}
 
-	err := json.NewEncoder(w).Encode(stmt)
+	err = json.NewEncoder(w).Encode(stmt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
@@ -100,7 +108,7 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := node.doQuery(q)
+	res, err := node.db.Query(q)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
