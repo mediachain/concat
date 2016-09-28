@@ -153,7 +153,7 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 	delData := tx.Stmt(sdb.deleteStmtData)
 	delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
 
-	for id := range ids {
+	for _, id := range ids {
 		_, err = delData.Exec(id)
 		if err != nil {
 			tx.Rollback()

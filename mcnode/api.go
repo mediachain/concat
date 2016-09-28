@@ -109,6 +109,12 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if q.Op != mcq.OpSelect {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Error: Bad query")
+		return
+	}
+
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
@@ -127,6 +133,36 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/query: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q, err := mcq.ParseQuery(string(body))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	if q.Op != mcq.OpDelete {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Error: Bad query")
+		return
+	}
+
+	count, err := node.db.Delete(q)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	fmt.Fprintln(w, count)
 }
 
 func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {

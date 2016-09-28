@@ -53,6 +53,7 @@ func main() {
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
 	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
 	router.HandleFunc("/query", node.httpQuery)
+	router.HandleFunc("/delete", node.httpDelete)
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
 	router.HandleFunc("/config/dir", node.httpConfigDir)
