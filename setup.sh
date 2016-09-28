@@ -12,7 +12,7 @@ echo "Installing libp2p deps"
 gx --verbose install  || die
 
 echo "Installing unvendored deps"
-go get github.com/gorilla/mux || die
+go get github.com/gorilla/mux github.com/mattn/go-sqlite3 || die
 
 echo "DONE"
 

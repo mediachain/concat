@@ -3,11 +3,17 @@ package query
 import ()
 
 type Query struct {
+	Op        int
 	namespace string
 	selector  QuerySelector
 	criteria  QueryCriteria
 	limit     int
 }
+
+const (
+	OpSelect = iota
+	OpDelete
+)
 
 type QuerySelector interface {
 	SelectorType() string

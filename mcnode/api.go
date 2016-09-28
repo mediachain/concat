@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	mux "github.com/gorilla/mux"
@@ -71,14 +72,22 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["statementId"]
 
-	stmt, ok := node.getStatement(id)
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "No such statement\n")
-		return
+	stmt, err := node.db.Get(id)
+	if err != nil {
+		switch err {
+		case UnknownStatement:
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Unknown statement\n")
+			return
+
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error: %s\n", err.Error())
+			return
+		}
 	}
 
-	err := json.NewEncoder(w).Encode(stmt)
+	err = json.NewEncoder(w).Encode(stmt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
@@ -100,19 +109,60 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := node.doQuery(q)
+	if q.Op != mcq.OpSelect {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Error: Bad query")
+		return
+	}
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	ch, err := node.db.QueryStream(ctx, q)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(res)
+	enc := json.NewEncoder(w)
+	for obj := range ch {
+		err = enc.Encode(obj)
+		if err != nil {
+			log.Printf("Error encoding query result: %s", err.Error())
+			return
+		}
+	}
+}
+
+func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/query: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q, err := mcq.ParseQuery(string(body))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		return
+	}
+
+	if q.Op != mcq.OpDelete {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Error: Bad query")
+		return
+	}
+
+	count, err := node.db.Delete(q)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
+
+	fmt.Fprintln(w, count)
 }
 
 func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {

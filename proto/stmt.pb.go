@@ -2,19 +2,6 @@
 // source: stmt.proto
 // DO NOT EDIT!
 
-/*
-Package proto is a generated protocol buffer package.
-
-It is generated from these files:
-	stmt.proto
-
-It has these top-level messages:
-	Statement
-	SimpleStatement
-	CompoundStatement
-	EnvelopeStatement
-	ArchiveStatement
-*/
 package proto
 
 import proto1 "github.com/gogo/protobuf/proto"
@@ -40,9 +27,10 @@ type Statement struct {
 	Signature []byte           `protobuf:"bytes,9,opt,name=signature,proto3" json:"signature,omitempty"`
 }
 
-func (m *Statement) Reset()         { *m = Statement{} }
-func (m *Statement) String() string { return proto1.CompactTextString(m) }
-func (*Statement) ProtoMessage()    {}
+func (m *Statement) Reset()                    { *m = Statement{} }
+func (m *Statement) String() string            { return proto1.CompactTextString(m) }
+func (*Statement) ProtoMessage()               {}
+func (*Statement) Descriptor() ([]byte, []int) { return fileDescriptorStmt, []int{0} }
 
 type isStatement_Body interface {
 	isStatement_Body()
@@ -102,8 +90,8 @@ func (m *Statement) GetArchive() *ArchiveStatement {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Statement) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _Statement_OneofMarshaler, _Statement_OneofUnmarshaler, []interface{}{
+func (*Statement) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _Statement_OneofMarshaler, _Statement_OneofUnmarshaler, _Statement_OneofSizer, []interface{}{
 		(*Statement_Simple)(nil),
 		(*Statement_Compound)(nil),
 		(*Statement_Envelope)(nil),
@@ -182,23 +170,56 @@ func _Statement_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Bu
 	}
 }
 
+func _Statement_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*Statement)
+	// body
+	switch x := m.Body.(type) {
+	case *Statement_Simple:
+		s := proto1.Size(x.Simple)
+		n += proto1.SizeVarint(4<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *Statement_Compound:
+		s := proto1.Size(x.Compound)
+		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *Statement_Envelope:
+		s := proto1.Size(x.Envelope)
+		n += proto1.SizeVarint(6<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *Statement_Archive:
+		s := proto1.Size(x.Archive)
+		n += proto1.SizeVarint(7<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type SimpleStatement struct {
 	Object string   `protobuf:"bytes,1,opt,name=object,proto3" json:"object,omitempty"`
 	Refs   []string `protobuf:"bytes,2,rep,name=refs" json:"refs,omitempty"`
 	Tags   []string `protobuf:"bytes,3,rep,name=tags" json:"tags,omitempty"`
 }
 
-func (m *SimpleStatement) Reset()         { *m = SimpleStatement{} }
-func (m *SimpleStatement) String() string { return proto1.CompactTextString(m) }
-func (*SimpleStatement) ProtoMessage()    {}
+func (m *SimpleStatement) Reset()                    { *m = SimpleStatement{} }
+func (m *SimpleStatement) String() string            { return proto1.CompactTextString(m) }
+func (*SimpleStatement) ProtoMessage()               {}
+func (*SimpleStatement) Descriptor() ([]byte, []int) { return fileDescriptorStmt, []int{1} }
 
 type CompoundStatement struct {
 	Body []*SimpleStatement `protobuf:"bytes,1,rep,name=body" json:"body,omitempty"`
 }
 
-func (m *CompoundStatement) Reset()         { *m = CompoundStatement{} }
-func (m *CompoundStatement) String() string { return proto1.CompactTextString(m) }
-func (*CompoundStatement) ProtoMessage()    {}
+func (m *CompoundStatement) Reset()                    { *m = CompoundStatement{} }
+func (m *CompoundStatement) String() string            { return proto1.CompactTextString(m) }
+func (*CompoundStatement) ProtoMessage()               {}
+func (*CompoundStatement) Descriptor() ([]byte, []int) { return fileDescriptorStmt, []int{2} }
 
 func (m *CompoundStatement) GetBody() []*SimpleStatement {
 	if m != nil {
@@ -211,9 +232,10 @@ type EnvelopeStatement struct {
 	Body []*Statement `protobuf:"bytes,1,rep,name=body" json:"body,omitempty"`
 }
 
-func (m *EnvelopeStatement) Reset()         { *m = EnvelopeStatement{} }
-func (m *EnvelopeStatement) String() string { return proto1.CompactTextString(m) }
-func (*EnvelopeStatement) ProtoMessage()    {}
+func (m *EnvelopeStatement) Reset()                    { *m = EnvelopeStatement{} }
+func (m *EnvelopeStatement) String() string            { return proto1.CompactTextString(m) }
+func (*EnvelopeStatement) ProtoMessage()               {}
+func (*EnvelopeStatement) Descriptor() ([]byte, []int) { return fileDescriptorStmt, []int{3} }
 
 func (m *EnvelopeStatement) GetBody() []*Statement {
 	if m != nil {
@@ -225,9 +247,10 @@ func (m *EnvelopeStatement) GetBody() []*Statement {
 type ArchiveStatement struct {
 }
 
-func (m *ArchiveStatement) Reset()         { *m = ArchiveStatement{} }
-func (m *ArchiveStatement) String() string { return proto1.CompactTextString(m) }
-func (*ArchiveStatement) ProtoMessage()    {}
+func (m *ArchiveStatement) Reset()                    { *m = ArchiveStatement{} }
+func (m *ArchiveStatement) String() string            { return proto1.CompactTextString(m) }
+func (*ArchiveStatement) ProtoMessage()               {}
+func (*ArchiveStatement) Descriptor() ([]byte, []int) { return fileDescriptorStmt, []int{4} }
 
 func init() {
 	proto1.RegisterType((*Statement)(nil), "proto.Statement")
@@ -235,4 +258,31 @@ func init() {
 	proto1.RegisterType((*CompoundStatement)(nil), "proto.CompoundStatement")
 	proto1.RegisterType((*EnvelopeStatement)(nil), "proto.EnvelopeStatement")
 	proto1.RegisterType((*ArchiveStatement)(nil), "proto.ArchiveStatement")
+}
+
+func init() { proto1.RegisterFile("stmt.proto", fileDescriptorStmt) }
+
+var fileDescriptorStmt = []byte{
+	// 328 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x91, 0x4d, 0x4b, 0xc3, 0x40,
+	0x10, 0x86, 0x4d, 0xd2, 0xa6, 0xcd, 0x28, 0xda, 0xee, 0xa1, 0xce, 0xc1, 0x43, 0x28, 0x1e, 0x82,
+	0x87, 0x22, 0x16, 0x04, 0x4f, 0xa2, 0x22, 0x78, 0x35, 0xfd, 0x05, 0xf9, 0x18, 0xdb, 0x95, 0x6e,
+	0x76, 0xc9, 0x6e, 0x0b, 0xfe, 0x6d, 0x7f, 0x81, 0x64, 0xb3, 0xfd, 0xc6, 0x53, 0xb7, 0xcf, 0xbc,
+	0xcf, 0x4e, 0xf2, 0x06, 0x40, 0x1b, 0x61, 0x26, 0xaa, 0x96, 0x46, 0xb2, 0xae, 0xfd, 0x19, 0xff,
+	0xfa, 0x10, 0xcd, 0x4c, 0x66, 0x48, 0x50, 0x65, 0xd8, 0x25, 0xf8, 0xbc, 0x44, 0x2f, 0xf6, 0x92,
+	0x28, 0xf5, 0x79, 0xc9, 0x6e, 0x20, 0x52, 0xab, 0x7c, 0xc9, 0xf5, 0x82, 0x6a, 0xf4, 0x2d, 0xde,
+	0x81, 0x66, 0x5a, 0x65, 0x82, 0xb4, 0xca, 0x0a, 0xc2, 0xa0, 0x9d, 0x6e, 0x01, 0xbb, 0x87, 0x50,
+	0x73, 0xa1, 0x96, 0x84, 0x9d, 0xd8, 0x4b, 0xce, 0x1f, 0x46, 0xed, 0xe2, 0xc9, 0xcc, 0xc2, 0xed,
+	0xce, 0x8f, 0xb3, 0xd4, 0xe5, 0xd8, 0x23, 0xf4, 0x0b, 0x29, 0x94, 0x5c, 0x55, 0x25, 0x76, 0xad,
+	0x83, 0xce, 0x79, 0x73, 0x78, 0xdf, 0xda, 0x66, 0x1b, 0x8f, 0xaa, 0x35, 0x2d, 0xa5, 0x22, 0x0c,
+	0x0f, 0xbc, 0x77, 0x87, 0x0f, 0xbc, 0x4d, 0x96, 0x4d, 0xa1, 0x97, 0xd5, 0xc5, 0x82, 0xaf, 0x09,
+	0x7b, 0x56, 0xbb, 0x76, 0xda, 0x4b, 0x4b, 0xf7, 0xad, 0x4d, 0xb2, 0x79, 0x69, 0xc3, 0x05, 0x69,
+	0x93, 0x09, 0x85, 0xfd, 0xd8, 0x4b, 0x82, 0x74, 0x07, 0x9a, 0xa9, 0xe6, 0xf3, 0x2a, 0x33, 0xab,
+	0x9a, 0x30, 0x8a, 0xbd, 0xe4, 0x22, 0xdd, 0x81, 0xd7, 0x10, 0x3a, 0xb9, 0x2c, 0x7f, 0xc6, 0x9f,
+	0x70, 0x75, 0xd4, 0x02, 0x1b, 0x41, 0x28, 0xf3, 0x6f, 0x2a, 0x8c, 0x6b, 0xdf, 0xfd, 0x63, 0x0c,
+	0x3a, 0x35, 0x7d, 0x69, 0xf4, 0xe3, 0x20, 0x89, 0x52, 0x7b, 0x6e, 0x98, 0xc9, 0xe6, 0x1a, 0x83,
+	0x96, 0x35, 0xe7, 0xf1, 0x33, 0x0c, 0x4f, 0x4a, 0x62, 0x77, 0xed, 0x3e, 0xf4, 0xe2, 0xe0, 0xff,
+	0x0f, 0x90, 0xb6, 0xcf, 0xf4, 0x04, 0xc3, 0x93, 0xb6, 0xd8, 0xed, 0xc1, 0x05, 0x83, 0xcd, 0x05,
+	0x47, 0x2a, 0x83, 0xc1, 0x71, 0x63, 0x79, 0x68, 0xa3, 0xd3, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0xbb, 0x38, 0x99, 0x71, 0x73, 0x02, 0x00, 0x00,
 }

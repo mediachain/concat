@@ -12,6 +12,12 @@
       "hash": "QmbiRCGZqhfcSjnm9icGz3oNQQdPLAnLWnKHXixaEWXVCN",
       "name": "go-libp2p",
       "version": "3.5.4"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmVsHZSaohNEZrzNuBPi9z63iiJxWc2rvN4PZKqJXQ9oU5",
+      "name": "gogo-protobuf",
+      "version": "0.0.1"
     }
   ],
   "gxVersion": "0.9.0",

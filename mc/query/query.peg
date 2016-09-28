@@ -11,11 +11,15 @@ type QueryParser Peg {
     *ParseState
 }
 
-Grammar <- 'SELECT' WS Selector
-                    WS Source
-                    (WS Criteria)?
-                    (WS Limit)?
-                    WSX EOF
+Grammar <- Select WSX EOF { p.setSelectOp() }
+         / Delete WSX EOF { p.setDeleteOp() }
+
+Select <- 'SELECT' WS Selector
+                   WS Source
+                  (WS Criteria)?
+                  (WS Limit)?
+
+Delete <- 'DELETE' WS Source (WS Criteria)?
 
 Selector <- SimpleSelector   { p.setSimpleSelector() }
           / CompoundSelector { p.setCompoundSelector() }
