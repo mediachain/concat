@@ -265,8 +265,64 @@ func countFunctionSelector(res []interface{}) []interface{} {
 	return []interface{}{len(res)}
 }
 
+// these functions only apply to timestamps, and have 0 as NULL semantics
+func minFunctionSelector(res []interface{}) []interface{} {
+	if len(res) == 0 {
+		return []interface{}{0}
+	}
+
+	min := res[0].(int64)
+	for _, val := range res[1:] {
+		xval := val.(int64)
+		if xval < min {
+			min = xval
+		}
+	}
+
+	return []interface{}{min}
+}
+
+func maxFunctionSelector(res []interface{}) []interface{} {
+	if len(res) == 0 {
+		return []interface{}{0}
+	}
+
+	max := res[0].(int64)
+	for _, val := range res[1:] {
+		xval := val.(int64)
+		if xval > max {
+			max = xval
+		}
+	}
+
+	return []interface{}{max}
+}
+
 var functionSelectors = map[string]FunctionStatementSelector{
-	"COUNT": countFunctionSelector}
+	"COUNT": countFunctionSelector,
+	"MIN":   minFunctionSelector,
+	"MAX":   maxFunctionSelector}
+
+var functionAllowedSelectors = map[string]map[string]bool{
+	"COUNT": map[string]bool{
+		"*":         true,
+		"body":      true,
+		"id":        true,
+		"publisher": true,
+		"namespace": true,
+		"source":    true,
+		"timestamp": true},
+	"MIN": map[string]bool{"timestamp": true},
+	"MAX": map[string]bool{"timestamp": true}}
+
+func checkFunctionSelector(sel *FunctionSelector) bool {
+	valid, ok := functionAllowedSelectors[sel.op]
+	if !ok {
+		return false
+	}
+
+	return valid[string(sel.sel)]
+}
 
 // The difference between the types of result set:
 //  Simple selectors (SimpleResultSet) have unique (set) semantics.
@@ -309,6 +365,10 @@ func makeResultSet(query *Query) (QueryResultSet, error) {
 		return makeCompoundResultSet(sel, getfs, query.limit), nil
 
 	case *FunctionSelector:
+		if !checkFunctionSelector(sel) {
+			return nil, QueryEvalError(fmt.Sprintf("Illegal selector: %s(%s)", sel.op, sel.sel))
+		}
+
 		fun, ok := functionSelectors[sel.op]
 		if !ok {
 			return nil, QueryEvalError(fmt.Sprintf("Unexpected selector: %s", sel.op))
