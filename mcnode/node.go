@@ -49,7 +49,9 @@ var statusString = []string{"offline", "online", "public"}
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	BadStatementBody = errors.New("Unrecognized statement body")
-	BadQuery         = errors.New("Bad query")
+	BadQuery         = errors.New("Unexpected query")
+	BadState         = errors.New("Unrecognized state")
+	BadMethod        = errors.New("Unsupported method")
 )
 
 func (node *Node) stmtCounter() int {

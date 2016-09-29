@@ -15,6 +15,11 @@ import (
 	"strings"
 )
 
+func apiError(w http.ResponseWriter, status int, err error) {
+	w.WriteHeader(status)
+	fmt.Fprintf(w, "Error: %s\n", err.Error())
+}
+
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, node.Identity.Pretty())
 }
@@ -24,15 +29,13 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	peerId := vars["peerId"]
 	pid, err := p2p_peer.IDB58Decode(peerId)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error: Bad id: %s\n", err.Error())
+		apiError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	err = node.doPing(r.Context(), pid)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusNotFound, err)
 		return
 	}
 
@@ -53,15 +56,13 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	sbody := new(pb.SimpleStatement)
 	err = json.Unmarshal(rbody, sbody)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	sid, err := node.doPublish(ns, sbody)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -76,21 +77,18 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case UnknownStatement:
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Unknown statement\n")
+			apiError(w, http.StatusNotFound, err)
 			return
 
 		default:
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error: %s\n", err.Error())
+			apiError(w, http.StatusInternalServerError, err)
 			return
 		}
 	}
 
 	err = json.NewEncoder(w).Encode(stmt)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -104,14 +102,12 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 
 	q, err := mcq.ParseQuery(string(body))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if q.Op != mcq.OpSelect {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Error: Bad query")
+		apiError(w, http.StatusBadRequest, BadQuery)
 		return
 	}
 
@@ -120,8 +116,7 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 
 	ch, err := node.db.QueryStream(ctx, q)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -144,21 +139,18 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 
 	q, err := mcq.ParseQuery(string(body))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if q.Op != mcq.OpDelete {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Error: Bad query")
+		apiError(w, http.StatusBadRequest, BadQuery)
 		return
 	}
 
 	count, err := node.db.Delete(q)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -186,14 +178,12 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 		err = node.goPublic()
 
 	default:
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Bad state: %s\n", state)
+		apiError(w, http.StatusBadRequest, BadState)
 		return
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -214,8 +204,7 @@ func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
 		node.httpConfigDirSet(w, r)
 
 	default:
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Unsupported method: %s", r.Method)
+		apiError(w, http.StatusBadRequest, BadMethod)
 	}
 }
 
@@ -230,8 +219,7 @@ func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
 	pinfo, err := mc.ParseHandle(handle)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		apiError(w, http.StatusBadRequest, err)
 		return
 	}
 
