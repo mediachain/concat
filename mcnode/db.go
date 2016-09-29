@@ -131,6 +131,24 @@ func (sdb *SQLDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interfa
 	return ch, nil
 }
 
+func (sdb *SQLDB) QueryOne(q *mcq.Query) (interface{}, error) {
+	sq, rsel, err := mcq.CompileQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	row := sdb.db.QueryRow(sq)
+	res, err := rsel.Scan(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = NoResult
+		}
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 	if q.Op != mcq.OpDelete {
 		return 0, BadQuery

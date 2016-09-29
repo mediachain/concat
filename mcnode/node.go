@@ -34,6 +34,7 @@ type StatementDB interface {
 	Get(id string) (*pb.Statement, error)
 	Query(*mcq.Query) ([]interface{}, error)
 	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
+	QueryOne(*mcq.Query) (interface{}, error)
 	Delete(*mcq.Query) (int, error)
 	Close() error
 }
@@ -53,6 +54,7 @@ var (
 	BadState         = errors.New("Unrecognized state")
 	BadMethod        = errors.New("Unsupported method")
 	BadNamespace     = errors.New("Illegal namespace")
+	NoResult         = errors.New("Empty result set")
 )
 
 func (node *Node) stmtCounter() int {
