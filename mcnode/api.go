@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -49,6 +50,16 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	rbody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("http/publish: Error reading request body: %s", err.Error())
+		return
+	}
+
+	match, err := regexp.Match("^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)*$", []byte(ns))
+	switch {
+	case err != nil:
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	case !match:
+		apiError(w, http.StatusBadRequest, BadNamespace)
 		return
 	}
 

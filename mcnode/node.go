@@ -52,6 +52,7 @@ var (
 	BadQuery         = errors.New("Unexpected query")
 	BadState         = errors.New("Unrecognized state")
 	BadMethod        = errors.New("Unsupported method")
+	BadNamespace     = errors.New("Illegal namespace")
 )
 
 func (node *Node) stmtCounter() int {
