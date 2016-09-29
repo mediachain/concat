@@ -21,10 +21,17 @@ func apiError(w http.ResponseWriter, status int, err error) {
 	fmt.Fprintf(w, "Error: %s\n", err.Error())
 }
 
+// Local node REST API implementation
+
+// GET /id
+// Returns the node peer identity.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, node.Identity.Pretty())
 }
 
+// GET /ping/{peerId}
+// Lookup a peer in the directory and ping it with the /mediachain/node/ping protocol.
+// The node must be online and a directory must have been configured.
 func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	peerId := vars["peerId"]
@@ -53,6 +60,10 @@ func init() {
 	nsrx = rx
 }
 
+// POST /publish/{namespace}
+// DATA: json encoded pb.SimpleStatement
+// Publishes a simple statement to the specified namespace.
+// Returns the statement id.
 func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
@@ -85,6 +96,8 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, sid)
 }
 
+// GET /stmt/{statementId}
+// Retrieves a statement by id
 func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["statementId"]
@@ -109,6 +122,9 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /query
+// DATA: MCQL SELECT query
+// Queries the statement database and return the result set in ndjson
 func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -146,6 +162,10 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /delete
+// DATA: MCQL DELTE query
+// Deletes statements from the statement db
+// Returns the number of statements deleted
 func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -173,11 +193,15 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, count)
 }
 
+// GET /status
+// Returns the node network state
 func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {
 	status := statusString[node.status]
 	fmt.Fprintln(w, status)
 }
 
+// POST /status/{state}
+// Effects the network state
 func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	state := vars["state"]
@@ -206,6 +230,9 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, statusString[node.status])
 }
 
+// GET  /config/dir
+// POST /config/dir
+// retrieve/set the configured directory
 func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodHead:
