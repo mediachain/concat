@@ -43,6 +43,16 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+var nsrx *regexp.Regexp
+
+func init() {
+	rx, err := regexp.Compile("^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)*$")
+	if err != nil {
+		log.Fatal(err)
+	}
+	nsrx = rx
+}
+
 func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
@@ -53,12 +63,7 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := regexp.Match("^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)*$", []byte(ns))
-	switch {
-	case err != nil:
-		apiError(w, http.StatusInternalServerError, err)
-		return
-	case !match:
+	if !nsrx.Match([]byte(ns)) {
 		apiError(w, http.StatusBadRequest, BadNamespace)
 		return
 	}
