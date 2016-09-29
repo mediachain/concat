@@ -19,6 +19,8 @@ var simpleq []string = []string{
 	"SELECT (id, namespace, publisher) FROM foo.bar",
 	"SELECT COUNT(*) FROM foo.bar",
 	"SELECT COUNT(publisher) FROM foo.bar",
+	"SELECT MIN(timestamp) FROM foo.bar",
+	"SELECT MAX(timestamp) FROM foo.bar",
 	"SELECT namespace FROM *",
 	"SELECT (id, namespace, publisher) FROM *",
 	"SELECT * FROM foo.bar.*",
@@ -271,7 +273,7 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A"})
 	}
 
-	// check the function
+	// check the functions
 	qs = "SELECT COUNT(*) FROM foo.a"
 	q, err = ParseQuery(qs)
 	checkErrorNow(t, qs, err)
@@ -281,6 +283,28 @@ func TestQueryEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, 1)
+	}
+
+	qs = "SELECT MIN(timestamp) FROM *"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(100))
+	}
+
+	qs = "SELECT MAX(timestamp) FROM *"
+	q, err = ParseQuery(qs)
+	checkErrorNow(t, qs, err)
+
+	res, err = EvalQuery(q, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(300))
 	}
 
 	// check the limits -- order is unpredictable, so just check the count
@@ -674,6 +698,23 @@ func TestQueryCompileEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, 2)
+	}
+
+	// min/max timestamps
+	qs = "SELECT MIN(timestamp) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(100))
+	}
+
+	qs = "SELECT MAX(timestamp) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(300))
 	}
 
 	// all simple selectors

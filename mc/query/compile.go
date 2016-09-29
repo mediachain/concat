@@ -87,6 +87,10 @@ func compileQueryColumns(q *Query, join bool) (string, error) {
 		return strings.Join(cols, ", "), nil
 
 	case *FunctionSelector:
+		if !checkFunctionSelector(sel) {
+			return "", QueryCompileError(fmt.Sprintf("Illegal selector: %s(%s)", sel.op, sel.sel))
+		}
+
 		col := selectorColumn(sel.sel, selectorColumnFun)
 		return fmt.Sprintf("%s(%s)", sel.op, disambigSelector(col, join)), nil
 
@@ -372,6 +376,30 @@ func (rs *RowSelectInt64) Scan(src RowScanner) (interface{}, error) {
 	return rs.val, nil
 }
 
+type RowSelectNullInt64 struct {
+	val sql.NullInt64
+}
+
+func (rs *RowSelectNullInt64) ptr() interface{} {
+	return &rs.val
+}
+
+func (rs *RowSelectNullInt64) value() (interface{}, error) {
+	if rs.val.Valid {
+		return rs.val.Int64, nil
+	} else {
+		return 0, nil
+	}
+}
+
+func (rs *RowSelectNullInt64) Scan(src RowScanner) (interface{}, error) {
+	err := src.Scan(&rs.val)
+	if err != nil {
+		return nil, err
+	}
+	return rs.value()
+}
+
 func makeRowSelectStatement() SimpleRowSelector {
 	return &RowSelectStatement{}
 }
@@ -392,6 +420,10 @@ func makeRowSelectInt64() SimpleRowSelector {
 	return &RowSelectInt64{}
 }
 
+func makeRowSelectNullInt64() SimpleRowSelector {
+	return &RowSelectNullInt64{}
+}
+
 var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
 	"*":         makeRowSelectStatement,
 	"body":      makeRowSelectBody,
@@ -402,7 +434,9 @@ var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
 	"timestamp": makeRowSelectInt64}
 
 var makeFunRowSelector = map[string]MakeSimpleRowSelector{
-	"COUNT": makeRowSelectInt}
+	"COUNT": makeRowSelectInt,
+	"MIN":   makeRowSelectNullInt64,
+	"MAX":   makeRowSelectNullInt64}
 
 func isStatementQuery(q *Query) bool {
 	// namespace = * and only has statement selector (*, id, body) and id criteria

@@ -40,6 +40,8 @@ FunctionSelector <- Function '(' SimpleSelector ')'
 
 Function   <- < FunctionOp > { p.push(text) }
 FunctionOp <- 'COUNT'
+            / 'MIN'
+            / 'MAX'
 
 Source <- 'FROM' WS Namespace { p.setNamespace(text) }
 

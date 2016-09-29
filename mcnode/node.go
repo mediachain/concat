@@ -34,6 +34,7 @@ type StatementDB interface {
 	Get(id string) (*pb.Statement, error)
 	Query(*mcq.Query) ([]interface{}, error)
 	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
+	QueryOne(*mcq.Query) (interface{}, error)
 	Delete(*mcq.Query) (int, error)
 	Close() error
 }
@@ -49,7 +50,11 @@ var statusString = []string{"offline", "online", "public"}
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	BadStatementBody = errors.New("Unrecognized statement body")
-	BadQuery         = errors.New("Bad query")
+	BadQuery         = errors.New("Unexpected query")
+	BadState         = errors.New("Unrecognized state")
+	BadMethod        = errors.New("Unsupported method")
+	BadNamespace     = errors.New("Illegal namespace")
+	NoResult         = errors.New("Empty result set")
 )
 
 func (node *Node) stmtCounter() int {
