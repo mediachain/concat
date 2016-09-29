@@ -136,13 +136,12 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 		return 0, BadQuery
 	}
 
-	ids, err := sdb.Query(q)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ch, err := sdb.QueryStream(ctx, q)
 	if err != nil {
 		return 0, err
-	}
-
-	if len(ids) == 0 {
-		return 0, nil
 	}
 
 	tx, err := sdb.db.Begin()
@@ -153,7 +152,8 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 	delData := tx.Stmt(sdb.deleteStmtData)
 	delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
 
-	for _, id := range ids {
+	count := 0
+	for id := range ch {
 		_, err = delData.Exec(id)
 		if err != nil {
 			tx.Rollback()
@@ -165,10 +165,12 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 			tx.Rollback()
 			return 0, err
 		}
+
+		count += 1
 	}
 
 	tx.Commit()
-	return len(ids), nil
+	return count, nil
 }
 
 func (sdb *SQLDB) Close() error {
