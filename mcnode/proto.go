@@ -232,6 +232,11 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 		return empty, NoDirectory
 	}
 
+	node.host.Connect(ctx, *node.dir)
+	if err != nil {
+		return empty, err
+	}
+
 	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/lookup")
 	if err != nil {
 		return empty, err

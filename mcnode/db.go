@@ -272,7 +272,14 @@ func (sdb *SQLiteDB) Open(home string) error {
 		if err != nil {
 			return err
 		}
+
+		err = sdb.tuneDB()
+		if err != nil {
+			return err
+		}
 	}
+
+	sdb.configPool()
 
 	return sdb.prepareStatements()
 }
@@ -285,4 +292,15 @@ func (sdb *SQLiteDB) openDB(dbpath string) error {
 
 	sdb.db = db
 	return nil
+}
+
+func (sdb *SQLiteDB) tuneDB() error {
+	_, err := sdb.db.Exec("PRAGMA journal_mode=WAL")
+	return err
+}
+
+func (sdb *SQLiteDB) configPool() {
+	// disable connection pooling as lock contention totally kills
+	// concurrent write performance
+	sdb.db.SetMaxOpenConns(1)
 }
