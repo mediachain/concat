@@ -149,50 +149,67 @@ func (sdb *SQLDB) QueryOne(q *mcq.Query) (interface{}, error) {
 	return res, nil
 }
 
-func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
+func (sdb *SQLDB) Delete(q *mcq.Query) (count int, err error) {
 	if q.Op != mcq.OpDelete {
 		return 0, BadQuery
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Delete collects the target ids and deletes in batches, to avoid
+	// excessive buffer memory when deleting large sets.
+	// It cannot use the natural streaming query solution to delete in a single
+	// tx because it deadlocks when connection pooling is disabled.
+	// Partial deletes are possible because of an error in some batch,
+	// which will result in both count > 0 and the error being returned.
 
-	ch, err := sdb.QueryStream(ctx, q)
-	if err != nil {
-		return 0, err
-	}
+	const batch = 8192 // 1MB worth of ids
+	q = q.WithLimit(batch)
 
-	tx, err := sdb.db.Begin()
-	if err != nil {
-		return 0, err
-	}
+loop:
+	for {
+		xcount := 0
 
-	delData := tx.Stmt(sdb.deleteStmtData)
-	delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
-
-	count := 0
-	for id := range ch {
-		_, err = delData.Exec(id)
-		if err != nil {
-			tx.Rollback()
-			return 0, err
+		res, err := sdb.Query(q)
+		if err != nil || len(res) == 0 {
+			break
 		}
 
-		_, err = delEnvelope.Exec(id)
+		tx, err := sdb.db.Begin()
 		if err != nil {
-			tx.Rollback()
-			return 0, err
+			break
 		}
 
-		count += 1
+		delData := tx.Stmt(sdb.deleteStmtData)
+		delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
+
+		for _, id := range res {
+			_, err = delData.Exec(id)
+			if err != nil {
+				tx.Rollback()
+				break loop
+			}
+
+			_, err = delEnvelope.Exec(id)
+			if err != nil {
+				tx.Rollback()
+				break loop
+			}
+
+			xcount += 1
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			break
+		}
+
+		count += xcount
+
+		if xcount < batch {
+			break
+		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
+	return count, err
 }
 
 func (sdb *SQLDB) Close() error {

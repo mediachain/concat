@@ -15,6 +15,10 @@ const (
 	OpDelete
 )
 
+func (q *Query) WithLimit(limit int) *Query {
+	return &Query{q.Op, q.namespace, q.selector, q.criteria, limit}
+}
+
 type QuerySelector interface {
 	SelectorType() string
 }
