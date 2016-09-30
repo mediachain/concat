@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func apiError(w http.ResponseWriter, status int, err error) {
@@ -41,7 +42,10 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = node.doPing(r.Context(), pid)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	err = node.doPing(ctx, pid)
 	if err != nil {
 		apiError(w, http.StatusNotFound, err)
 		return
