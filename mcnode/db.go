@@ -187,7 +187,11 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (int, error) {
 		count += 1
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
 	return count, nil
 }
 
