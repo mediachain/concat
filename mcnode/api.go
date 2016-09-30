@@ -192,7 +192,7 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		if count > 0 {
-			fmt.Fprintf(w, "Partial delete: %d statements deleted", count)
+			fmt.Fprintf(w, "Partial delete: %d statements deleted\n", count)
 		}
 		return
 	}
