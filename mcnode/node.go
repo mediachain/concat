@@ -10,7 +10,6 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
-	"log"
 	"sync"
 	"time"
 )
@@ -90,8 +89,8 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	default:
 		return "", BadStatementBody
 	}
-	// only sign it with shiny ECC keys, don't bother with RSA
-	log.Printf("Publish statement %s", stmt.Id)
+
+	// TODO signatures: only sign it with shiny ECC keys, don't bother with RSA
 
 	err := node.db.Put(stmt)
 	return stmt.Id, err
