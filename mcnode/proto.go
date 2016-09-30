@@ -14,10 +14,12 @@ import (
 	"time"
 )
 
-var NodeOffline = errors.New("Node is offline")
-var NoDirectory = errors.New("No directory server")
-var UnknownPeer = errors.New("Unknown peer")
-var IllegalState = errors.New("Illegal node state")
+var (
+	NodeOffline  = errors.New("Node is offline")
+	NoDirectory  = errors.New("No directory server")
+	UnknownPeer  = errors.New("Unknown peer")
+	IllegalState = errors.New("Illegal node state")
+)
 
 // goOffline stops the network
 func (node *Node) goOffline() error {
