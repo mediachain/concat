@@ -74,3 +74,45 @@ func CompoundValue(val map[string]interface{}) (*pb.CompoundValue, error) {
 	}
 	return &pb.CompoundValue{kvpairs}, nil
 }
+
+func ValueOf(res *pb.QueryResultValue) (interface{}, error) {
+	switch val := res.Value.(type) {
+	case *pb.QueryResultValue_Simple:
+		return SimpleValueOf(val.Simple)
+
+	case *pb.QueryResultValue_Compound:
+		obj := make(map[string]interface{})
+		for _, kv := range val.Compound.Body {
+			sv, err := SimpleValueOf(kv.Value)
+			if err != nil {
+				return nil, err
+			}
+
+			obj[kv.Key] = sv
+		}
+
+		return obj, nil
+
+	default:
+		return nil, ValueError(fmt.Sprintf("Unexpected value type: %T", val))
+	}
+}
+
+func SimpleValueOf(sv *pb.SimpleValue) (interface{}, error) {
+	switch val := sv.Value.(type) {
+	case *pb.SimpleValue_IntValue:
+		return val.IntValue, nil
+
+	case *pb.SimpleValue_StringValue:
+		return val.StringValue, nil
+
+	case *pb.SimpleValue_Stmt:
+		return val.Stmt, nil
+
+	case *pb.SimpleValue_StmtBody:
+		return val.StmtBody, nil
+
+	default:
+		return nil, ValueError(fmt.Sprintf("Unexpected value type: %T", val))
+	}
+}

@@ -361,3 +361,82 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 
 	return pinfo, nil
 }
+
+func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
+
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	err = node.host.Connect(ctx, pinfo)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/query")
+	if err != nil {
+		return nil, err
+	}
+
+	req := pb.QueryRequest{q}
+	w := ggio.NewDelimitedWriter(s)
+	err = w.WriteMsg(&req)
+	if err != nil {
+		s.Close()
+		return nil, err
+	}
+
+	ch := make(chan interface{})
+	go node.doRemoteQueryStream(ctx, s, ch)
+
+	return ch, nil
+}
+
+func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch chan interface{}) {
+	defer s.Close()
+	defer close(ch)
+
+	var res pb.QueryResult
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	for {
+		err := r.ReadMsg(&res)
+		if err != nil {
+			return
+		}
+
+		switch res := res.Result.(type) {
+		case *pb.QueryResult_Value:
+			rv, err := mc.ValueOf(res.Value)
+			if err != nil {
+				log.Printf("Remote query returned bad value: %s", err.Error())
+				return
+			}
+
+			select {
+			case ch <- rv:
+			case <-ctx.Done():
+				return
+			}
+
+		case *pb.QueryResult_End:
+			return
+
+		case *pb.QueryResult_Error:
+			// XXX find a way to not swallow these errors; perhaps stream out an error object?
+			log.Printf("Remote query error: %s", res.Error.Error)
+			return
+
+		default:
+			log.Printf("Remote query returned unexpected result: %T", res)
+			return
+		}
+
+		res.Reset()
+	}
+}
