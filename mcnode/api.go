@@ -166,6 +166,57 @@ func (node *Node) httpQuery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /query/{peerId}
+// DATA: MCQL SELECT query
+// Queries a remote peer and returns the result set in ndjson
+func (node *Node) httpRemoteQuery(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/query: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q := string(body)
+
+	qq, err := mcq.ParseQuery(q)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if qq.Op != mcq.OpSelect {
+		apiError(w, http.StatusBadRequest, BadQuery)
+		return
+	}
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	ch, err := node.doRemoteQuery(ctx, pid, q)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	for obj := range ch {
+		err = enc.Encode(obj)
+		if err != nil {
+			log.Printf("Error encoding query result: %s", err.Error())
+			return
+		}
+	}
+}
+
 // POST /delete
 // DATA: MCQL DELTE query
 // Deletes statements from the statement db
