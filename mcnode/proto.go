@@ -9,6 +9,7 @@ import (
 	multiaddr "github.com/jbenet/go-multiaddr"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
+	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	"log"
 	"time"
@@ -69,6 +70,7 @@ func (node *Node) _goOnline() error {
 	}
 
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
+	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	node.host = host
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -131,6 +133,94 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 		if err != nil {
 			return
 		}
+	}
+}
+
+func (node *Node) queryHandler(s p2p_net.Stream) {
+	defer s.Close()
+	pid := s.Conn().RemotePeer()
+	log.Printf("node/query: new stream from %s", pid.Pretty())
+
+	ctx, cancel := context.WithCancel(node.netCtx)
+	defer cancel()
+
+	var req pb.QueryRequest
+	var res pb.QueryResult
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	writeError := func(err error) {
+		res.Result = &pb.QueryResult_Error{&pb.QueryResultError{err.Error()}}
+		w.WriteMsg(&res)
+	}
+
+	writeEnd := func() error {
+		res.Result = &pb.QueryResult_End{&pb.QueryResultEnd{}}
+		return w.WriteMsg(&res)
+	}
+
+	writeValue := func(val interface{}) error {
+		switch val := val.(type) {
+		case map[string]interface{}:
+			cv, err := mc.CompoundValue(val)
+			if err != nil {
+				log.Printf("node/query: %s", err.Error())
+				writeError(err)
+				return err
+			}
+
+			res.Result = &pb.QueryResult_Value{&pb.QueryResultValue{
+				&pb.QueryResultValue_Compound{cv}}}
+
+		default:
+			sv, err := mc.SimpleValue(val)
+			if err != nil {
+				log.Printf("node/query: %s", err.Error())
+				writeError(err)
+				return err
+			}
+
+			res.Result = &pb.QueryResult_Value{&pb.QueryResultValue{
+				&pb.QueryResultValue_Simple{sv}}}
+		}
+
+		return w.WriteMsg(&res)
+	}
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			return
+		}
+
+		log.Printf("node/query: query from %s: %s", pid.Pretty(), req.Query)
+
+		q, err := mcq.ParseQuery(req.Query)
+		if err != nil {
+			writeError(err)
+			return
+		}
+
+		ch, err := node.db.QueryStream(ctx, q)
+		if err != nil {
+			writeError(err)
+			return
+		}
+
+		for val := range ch {
+			err = writeValue(val)
+			if err != nil {
+				return
+			}
+		}
+
+		err = writeEnd()
+		if err != nil {
+			return
+		}
+
+		req.Reset()
 	}
 }
 
