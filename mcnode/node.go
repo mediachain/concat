@@ -76,16 +76,16 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	stmt.Timestamp = ts
 	switch body := body.(type) {
 	case *pb.SimpleStatement:
-		stmt.Body = &pb.Statement_Simple{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Simple{body}}
 
 	case *pb.CompoundStatement:
-		stmt.Body = &pb.Statement_Compound{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Compound{body}}
 
 	case *pb.EnvelopeStatement:
-		stmt.Body = &pb.Statement_Envelope{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Envelope{body}}
 
 	case *pb.ArchiveStatement:
-		stmt.Body = &pb.Statement_Archive{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Archive{body}}
 
 	default:
 		return "", BadStatementBody
