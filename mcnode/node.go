@@ -19,8 +19,9 @@ type Node struct {
 	status    int
 	laddr     multiaddr.Multiaddr
 	host      p2p_host.Host
+	netCtx    context.Context
+	netCancel context.CancelFunc
 	dir       *p2p_pstore.PeerInfo
-	dirCancel context.CancelFunc
 	home      string
 	db        StatementDB
 	mx        sync.Mutex

@@ -28,9 +28,9 @@ func (node *Node) goOffline() error {
 
 	switch node.status {
 	case StatusPublic:
-		node.dirCancel()
 		fallthrough
 	case StatusOnline:
+		node.netCancel()
 		err := node.host.Close()
 		node.status = StatusOffline
 		log.Println("Node is offline")
@@ -71,6 +71,10 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	node.host = host
 
+	ctx, cancel := context.WithCancel(context.Background())
+	node.netCtx = ctx
+	node.netCancel = cancel
+
 	return nil
 }
 
@@ -93,10 +97,7 @@ func (node *Node) goPublic() error {
 		fallthrough
 
 	case StatusOnline:
-		ctx, cancel := context.WithCancel(context.Background())
-		go node.registerPeer(ctx, node.laddr)
-
-		node.dirCancel = cancel
+		go node.registerPeer(node.netCtx, node.laddr)
 		node.status = StatusPublic
 
 		log.Println("Node is public")
