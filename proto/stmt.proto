@@ -5,16 +5,18 @@ message Statement {
   string id = 1;
   string publisher = 2;
   string namespace = 3;
-  
-  oneof body {
-    SimpleStatement simple = 4;
-    CompoundStatement compound = 5;
-    EnvelopeStatement envelope = 6;
-    ArchiveStatement archive = 7;
-  }
+  StatementBody body = 4;
+  int64 timestamp = 5;
+  bytes signature = 6;
+}
 
-  int64 timestamp = 8;
-  bytes signature = 9;
+message StatementBody {
+  oneof body {
+    SimpleStatement simple = 1;
+    CompoundStatement compound = 2;
+    EnvelopeStatement envelope = 3;
+    ArchiveStatement archive = 4;
+  }
 }
 
 message SimpleStatement {
