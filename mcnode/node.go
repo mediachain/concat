@@ -19,8 +19,9 @@ type Node struct {
 	status    int
 	laddr     multiaddr.Multiaddr
 	host      p2p_host.Host
+	netCtx    context.Context
+	netCancel context.CancelFunc
 	dir       *p2p_pstore.PeerInfo
-	dirCancel context.CancelFunc
 	home      string
 	db        StatementDB
 	mx        sync.Mutex
@@ -75,16 +76,16 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 	stmt.Timestamp = ts
 	switch body := body.(type) {
 	case *pb.SimpleStatement:
-		stmt.Body = &pb.Statement_Simple{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Simple{body}}
 
 	case *pb.CompoundStatement:
-		stmt.Body = &pb.Statement_Compound{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Compound{body}}
 
 	case *pb.EnvelopeStatement:
-		stmt.Body = &pb.Statement_Envelope{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Envelope{body}}
 
 	case *pb.ArchiveStatement:
-		stmt.Body = &pb.Statement_Archive{body}
+		stmt.Body = &pb.StatementBody{&pb.StatementBody_Archive{body}}
 
 	default:
 		return "", BadStatementBody

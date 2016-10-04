@@ -9,6 +9,7 @@ import (
 	multiaddr "github.com/jbenet/go-multiaddr"
 	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
 	mc "github.com/mediachain/concat/mc"
+	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	"log"
 	"time"
@@ -28,9 +29,9 @@ func (node *Node) goOffline() error {
 
 	switch node.status {
 	case StatusPublic:
-		node.dirCancel()
 		fallthrough
 	case StatusOnline:
+		node.netCancel()
 		err := node.host.Close()
 		node.status = StatusOffline
 		log.Println("Node is offline")
@@ -69,7 +70,12 @@ func (node *Node) _goOnline() error {
 	}
 
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
+	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	node.host = host
+
+	ctx, cancel := context.WithCancel(context.Background())
+	node.netCtx = ctx
+	node.netCancel = cancel
 
 	return nil
 }
@@ -93,10 +99,7 @@ func (node *Node) goPublic() error {
 		fallthrough
 
 	case StatusOnline:
-		ctx, cancel := context.WithCancel(context.Background())
-		go node.registerPeer(ctx, node.laddr)
-
-		node.dirCancel = cancel
+		go node.registerPeer(node.netCtx, node.laddr)
 		node.status = StatusPublic
 
 		log.Println("Node is public")
@@ -130,6 +133,99 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 		if err != nil {
 			return
 		}
+	}
+}
+
+func (node *Node) queryHandler(s p2p_net.Stream) {
+	defer s.Close()
+	pid := s.Conn().RemotePeer()
+	log.Printf("node/query: new stream from %s", pid.Pretty())
+
+	ctx, cancel := context.WithCancel(node.netCtx)
+	defer cancel()
+
+	var req pb.QueryRequest
+	var res pb.QueryResult
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	writeError := func(err error) {
+		res.Result = &pb.QueryResult_Error{&pb.QueryResultError{err.Error()}}
+		w.WriteMsg(&res)
+	}
+
+	writeEnd := func() error {
+		res.Result = &pb.QueryResult_End{&pb.QueryResultEnd{}}
+		return w.WriteMsg(&res)
+	}
+
+	writeValue := func(val interface{}) error {
+		switch val := val.(type) {
+		case map[string]interface{}:
+			cv, err := mc.CompoundValue(val)
+			if err != nil {
+				log.Printf("node/query: %s", err.Error())
+				writeError(err)
+				return err
+			}
+
+			res.Result = &pb.QueryResult_Value{&pb.QueryResultValue{
+				&pb.QueryResultValue_Compound{cv}}}
+
+		default:
+			sv, err := mc.SimpleValue(val)
+			if err != nil {
+				log.Printf("node/query: %s", err.Error())
+				writeError(err)
+				return err
+			}
+
+			res.Result = &pb.QueryResult_Value{&pb.QueryResultValue{
+				&pb.QueryResultValue_Simple{sv}}}
+		}
+
+		return w.WriteMsg(&res)
+	}
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			return
+		}
+
+		log.Printf("node/query: query from %s: %s", pid.Pretty(), req.Query)
+
+		q, err := mcq.ParseQuery(req.Query)
+		if err != nil {
+			writeError(err)
+			return
+		}
+
+		if q.Op != mcq.OpSelect {
+			writeError(BadQuery)
+			return
+		}
+
+		ch, err := node.db.QueryStream(ctx, q)
+		if err != nil {
+			writeError(err)
+			return
+		}
+
+		for val := range ch {
+			err = writeValue(val)
+			if err != nil {
+				return
+			}
+		}
+
+		err = writeEnd()
+		if err != nil {
+			return
+		}
+
+		req.Reset()
 	}
 }
 
@@ -269,4 +365,83 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 	}
 
 	return pinfo, nil
+}
+
+func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
+
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	err = node.host.Connect(ctx, pinfo)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/query")
+	if err != nil {
+		return nil, err
+	}
+
+	req := pb.QueryRequest{q}
+	w := ggio.NewDelimitedWriter(s)
+	err = w.WriteMsg(&req)
+	if err != nil {
+		s.Close()
+		return nil, err
+	}
+
+	ch := make(chan interface{})
+	go node.doRemoteQueryStream(ctx, s, ch)
+
+	return ch, nil
+}
+
+func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch chan interface{}) {
+	defer s.Close()
+	defer close(ch)
+
+	var res pb.QueryResult
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	for {
+		err := r.ReadMsg(&res)
+		if err != nil {
+			return
+		}
+
+		switch res := res.Result.(type) {
+		case *pb.QueryResult_Value:
+			rv, err := mc.ValueOf(res.Value)
+			if err != nil {
+				log.Printf("Remote query returned bad value: %s", err.Error())
+				return
+			}
+
+			select {
+			case ch <- rv:
+			case <-ctx.Done():
+				return
+			}
+
+		case *pb.QueryResult_End:
+			return
+
+		case *pb.QueryResult_Error:
+			// XXX find a way to not swallow these errors; perhaps stream out an error object?
+			log.Printf("Remote query error: %s", res.Error.Error)
+			return
+
+		default:
+			log.Printf("Remote query returned unexpected result: %T", res)
+			return
+		}
+
+		res.Reset()
+	}
 }

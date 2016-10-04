@@ -1,7 +1,54 @@
 syntax = "proto3";
 package proto;
 
+import "stmt.proto";
+
 // node/ping
 message Ping {}
 message Pong {}
+
+// node/query
+message QueryRequest {
+  string query = 1;
+}
+
+message QueryResult {
+  oneof result {
+    QueryResultValue value = 1;
+    QueryResultEnd end = 2;
+    QueryResultError error = 3;
+  }
+}
+
+message QueryResultEnd {}
+
+message QueryResultError {
+  string error = 1;
+}
+
+message QueryResultValue {
+  oneof value {
+    SimpleValue simple = 1;
+    CompoundValue compound = 2;
+  }
+}
+
+message SimpleValue {
+  oneof value {
+    int64 intValue = 1;
+    string stringValue = 2;
+    Statement stmt = 3;
+    StatementBody stmtBody = 4;
+  }
+}
+
+message CompoundValue {
+  repeated KeyValuePair body = 1;
+}
+
+message KeyValuePair {
+  string key = 1;
+  SimpleValue value = 2;
+}
+
 

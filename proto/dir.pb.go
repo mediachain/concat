@@ -19,7 +19,16 @@ It has these top-level messages:
 	ListPeersResponse
 	Ping
 	Pong
+	QueryRequest
+	QueryResult
+	QueryResultEnd
+	QueryResultError
+	QueryResultValue
+	SimpleValue
+	CompoundValue
+	KeyValuePair
 	Statement
+	StatementBody
 	SimpleStatement
 	CompoundStatement
 	EnvelopeStatement
