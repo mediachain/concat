@@ -328,12 +328,12 @@ func (sdb *SQLiteDB) configPool() {
 
 func (sdb *SQLiteDB) Merge(stmt *pb.Statement) (bool, error) {
 	err := sdb.Put(stmt)
-	switch {
-	case err == nil:
-		return true, nil
-	case err == sqlite3.ErrConstraint:
-		return false, nil
-	default:
+	if err != nil {
+		xerr, ok := err.(sqlite3.Error)
+		if ok && xerr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
+			return false, nil
+		}
 		return false, err
 	}
+	return true, nil
 }
