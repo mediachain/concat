@@ -202,6 +202,11 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 			return
 		}
 
+		if q.Op != mcq.OpSelect {
+			writeError(BadQuery)
+			return
+		}
+
 		ch, err := node.db.QueryStream(ctx, q)
 		if err != nil {
 			writeError(err)
