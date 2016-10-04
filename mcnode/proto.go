@@ -445,3 +445,28 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 		res.Reset()
 	}
 }
+
+func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count int, err error) {
+	ch, err := node.doRemoteQuery(ctx, pid, q)
+	if err != nil {
+		return 0, err
+	}
+
+	for val := range ch {
+		switch val := val.(type) {
+		case *pb.Statement:
+			ins, err := node.db.Merge(val)
+			if err != nil {
+				return count, err
+			}
+			if ins {
+				count += 1
+			}
+
+		default:
+			return count, BadResult
+		}
+	}
+
+	return count, nil
+}
