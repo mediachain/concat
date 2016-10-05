@@ -741,6 +741,23 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, int64(300))
 	}
 
+	// min/max counters
+	qs = "SELECT MIN(counter) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(1))
+	}
+
+	qs = "SELECT MAX(counter) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(3))
+	}
+
 	// all simple selectors
 	qs = "SELECT body FROM foo.*"
 	res, err = parseCompileEval(db, qs)
@@ -835,6 +852,25 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, int64(300))
 	}
 
+	qs = "SELECT counter FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, int64(1))
+		checkContains(t, qs, res, int64(2))
+	}
+
+	qs = "SELECT counter FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, int64(1))
+		checkContains(t, qs, res, int64(2))
+		checkContains(t, qs, res, int64(3))
+	}
+
 	// check compound selection
 	qs = "SELECT (id, publisher, timestamp) FROM foo.a"
 	res, err = parseCompileEval(db, qs)
@@ -925,6 +961,39 @@ func TestQueryCompileEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 2"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 3"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE counter > 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
 	}
 
 	qs = "SELECT * FROM * WHERE timestamp < 200"
@@ -1041,7 +1110,7 @@ func makeStmtDb() (*sql.DB, error) {
 		return nil, err
 	}
 
-	_, err = db.Exec("CREATE TABLE Envelope (id VARCHAR(32) PRIMARY KEY, namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	_, err = db.Exec("CREATE TABLE Envelope (counter INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR(32), namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
 	if err != nil {
 		return nil, err
 	}
@@ -1062,7 +1131,7 @@ func insertStmt(db *sql.DB, stmt *pb.Statement) error {
 	}
 
 	// source = publisher only for simple statements
-	_, err = db.Exec("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+	_, err = db.Exec("INSERT INTO Envelope VALUES (NULL,?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
 
 	return err
 }
