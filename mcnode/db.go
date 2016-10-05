@@ -50,6 +50,39 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 	return tx.Commit()
 }
 
+func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
+	tx, err := sdb.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	insertStmtData := tx.Stmt(sdb.insertStmtData)
+	insertStmtEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
+
+	for _, stmt := range stmts {
+		bytes, err := ggproto.Marshal(stmt)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = insertStmtData.Exec(stmt.Id, bytes)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// XXX source = publisher only for simple statements
+		_, err = insertStmtEnvelope.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (sdb *SQLDB) Get(id string) (*pb.Statement, error) {
 	row := sdb.selectStmtData.QueryRow(id)
 

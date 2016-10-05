@@ -31,6 +31,7 @@ type Node struct {
 type StatementDB interface {
 	Open(home string) error
 	Put(*pb.Statement) error
+	PutBatch([]*pb.Statement) error
 	Get(id string) (*pb.Statement, error)
 	Query(*mcq.Query) ([]interface{}, error)
 	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
@@ -68,6 +69,36 @@ func (node *Node) stmtCounter() int {
 }
 
 func (node *Node) doPublish(ns string, body interface{}) (string, error) {
+	stmt, err := node.makeStatement(ns, body)
+	if err != nil {
+		return "", err
+	}
+
+	err = node.db.Put(stmt)
+	return stmt.Id, err
+}
+
+func (node *Node) doPublishBatch(ns string, lst []interface{}) ([]string, error) {
+	stmts := make([]*pb.Statement, len(lst))
+	sids := make([]string, len(lst))
+	for x, body := range lst {
+		stmt, err := node.makeStatement(ns, body)
+		if err != nil {
+			return nil, err
+		}
+		stmts[x] = stmt
+		sids[x] = stmt.Id
+	}
+
+	err := node.db.PutBatch(stmts)
+	if err != nil {
+		return nil, err
+	}
+
+	return sids, err
+}
+
+func (node *Node) makeStatement(ns string, body interface{}) (*pb.Statement, error) {
 	stmt := new(pb.Statement)
 	pid := node.ID.Pretty()
 	ts := time.Now().Unix()
@@ -90,13 +121,12 @@ func (node *Node) doPublish(ns string, body interface{}) (string, error) {
 		stmt.Body = &pb.StatementBody{&pb.StatementBody_Archive{body}}
 
 	default:
-		return "", BadStatementBody
+		return nil, BadStatementBody
 	}
 
 	// TODO signatures: only sign it with shiny ECC keys, don't bother with RSA
 
-	err := node.db.Put(stmt)
-	return stmt.Id, err
+	return stmt, nil
 }
 
 func (node *Node) loadDB() error {
