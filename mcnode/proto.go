@@ -412,6 +412,7 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 	for {
 		err := r.ReadMsg(&res)
 		if err != nil {
+			sendStreamError(ctx, ch, err.Error())
 			return
 		}
 
@@ -437,7 +438,7 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 			return
 
 		default:
-			log.Printf("Remote query returned unexpected result: %T", res)
+			sendStreamError(ctx, ch, "Unexpected result")
 			return
 		}
 
