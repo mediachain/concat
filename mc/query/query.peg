@@ -32,7 +32,8 @@ SimpleSelectorOp <- '*'
                   / 'publisher'
                   / 'namespace'
                   / 'source'
-                  / 'timestamp'               
+                  / 'timestamp'
+                  / 'counter'
 
 CompoundSelector <- '(' SimpleSelector ( ',' WSX SimpleSelector )* ')'
 
@@ -60,7 +61,7 @@ CompoundCriteria <- SimpleCriteria
                   / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
-                / TimeCriteria  { p.addTimeCriteria() }  
+                / RangeCriteria  { p.addRangeCriteria() }  
 
 ValueCriteria <- IdCriteria
                / PublisherCriteria 
@@ -74,7 +75,11 @@ ValueCompare   <- < ValueCompareOp > { p.push(text) }
 ValueCompareOp <- '='
                 / '!='
 
-TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt { p.push(text) }
+RangeCriteria <- RangeSelector WSX Comparison WSX UInt { p.push(text) }
+
+RangeSelector   <- < RangeSelectorOp > { p.push(text) }
+RangeSelectorOp <- 'timestamp'
+                 / 'counter'
 
 Boolean   <- < BooleanOp > { p.push(text) }
 BooleanOp <- 'AND'

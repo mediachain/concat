@@ -64,9 +64,10 @@ type ValueCriteria struct {
 	val string
 }
 
-type TimeCriteria struct {
-	op string
-	ts int64
+type RangeCriteria struct {
+	op  string
+	sel string
+	val int64
 }
 
 type CompoundCriteria struct {
@@ -82,8 +83,8 @@ func (c *ValueCriteria) CriteriaType() string {
 	return "value"
 }
 
-func (c *TimeCriteria) CriteriaType() string {
-	return "time"
+func (c *RangeCriteria) CriteriaType() string {
+	return "range"
 }
 
 func (c *CompoundCriteria) CriteriaType() string {

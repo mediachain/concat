@@ -84,16 +84,17 @@ func (ps *ParseState) addValueCriteria() {
 	ps.push(crit)
 }
 
-func (ps *ParseState) addTimeCriteria() {
-	// stack: time op ...
-	tstr := ps.pop().(string)
+func (ps *ParseState) addRangeCriteria() {
+	// stack: val op selector ...
+	vstr := ps.pop().(string)
 	op := ps.pop().(string)
-	ts, err := strconv.Atoi(tstr)
+	sel := ps.pop().(string)
+	val, err := strconv.Atoi(vstr)
 	if err != nil {
 		ps.err = err
-		ts = 0
+		val = 0
 	}
-	crit := &TimeCriteria{op: op, ts: int64(ts)}
+	crit := &RangeCriteria{op: op, sel: sel, val: int64(val)}
 	ps.push(crit)
 }
 
