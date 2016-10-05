@@ -71,6 +71,12 @@ var simpleq []string = []string{
 	"SELECT * FROM * ORDER BY source",
 	"SELECT * FROM * ORDER BY timestamp",
 	"SELECT * FROM * ORDER BY counter",
+	"SELECT * FROM * ORDER BY counter ASC",
+	"SELECT * FROM * ORDER BY counter DESC",
+	"SELECT * FROM * ORDER BY namespace, counter",
+	"SELECT * FROM * ORDER BY namespace ASC, counter",
+	"SELECT * FROM * ORDER BY namespace DESC, counter",
+	"SELECT * FROM * ORDER BY namespace DESC, counter ASC",
 	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter",
 	"SELECT * FROM * ORDER BY counter LIMIT 10",
 	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter LIMIT 10"}
