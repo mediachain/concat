@@ -114,6 +114,30 @@ func (ps *ParseState) addNegatedCriteria() {
 	ps.push(crit)
 }
 
+func (ps *ParseState) setOrder() {
+	// stack: order-spec ...
+	count := ps.sklen()
+	specs := make([]*QueryOrderSpec, count)
+	for x := 0; x < count; x++ {
+		spec := ps.pop().(*QueryOrderSpec)
+		specs[count-x-1] = spec
+	}
+	ps.query.order = QueryOrder(specs)
+}
+
+func (ps *ParseState) addOrderSelector() {
+	// stack: selector ...
+	sel := ps.pop().(string)
+	spec := &QueryOrderSpec{sel: sel}
+	ps.push(spec)
+}
+
+func (ps *ParseState) setOrderDir() {
+	// stack: dir order-spec
+	dir := ps.pop().(string)
+	ps.top().(*QueryOrderSpec).dir = dir
+}
+
 func (ps *ParseState) setLimit(x string) {
 	lim, err := strconv.Atoi(x)
 	if err != nil {
@@ -132,6 +156,10 @@ func (ps *ParseState) pop() interface{} {
 	top := ps.stack.car
 	ps.stack = ps.stack.cdr
 	return top
+}
+
+func (ps *ParseState) top() interface{} {
+	return ps.stack.car
 }
 
 func (ps *ParseState) sklen() (x int) {

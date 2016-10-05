@@ -64,7 +64,16 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
 	"SELECT * FROM foo.bar LIMIT 10",
-	"SELECT * FROM * WHERE id = abc"}
+	"SELECT * FROM * WHERE id = abc",
+	"SELECT * FROM * ORDER BY id",
+	"SELECT * FROM * ORDER BY namespace",
+	"SELECT * FROM * ORDER BY publisher",
+	"SELECT * FROM * ORDER BY source",
+	"SELECT * FROM * ORDER BY timestamp",
+	"SELECT * FROM * ORDER BY counter",
+	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter",
+	"SELECT * FROM * ORDER BY counter LIMIT 10",
+	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter LIMIT 10"}
 
 var delq []string = []string{
 	"DELETE FROM *",

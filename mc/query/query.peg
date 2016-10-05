@@ -17,6 +17,7 @@ Grammar <- Select WSX EOF { p.setSelectOp() }
 Select <- 'SELECT' WS Selector
                    WS Source
                   (WS Criteria)?
+                  (WS Order)?
                   (WS Limit)?
 
 Delete <- 'DELETE' WS Source (WS Criteria)?
@@ -92,6 +93,24 @@ ComparisonOp <- '<='
               / '!='
               / '>='
               / '>'
+
+Order <- 'ORDER' WS 'BY' WS OrderSpec { p.setOrder() }
+
+OrderSpec <- OrderSelectorSpec (',' WSX OrderSelectorSpec)*
+
+OrderSelectorSpec <- OrderSelector { p.addOrderSelector() } (WS OrderDir { p.setOrderDir() })?
+
+OrderSelector   <- < OrderSelectorOp > { p.push(text) }
+OrderSelectorOp <- 'id'
+                 / 'namespace'
+                 / 'publisher'
+                 / 'source'
+                 / 'timestamp'
+                 / 'counter'
+                 
+OrderDir   <- < OrderDirOp > { p.push(text) }
+OrderDirOp <- 'ASC'
+            / 'DESC'
 
 Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
 
