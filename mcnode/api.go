@@ -67,7 +67,7 @@ func init() {
 }
 
 // POST /publish/{namespace}
-// DATA: An ndjson stream of pb.SimpleStatements
+// DATA: A stream of json-encoded pb.SimpleStatements
 // Publishes a batch of statements to the specified namespace.
 // Returns the statement ids as a newline delimited stream.
 func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
