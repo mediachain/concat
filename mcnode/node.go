@@ -35,6 +35,7 @@ type StatementDB interface {
 	Query(*mcq.Query) ([]interface{}, error)
 	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
 	QueryOne(*mcq.Query) (interface{}, error)
+	Merge(*pb.Statement) (bool, error)
 	Delete(*mcq.Query) (int, error)
 	Close() error
 }
@@ -54,6 +55,7 @@ var (
 	BadState         = errors.New("Unrecognized state")
 	BadMethod        = errors.New("Unsupported method")
 	BadNamespace     = errors.New("Illegal namespace")
+	BadResult        = errors.New("Bad result set")
 	NoResult         = errors.New("Empty result set")
 )
 

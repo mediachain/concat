@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	ggproto "github.com/gogo/protobuf/proto"
-	_ "github.com/mattn/go-sqlite3"
+	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	"log"
@@ -324,4 +324,16 @@ func (sdb *SQLiteDB) configPool() {
 	// disable connection pooling as lock contention totally kills
 	// concurrent write performance
 	sdb.db.SetMaxOpenConns(1)
+}
+
+func (sdb *SQLiteDB) Merge(stmt *pb.Statement) (bool, error) {
+	err := sdb.Put(stmt)
+	if err != nil {
+		xerr, ok := err.(sqlite3.Error)
+		if ok && xerr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

@@ -19,6 +19,18 @@ func (q *Query) WithLimit(limit int) *Query {
 	return &Query{q.Op, q.namespace, q.selector, q.criteria, limit}
 }
 
+func (q *Query) IsSimpleSelect(sel string) bool {
+	if q.Op != OpSelect {
+		return false
+	}
+
+	ssel, ok := q.selector.(SimpleSelector)
+	if ok {
+		return sel == string(ssel)
+	}
+	return false
+}
+
 type QuerySelector interface {
 	SelectorType() string
 }
