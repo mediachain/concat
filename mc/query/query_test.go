@@ -138,21 +138,21 @@ func TestQueryEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmBBB"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmCCC"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
@@ -544,7 +544,7 @@ func TestPBWTF(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	bytes, err := ggproto.Marshal(a)
@@ -566,21 +566,21 @@ func TestQueryCompileEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmBBB"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmCCC"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
