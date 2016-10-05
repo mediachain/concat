@@ -1098,6 +1098,39 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
+	// check order by
+	qs = "SELECT * FROM * ORDER BY counter LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * ORDER BY counter DESC LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * ORDER BY timestamp LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * ORDER BY timestamp DESC LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
 	// check limit
 	qs = "SELECT * FROM * LIMIT 1"
 	res, err = parseCompileEval(db, qs)
