@@ -7,7 +7,6 @@ import (
 	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
-	"log"
 	"os"
 	"path"
 )
@@ -148,7 +147,7 @@ func (sdb *SQLDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interfa
 		for rows.Next() {
 			obj, err := rsel.Scan(rows)
 			if err != nil {
-				log.Printf("Error retrieving query result: %s", err.Error())
+				sendStreamError(ctx, ch, err.Error())
 				return
 			}
 

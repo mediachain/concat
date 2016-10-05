@@ -60,6 +60,21 @@ var (
 	NoResult         = errors.New("Empty result set")
 )
 
+type StreamError struct {
+	Err string `json:"error"`
+}
+
+func (s StreamError) Error() string {
+	return s.Err
+}
+
+func sendStreamError(ctx context.Context, ch chan interface{}, what string) {
+	select {
+	case ch <- StreamError{what}:
+	case <-ctx.Done():
+	}
+}
+
 func (node *Node) stmtCounter() int {
 	node.mx.Lock()
 	counter := node.counter
