@@ -256,6 +256,11 @@ func (sdb *SQLDB) createTables() error {
 	}
 
 	_, err = sdb.db.Exec("CREATE TABLE Envelope (counter INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR(128), namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE UNIQUE INDEX EnvelopeId ON Envelope (id)")
 	return err
 }
 
@@ -350,11 +355,6 @@ func (sdb *SQLiteDB) openDB(dbpath string) error {
 
 func (sdb *SQLiteDB) tuneDB() error {
 	_, err := sdb.db.Exec("PRAGMA journal_mode=WAL")
-	if err != nil {
-		return err
-	}
-
-	_, err = sdb.db.Exec("CREATE UNIQUE INDEX EnvelopeId ON Envelope (id)")
 	return err
 }
 
