@@ -412,6 +412,7 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 	for {
 		err := r.ReadMsg(&res)
 		if err != nil {
+			sendStreamError(ctx, ch, err.Error())
 			return
 		}
 
@@ -419,7 +420,7 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 		case *pb.QueryResult_Value:
 			rv, err := mc.ValueOf(res.Value)
 			if err != nil {
-				log.Printf("Remote query returned bad value: %s", err.Error())
+				sendStreamError(ctx, ch, err.Error())
 				return
 			}
 
@@ -433,12 +434,11 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 			return
 
 		case *pb.QueryResult_Error:
-			// XXX find a way to not swallow these errors; perhaps stream out an error object?
-			log.Printf("Remote query error: %s", res.Error.Error)
+			sendStreamError(ctx, ch, res.Error.Error)
 			return
 
 		default:
-			log.Printf("Remote query returned unexpected result: %T", res)
+			sendStreamError(ctx, ch, "Unexpected result")
 			return
 		}
 
@@ -463,6 +463,9 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 			if ins {
 				count += 1
 			}
+
+		case StreamError:
+			return count, val
 
 		default:
 			return count, BadResult

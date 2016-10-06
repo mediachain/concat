@@ -7,7 +7,6 @@ import (
 	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
-	"log"
 	"os"
 	"path"
 )
@@ -45,6 +44,39 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	return tx.Commit()
+}
+
+func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
+	tx, err := sdb.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	insertStmtData := tx.Stmt(sdb.insertStmtData)
+	insertStmtEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
+
+	for _, stmt := range stmts {
+		bytes, err := ggproto.Marshal(stmt)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = insertStmtData.Exec(stmt.Id, bytes)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// XXX source = publisher only for simple statements
+		_, err = insertStmtEnvelope.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -115,7 +147,7 @@ func (sdb *SQLDB) QueryStream(ctx context.Context, q *mcq.Query) (<-chan interfa
 		for rows.Next() {
 			obj, err := rsel.Scan(rows)
 			if err != nil {
-				log.Printf("Error retrieving query result: %s", err.Error())
+				sendStreamError(ctx, ch, err.Error())
 				return
 			}
 
@@ -222,7 +254,12 @@ func (sdb *SQLDB) createTables() error {
 		return err
 	}
 
-	_, err = sdb.db.Exec("CREATE TABLE Envelope (id VARCHAR(128) PRIMARY KEY, namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	_, err = sdb.db.Exec("CREATE TABLE Envelope (counter INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR(128), namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE UNIQUE INDEX EnvelopeId ON Envelope (id)")
 	return err
 }
 
@@ -233,7 +270,7 @@ func (sdb *SQLDB) prepareStatements() error {
 	}
 	sdb.insertStmtData = stmt
 
-	stmt, err = sdb.db.Prepare("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)")
+	stmt, err = sdb.db.Prepare("INSERT INTO Envelope VALUES (NULL, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}

@@ -55,6 +55,11 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 		sqlq = fmt.Sprintf("%s WHERE %s", sqlq, crit)
 	}
 
+	order := compileQueryOrder(q, join)
+	if order != "" {
+		sqlq = fmt.Sprintf("%s ORDER BY %s", sqlq, order)
+	}
+
 	if q.limit > 0 {
 		sqlq = fmt.Sprintf("%s LIMIT %d", sqlq, q.limit)
 	}
@@ -155,6 +160,23 @@ func compileQueryCriteria(q *Query, join bool) (string, error) {
 	return scrit, nil
 }
 
+func compileQueryOrder(q *Query, join bool) string {
+	if q.order == nil {
+		return ""
+	}
+
+	strs := make([]string, len(q.order))
+	for x, spec := range q.order {
+		str := disambigSelector(spec.sel, join)
+		if spec.dir != "" {
+			str = fmt.Sprintf("%s %s", str, spec.dir)
+		}
+		strs[x] = str
+	}
+
+	return strings.Join(strs, ", ")
+}
+
 func compileNamespaceCriteria(ns string) string {
 	switch {
 	case ns == "*":
@@ -172,8 +194,8 @@ func compileSelectorCriteria(c QueryCriteria, join bool) (string, error) {
 	case *ValueCriteria:
 		return fmt.Sprintf("%s %s '%s'", disambigSelector(c.sel, join), c.op, c.val), nil
 
-	case *TimeCriteria:
-		return fmt.Sprintf("timestamp %s %d", c.op, c.ts), nil
+	case *RangeCriteria:
+		return fmt.Sprintf("%s %s %d", c.sel, c.op, c.val), nil
 
 	case *CompoundCriteria:
 		left, err := compileSelectorCriteria(c.left, join)
@@ -431,7 +453,8 @@ var makeSimpleRowSelector = map[string]MakeSimpleRowSelector{
 	"namespace": makeRowSelectString,
 	"publisher": makeRowSelectString,
 	"source":    makeRowSelectString,
-	"timestamp": makeRowSelectInt64}
+	"timestamp": makeRowSelectInt64,
+	"counter":   makeRowSelectInt64}
 
 var makeFunRowSelector = map[string]MakeSimpleRowSelector{
 	"COUNT": makeRowSelectInt,
@@ -443,7 +466,8 @@ func isStatementQuery(q *Query) bool {
 	// id acts as statement column
 	return q.namespace == "*" &&
 		isStatementSelector(q.selector) &&
-		(q.criteria == nil || isStatementCriteria(q.criteria))
+		(q.criteria == nil || isStatementCriteria(q.criteria)) &&
+		q.order == nil
 }
 
 func isEnvelopeQuery(q *Query) bool {
@@ -461,7 +485,8 @@ var envelopeSelectorp = map[string]bool{
 	"publisher": true,
 	"namespace": true,
 	"source":    true,
-	"timestamp": true}
+	"timestamp": true,
+	"counter":   true}
 
 func selectorp(sel QuerySelector, tbl map[string]bool) bool {
 	switch sel := sel.(type) {
@@ -497,7 +522,7 @@ func isStatementCriteria(c QueryCriteria) bool {
 	case *ValueCriteria:
 		return c.sel == "id"
 
-	case *TimeCriteria:
+	case *RangeCriteria:
 		return false
 
 	case *CompoundCriteria:

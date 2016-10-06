@@ -84,16 +84,17 @@ func (ps *ParseState) addValueCriteria() {
 	ps.push(crit)
 }
 
-func (ps *ParseState) addTimeCriteria() {
-	// stack: time op ...
-	tstr := ps.pop().(string)
+func (ps *ParseState) addRangeCriteria() {
+	// stack: val op selector ...
+	vstr := ps.pop().(string)
 	op := ps.pop().(string)
-	ts, err := strconv.Atoi(tstr)
+	sel := ps.pop().(string)
+	val, err := strconv.Atoi(vstr)
 	if err != nil {
 		ps.err = err
-		ts = 0
+		val = 0
 	}
-	crit := &TimeCriteria{op: op, ts: int64(ts)}
+	crit := &RangeCriteria{op: op, sel: sel, val: int64(val)}
 	ps.push(crit)
 }
 
@@ -111,6 +112,30 @@ func (ps *ParseState) addNegatedCriteria() {
 	e := ps.pop().(QueryCriteria)
 	crit := &NegatedCriteria{e}
 	ps.push(crit)
+}
+
+func (ps *ParseState) setOrder() {
+	// stack: order-spec ...
+	count := ps.sklen()
+	specs := make([]*QueryOrderSpec, count)
+	for x := 0; x < count; x++ {
+		spec := ps.pop().(*QueryOrderSpec)
+		specs[count-x-1] = spec
+	}
+	ps.query.order = QueryOrder(specs)
+}
+
+func (ps *ParseState) addOrderSelector() {
+	// stack: selector ...
+	sel := ps.pop().(string)
+	spec := &QueryOrderSpec{sel: sel}
+	ps.push(spec)
+}
+
+func (ps *ParseState) setOrderDir() {
+	// stack: dir order-spec
+	dir := ps.pop().(string)
+	ps.top().(*QueryOrderSpec).dir = dir
 }
 
 func (ps *ParseState) setLimit(x string) {
@@ -131,6 +156,10 @@ func (ps *ParseState) pop() interface{} {
 	top := ps.stack.car
 	ps.stack = ps.stack.cdr
 	return top
+}
+
+func (ps *ParseState) top() interface{} {
+	return ps.stack.car
 }
 
 func (ps *ParseState) sklen() (x int) {

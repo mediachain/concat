@@ -17,6 +17,7 @@ Grammar <- Select WSX EOF { p.setSelectOp() }
 Select <- 'SELECT' WS Selector
                    WS Source
                   (WS Criteria)?
+                  (WS Order)?
                   (WS Limit)?
 
 Delete <- 'DELETE' WS Source (WS Criteria)?
@@ -32,7 +33,8 @@ SimpleSelectorOp <- '*'
                   / 'publisher'
                   / 'namespace'
                   / 'source'
-                  / 'timestamp'               
+                  / 'timestamp'
+                  / 'counter'
 
 CompoundSelector <- '(' SimpleSelector ( ',' WSX SimpleSelector )* ')'
 
@@ -60,7 +62,7 @@ CompoundCriteria <- SimpleCriteria
                   / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
-                / TimeCriteria  { p.addTimeCriteria() }  
+                / RangeCriteria  { p.addRangeCriteria() }  
 
 ValueCriteria <- IdCriteria
                / PublisherCriteria 
@@ -74,7 +76,11 @@ ValueCompare   <- < ValueCompareOp > { p.push(text) }
 ValueCompareOp <- '='
                 / '!='
 
-TimeCriteria      <- 'timestamp' WSX Comparison WSX UInt { p.push(text) }
+RangeCriteria <- RangeSelector WSX Comparison WSX UInt { p.push(text) }
+
+RangeSelector   <- < RangeSelectorOp > { p.push(text) }
+RangeSelectorOp <- 'timestamp'
+                 / 'counter'
 
 Boolean   <- < BooleanOp > { p.push(text) }
 BooleanOp <- 'AND'
@@ -87,6 +93,24 @@ ComparisonOp <- '<='
               / '!='
               / '>='
               / '>'
+
+Order <- 'ORDER' WS 'BY' WS OrderSpec { p.setOrder() }
+
+OrderSpec <- OrderSelectorSpec (',' WSX OrderSelectorSpec)*
+
+OrderSelectorSpec <- OrderSelector { p.addOrderSelector() } (WS OrderDir { p.setOrderDir() })?
+
+OrderSelector   <- < OrderSelectorOp > { p.push(text) }
+OrderSelectorOp <- 'id'
+                 / 'namespace'
+                 / 'publisher'
+                 / 'source'
+                 / 'timestamp'
+                 / 'counter'
+                 
+OrderDir   <- < OrderDirOp > { p.push(text) }
+OrderDirOp <- 'ASC'
+            / 'DESC'
 
 Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
 

@@ -48,7 +48,8 @@ func (e QueryEvalError) Error() string {
 type StatementFilter func(*pb.Statement) bool
 type ValueCriteriaFilterSelect func(*pb.Statement) string
 type ValueCriteriaFilterCompare func(a, b string) bool
-type TimeCriteriaFilter func(*pb.Statement, int64) bool
+type RangeCriteriaFilterSelect func(*pb.Statement) int64
+type RangeCriteriaFilterCompare func(a, b int64) bool
 type CompoundCriteriaFilter func(stmt *pb.Statement, left, right StatementFilter) bool
 
 func idCriteriaFilter(stmt *pb.Statement) string {
@@ -81,37 +82,50 @@ var valueCriteriaFilterCompare = map[string]ValueCriteriaFilterCompare{
 	"=":  valueCriteriaEQ,
 	"!=": valueCriteriaNE}
 
-func timestampFilterLTEQ(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp <= ts
+func rangeFilterLTEQ(a, b int64) bool {
+	return a <= b
 }
 
-func timestampFilterLT(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp < ts
+func rangeFilterLT(a, b int64) bool {
+	return a < b
 }
 
-func timestampFilterEQ(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp == ts
+func rangeFilterEQ(a, b int64) bool {
+	return a == b
 }
 
-func timestampFilterNE(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp != ts
+func rangeFilterNE(a, b int64) bool {
+	return a != b
 }
 
-func timestampFilterGTEQ(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp >= ts
+func rangeFilterGTEQ(a, b int64) bool {
+	return a >= b
 }
 
-func timestampFilterGT(stmt *pb.Statement, ts int64) bool {
-	return stmt.Timestamp > ts
+func rangeFilterGT(a, b int64) bool {
+	return a > b
 }
 
-var timeCriteriaFilters = map[string]TimeCriteriaFilter{
-	"<=": timestampFilterLTEQ,
-	"<":  timestampFilterLT,
-	"=":  timestampFilterEQ,
-	"!=": timestampFilterNE,
-	">=": timestampFilterGTEQ,
-	">":  timestampFilterGT}
+var rangeCriteriaFilterCompare = map[string]RangeCriteriaFilterCompare{
+	"<=": rangeFilterLTEQ,
+	"<":  rangeFilterLT,
+	"=":  rangeFilterEQ,
+	"!=": rangeFilterNE,
+	">=": rangeFilterGTEQ,
+	">":  rangeFilterGT}
+
+func timestampCriteriaFilter(stmt *pb.Statement) int64 {
+	return stmt.Timestamp
+}
+
+func counterCriteriaFilter(stmt *pb.Statement) int64 {
+	// undefined in eval
+	return 0
+}
+
+var rangeCriteriaFilterSelect = map[string]RangeCriteriaFilterSelect{
+	"timestamp": timestampCriteriaFilter,
+	"counter":   counterCriteriaFilter}
 
 func compoundCriteriaAND(stmt *pb.Statement, left, right StatementFilter) bool {
 	return left(stmt) && right(stmt)
@@ -174,14 +188,19 @@ func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 			return cmpf(getf(stmt), c.val)
 		}, nil
 
-	case *TimeCriteria:
-		filter, ok := timeCriteriaFilters[c.op]
+	case *RangeCriteria:
+		getf, ok := rangeCriteriaFilterSelect[c.sel]
 		if !ok {
-			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria time op: %s", c.op))
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria selector: %s", c.sel))
+		}
+
+		filter, ok := rangeCriteriaFilterCompare[c.op]
+		if !ok {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected criteria range op: %s", c.op))
 		}
 
 		return func(stmt *pb.Statement) bool {
-			return filter(stmt, c.ts)
+			return filter(getf(stmt), c.val)
 		}, nil
 
 	case *CompoundCriteria:
@@ -250,6 +269,11 @@ func simpleSelectorTimestamp(stmt *pb.Statement) interface{} {
 	return stmt.Timestamp
 }
 
+func simpleSelectorCounter(stmt *pb.Statement) interface{} {
+	// undefined for eval
+	return 0
+}
+
 var simpleSelectors = map[string]StatementSelector{
 	"*":         simpleSelectorAll,
 	"body":      simpleSelectorBody,
@@ -257,7 +281,8 @@ var simpleSelectors = map[string]StatementSelector{
 	"publisher": simpleSelectorPublisher,
 	"namespace": simpleSelectorNamespace,
 	"source":    simpleSelectorSource,
-	"timestamp": simpleSelectorTimestamp}
+	"timestamp": simpleSelectorTimestamp,
+	"counter":   simpleSelectorCounter}
 
 type FunctionStatementSelector func([]interface{}) []interface{}
 
@@ -311,9 +336,10 @@ var functionAllowedSelectors = map[string]map[string]bool{
 		"publisher": true,
 		"namespace": true,
 		"source":    true,
-		"timestamp": true},
-	"MIN": map[string]bool{"timestamp": true},
-	"MAX": map[string]bool{"timestamp": true}}
+		"timestamp": true,
+		"counter":   true},
+	"MIN": map[string]bool{"timestamp": true, "counter": true},
+	"MAX": map[string]bool{"timestamp": true, "counter": true}}
 
 func checkFunctionSelector(sel *FunctionSelector) bool {
 	valid, ok := functionAllowedSelectors[sel.op]

@@ -7,6 +7,7 @@ type Query struct {
 	namespace string
 	selector  QuerySelector
 	criteria  QueryCriteria
+	order     QueryOrder
 	limit     int
 }
 
@@ -16,7 +17,7 @@ const (
 )
 
 func (q *Query) WithLimit(limit int) *Query {
-	return &Query{q.Op, q.namespace, q.selector, q.criteria, limit}
+	return &Query{q.Op, q.namespace, q.selector, q.criteria, q.order, limit}
 }
 
 func (q *Query) IsSimpleSelect(sel string) bool {
@@ -32,7 +33,7 @@ func (q *Query) IsSimpleSelect(sel string) bool {
 }
 
 type QuerySelector interface {
-	SelectorType() string
+	selectorType() string
 }
 
 type SimpleSelector string
@@ -42,20 +43,20 @@ type FunctionSelector struct {
 	sel SimpleSelector
 }
 
-func (s SimpleSelector) SelectorType() string {
+func (s SimpleSelector) selectorType() string {
 	return "simple"
 }
 
-func (s CompoundSelector) SelectorType() string {
+func (s CompoundSelector) selectorType() string {
 	return "compound"
 }
 
-func (s *FunctionSelector) SelectorType() string {
+func (s *FunctionSelector) selectorType() string {
 	return "function"
 }
 
 type QueryCriteria interface {
-	CriteriaType() string
+	criteriaType() string
 }
 
 type ValueCriteria struct {
@@ -64,9 +65,10 @@ type ValueCriteria struct {
 	val string
 }
 
-type TimeCriteria struct {
-	op string
-	ts int64
+type RangeCriteria struct {
+	op  string
+	sel string
+	val int64
 }
 
 type CompoundCriteria struct {
@@ -78,18 +80,25 @@ type NegatedCriteria struct {
 	e QueryCriteria
 }
 
-func (c *ValueCriteria) CriteriaType() string {
+func (c *ValueCriteria) criteriaType() string {
 	return "value"
 }
 
-func (c *TimeCriteria) CriteriaType() string {
-	return "time"
+func (c *RangeCriteria) criteriaType() string {
+	return "range"
 }
 
-func (c *CompoundCriteria) CriteriaType() string {
+func (c *CompoundCriteria) criteriaType() string {
 	return "compound"
 }
 
-func (c *NegatedCriteria) CriteriaType() string {
+func (c *NegatedCriteria) criteriaType() string {
 	return "negated"
+}
+
+type QueryOrder []*QueryOrderSpec
+
+type QueryOrderSpec struct {
+	sel string
+	dir string
 }

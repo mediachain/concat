@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -65,9 +67,9 @@ func init() {
 }
 
 // POST /publish/{namespace}
-// DATA: json encoded pb.SimpleStatement
-// Publishes a simple statement to the specified namespace.
-// Returns the statement id.
+// DATA: A stream of json-encoded pb.SimpleStatements
+// Publishes a batch of statements to the specified namespace.
+// Returns the statement ids as a newline delimited stream.
 func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
@@ -83,21 +85,37 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// just simple statements for now
-	sbody := new(pb.SimpleStatement)
-	err = json.Unmarshal(rbody, sbody)
-	if err != nil {
-		apiError(w, http.StatusBadRequest, err)
+	dec := json.NewDecoder(bytes.NewReader(rbody))
+	stmts := make([]interface{}, 0)
+
+loop:
+	for {
+		sbody := new(pb.SimpleStatement)
+		err = dec.Decode(sbody)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			apiError(w, http.StatusBadRequest, err)
+			return
+		default:
+			stmts = append(stmts, sbody)
+		}
+	}
+
+	if len(stmts) == 0 {
 		return
 	}
 
-	sid, err := node.doPublish(ns, sbody)
+	sids, err := node.doPublishBatch(ns, stmts)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	fmt.Fprintln(w, sid)
+	for _, sid := range sids {
+		fmt.Fprintln(w, sid)
+	}
 }
 
 // GET /stmt/{statementId}

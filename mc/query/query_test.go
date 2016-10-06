@@ -11,17 +11,27 @@ import (
 
 var simpleq []string = []string{
 	"SELECT * FROM foo.bar",
-	"SELECT body FROM foo.bar",
 	"SELECT id FROM foo.bar",
+	"SELECT body FROM foo.bar",
+	"SELECT publisher FROM foo.bar",
 	"SELECT source FROM foo.bar",
 	"SELECT timestamp FROM foo.bar",
+	"SELECT counter FROM foo.bar",
+	"SELECT namespace FROM *",
 	"SELECT (body, source) FROM foo.bar",
 	"SELECT (id, namespace, publisher) FROM foo.bar",
 	"SELECT COUNT(*) FROM foo.bar",
+	"SELECT COUNT(id) FROM foo.bar",
+	"SELECT COUNT(body) FROM foo.bar",
 	"SELECT COUNT(publisher) FROM foo.bar",
+	"SELECT COUNT(source) FROM foo.bar",
+	"SELECT COUNT(timestamp) FROM foo.bar",
+	"SELECT COUNT(counter) FROM foo.bar",
+	"SELECT COUNT(namespace) FROM *",
 	"SELECT MIN(timestamp) FROM foo.bar",
 	"SELECT MAX(timestamp) FROM foo.bar",
-	"SELECT namespace FROM *",
+	"SELECT MIN(counter) FROM foo.bar",
+	"SELECT MAX(counter) FROM foo.bar",
 	"SELECT (id, namespace, publisher) FROM *",
 	"SELECT * FROM foo.bar.*",
 	"SELECT * FROM foo.bar-baz-with-dashes",
@@ -37,17 +47,39 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE timestamp != 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp >= 1474000000",
 	"SELECT * FROM foo.bar WHERE timestamp > 1474000000",
+	"SELECT * FROM foo.bar WHERE counter < 10",
+	"SELECT * FROM foo.bar WHERE counter <= 10",
+	"SELECT * FROM foo.bar WHERE counter = 10",
+	"SELECT * FROM foo.bar WHERE counter != 10",
+	"SELECT * FROM foo.bar WHERE counter >= 10",
+	"SELECT * FROM foo.bar WHERE counter > 10",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE publisher = abc OR timestamp > 1474000000",
 	"SELECT * FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR timestamp < 1474000000",
+	"SELECT * FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR counter > 10",
 	"SELECT * FROM foo.bar WHERE NOT id = abc",
 	"SELECT * FROM foo.bar WHERE NOT (id = abc AND publisher = def)",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000",
-	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR timestamp > 1475000000",
-	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR timestamp > 1475000000)",
+	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR counter > 10",
+	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
 	"SELECT * FROM foo.bar LIMIT 10",
-	"SELECT * FROM * WHERE id = abc"}
+	"SELECT * FROM * WHERE id = abc",
+	"SELECT * FROM * ORDER BY id",
+	"SELECT * FROM * ORDER BY namespace",
+	"SELECT * FROM * ORDER BY publisher",
+	"SELECT * FROM * ORDER BY source",
+	"SELECT * FROM * ORDER BY timestamp",
+	"SELECT * FROM * ORDER BY counter",
+	"SELECT * FROM * ORDER BY counter ASC",
+	"SELECT * FROM * ORDER BY counter DESC",
+	"SELECT * FROM * ORDER BY namespace, counter",
+	"SELECT * FROM * ORDER BY namespace ASC, counter",
+	"SELECT * FROM * ORDER BY namespace DESC, counter",
+	"SELECT * FROM * ORDER BY namespace DESC, counter ASC",
+	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter",
+	"SELECT * FROM * ORDER BY counter LIMIT 10",
+	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter LIMIT 10"}
 
 var delq []string = []string{
 	"DELETE FROM *",
@@ -65,14 +97,21 @@ var delq []string = []string{
 	"DELETE FROM foo.bar WHERE timestamp != 1474000000",
 	"DELETE FROM foo.bar WHERE timestamp >= 1474000000",
 	"DELETE FROM foo.bar WHERE timestamp > 1474000000",
+	"DELETE FROM foo.bar WHERE counter < 10",
+	"DELETE FROM foo.bar WHERE counter <= 10",
+	"DELETE FROM foo.bar WHERE counter = 10",
+	"DELETE FROM foo.bar WHERE counter != 10",
+	"DELETE FROM foo.bar WHERE counter >= 10",
+	"DELETE FROM foo.bar WHERE counter > 10",
 	"DELETE FROM foo.bar WHERE publisher = abc AND timestamp > 1474000000",
 	"DELETE FROM foo.bar WHERE publisher = abc OR timestamp > 1474000000",
 	"DELETE FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR timestamp < 1474000000",
+	"DELETE FROM foo.bar WHERE (publisher = abc AND timestamp > 1474000000) OR counter > 10",
 	"DELETE FROM foo.bar WHERE NOT id = abc",
 	"DELETE FROM foo.bar WHERE NOT (id = abc AND publisher = def)",
 	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000",
-	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR timestamp > 1475000000",
-	"DELETE FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR timestamp > 1475000000)",
+	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR counter > 10",
+	"DELETE FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
 	"DELETE FROM * WHERE id = abc"}
 
 func checkError(t *testing.T, where string, err error) {
@@ -138,21 +177,21 @@ func TestQueryEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmBBB"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmCCC"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
@@ -544,7 +583,7 @@ func TestPBWTF(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	bytes, err := ggproto.Marshal(a)
@@ -566,21 +605,21 @@ func TestQueryCompileEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmAAA"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmBBB"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.Statement_Simple{&pb.SimpleStatement{Object: "QmCCC"}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
@@ -717,6 +756,23 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, int64(300))
 	}
 
+	// min/max counters
+	qs = "SELECT MIN(counter) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(1))
+	}
+
+	qs = "SELECT MAX(counter) FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, int64(3))
+	}
+
 	// all simple selectors
 	qs = "SELECT body FROM foo.*"
 	res, err = parseCompileEval(db, qs)
@@ -811,6 +867,25 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, int64(300))
 	}
 
+	qs = "SELECT counter FROM foo.*"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, int64(1))
+		checkContains(t, qs, res, int64(2))
+	}
+
+	qs = "SELECT counter FROM *"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 3) {
+		checkContains(t, qs, res, int64(1))
+		checkContains(t, qs, res, int64(2))
+		checkContains(t, qs, res, int64(3))
+	}
+
 	// check compound selection
 	qs = "SELECT (id, publisher, timestamp) FROM foo.a"
 	res, err = parseCompileEval(db, qs)
@@ -901,6 +976,39 @@ func TestQueryCompileEval(t *testing.T) {
 
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 2"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, b)
+	}
+
+	qs = "SELECT * FROM * WHERE counter = 3"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE counter > 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
 	}
 
 	qs = "SELECT * FROM * WHERE timestamp < 200"
@@ -996,6 +1104,39 @@ func TestQueryCompileEval(t *testing.T) {
 		checkContains(t, qs, res, c)
 	}
 
+	// check order by
+	qs = "SELECT * FROM * ORDER BY counter LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * ORDER BY counter DESC LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * ORDER BY timestamp LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * ORDER BY timestamp DESC LIMIT 1"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, c)
+	}
+
 	// check limit
 	qs = "SELECT * FROM * LIMIT 1"
 	res, err = parseCompileEval(db, qs)
@@ -1017,7 +1158,7 @@ func makeStmtDb() (*sql.DB, error) {
 		return nil, err
 	}
 
-	_, err = db.Exec("CREATE TABLE Envelope (id VARCHAR(32) PRIMARY KEY, namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	_, err = db.Exec("CREATE TABLE Envelope (counter INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR(32), namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
 	if err != nil {
 		return nil, err
 	}
@@ -1038,7 +1179,7 @@ func insertStmt(db *sql.DB, stmt *pb.Statement) error {
 	}
 
 	// source = publisher only for simple statements
-	_, err = db.Exec("INSERT INTO Envelope VALUES (?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+	_, err = db.Exec("INSERT INTO Envelope VALUES (NULL,?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
 
 	return err
 }
