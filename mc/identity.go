@@ -145,6 +145,11 @@ func PublisherID58(pubk p2p_crypto.PubKey) (string, error) {
 	return id58, nil
 }
 
+func PublisherKey(id58 string) (p2p_crypto.PubKey, error) {
+	bytes := b58.Decode(id58)
+	return p2p_crypto.UnmarshalPublicKey(bytes)
+}
+
 // Key management
 func loadKey(kpath string) (p2p_crypto.PrivKey, error) {
 	bytes, err := ioutil.ReadFile(kpath)

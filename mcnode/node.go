@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ggproto "github.com/gogo/protobuf/proto"
 	p2p_host "github.com/libp2p/go-libp2p-host"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
@@ -58,6 +59,7 @@ var (
 	BadMethod        = errors.New("Unsupported method")
 	BadNamespace     = errors.New("Illegal namespace")
 	BadResult        = errors.New("Bad result set")
+	BadStatement     = errors.New("Bad statement; verification failed")
 	NoResult         = errors.New("Empty result set")
 )
 
@@ -116,11 +118,11 @@ func (node *Node) doPublishBatch(ns string, lst []interface{}) ([]string, error)
 
 func (node *Node) makeStatement(ns string, body interface{}) (*pb.Statement, error) {
 	stmt := new(pb.Statement)
-	pid := node.ID.Pretty()
+	pid := node.publisher.ID58
 	ts := time.Now().Unix()
 	counter := node.stmtCounter()
 	stmt.Id = fmt.Sprintf("%s:%d:%d", pid, ts, counter)
-	stmt.Publisher = pid // this should be the pubkey when we have ECC keys
+	stmt.Publisher = pid
 	stmt.Namespace = ns
 	stmt.Timestamp = ts
 	switch body := body.(type) {
@@ -140,9 +142,46 @@ func (node *Node) makeStatement(ns string, body interface{}) (*pb.Statement, err
 		return nil, BadStatementBody
 	}
 
-	// TODO signatures: only sign it with shiny ECC keys, don't bother with RSA
+	err := node.signStatement(stmt)
+	if err != nil {
+		return nil, err
+	}
 
 	return stmt, nil
+}
+
+func (node *Node) signStatement(stmt *pb.Statement) error {
+	bytes, err := ggproto.Marshal(stmt)
+	if err != nil {
+		return err
+	}
+
+	sig, err := node.publisher.PrivKey.Sign(bytes)
+	if err != nil {
+		return err
+	}
+
+	stmt.Signature = sig
+	return nil
+}
+
+func (node *Node) verifyStatement(stmt *pb.Statement) (bool, error) {
+	pubk, err := mc.PublisherKey(stmt.Publisher)
+	if err != nil {
+		return false, err
+	}
+
+	sig := stmt.Signature
+	stmt.Signature = nil
+
+	bytes, err := ggproto.Marshal(stmt)
+	stmt.Signature = sig
+
+	if err != nil {
+		return false, err
+	}
+
+	return pubk.Verify(bytes, sig)
 }
 
 func (node *Node) loadDB() error {

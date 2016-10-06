@@ -455,7 +455,16 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
-			// TODO statement signature verification
+			verify, err := node.verifyStatement(val)
+			if err != nil {
+				return count, err
+			}
+
+			// a verification failure taints the result set; abort the merge
+			if !verify {
+				return count, BadStatement
+			}
+
 			ins, err := node.db.Merge(val)
 			if err != nil {
 				return count, err
