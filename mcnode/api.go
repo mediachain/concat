@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mux "github.com/gorilla/mux"
-	p2p_peer "github.com/ipfs/go-libp2p-peer"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"

@@ -2,10 +2,10 @@ package mc
 
 import (
 	"fmt"
-	p2p_peer "github.com/ipfs/go-libp2p-peer"
-	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
-	multiaddr "github.com/jbenet/go-multiaddr"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
+	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	pb "github.com/mediachain/concat/proto"
+	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
 const MaxMessageSize = 2 << 20 // 1 MB
