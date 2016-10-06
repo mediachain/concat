@@ -29,7 +29,18 @@ func apiError(w http.ResponseWriter, status int, err error) {
 // GET /id
 // Returns the node peer identity.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, node.NodeIdentity.Pretty())
+	nids := NodeIds{node.NodeIdentity.Pretty(), node.publisher.ID58}
+
+	err := json.NewEncoder(w).Encode(nids)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+type NodeIds struct {
+	Peer      string `json:"peer"`
+	Publisher string `json:"publisher"`
 }
 
 // GET /ping/{peerId}
