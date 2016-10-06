@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
+	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_host "github.com/libp2p/go-libp2p-host"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
@@ -171,9 +172,28 @@ func (node *Node) verifyStatement(stmt *pb.Statement) (bool, error) {
 		return false, err
 	}
 
+	return node.verifyStatementSig(stmt, pubk)
+}
+
+func (node *Node) verifyStatementCacheKeys(stmt *pb.Statement, pkcache map[string]p2p_crypto.PubKey) (bool, error) {
+	var pubk p2p_crypto.PubKey
+	var err error
+
+	pubk, ok := pkcache[stmt.Publisher]
+	if !ok {
+		pubk, err = mc.PublisherKey(stmt.Publisher)
+		if err != nil {
+			return false, err
+		}
+		pkcache[stmt.Publisher] = pubk
+	}
+
+	return node.verifyStatementSig(stmt, pubk)
+}
+
+func (node *Node) verifyStatementSig(stmt *pb.Statement, pubk p2p_crypto.PubKey) (bool, error) {
 	sig := stmt.Signature
 	stmt.Signature = nil
-
 	bytes, err := ggproto.Marshal(stmt)
 	stmt.Signature = sig
 

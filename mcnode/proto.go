@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	ggio "github.com/gogo/protobuf/io"
+	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_net "github.com/libp2p/go-libp2p-net"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -452,10 +453,13 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 		return 0, err
 	}
 
+	// publisher key cache
+	pkcache := make(map[string]p2p_crypto.PubKey)
+
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
-			verify, err := node.verifyStatement(val)
+			verify, err := node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
 				return count, err
 			}
