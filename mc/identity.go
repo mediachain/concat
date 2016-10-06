@@ -26,11 +26,15 @@ type PublisherIdentity struct {
 	PrivKey p2p_crypto.PrivKey
 }
 
-// Node Identities
 func (id PeerIdentity) Pretty() string {
 	return id.ID.Pretty()
 }
 
+func (id PublisherIdentity) Pretty() string {
+	return id.ID58
+}
+
+// Node Identities
 func MakePeerIdentity(home string) (empty PeerIdentity, err error) {
 	kpath := path.Join(home, "identity.node")
 	_, err = os.Stat(kpath)
