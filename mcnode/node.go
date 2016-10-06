@@ -16,6 +16,7 @@ import (
 
 type Node struct {
 	mc.NodeIdentity
+	publisher mc.PublisherIdentity
 	status    int
 	laddr     multiaddr.Multiaddr
 	host      p2p_host.Host

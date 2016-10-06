@@ -37,7 +37,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node := &Node{NodeIdentity: id, home: *home, laddr: addr}
+	pubid, err := mc.MakePublisherIdentity(*home)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node := &Node{NodeIdentity: id, publisher: pubid, home: *home, laddr: addr}
 
 	err = node.loadDB()
 	if err != nil {
