@@ -17,7 +17,7 @@ import (
 )
 
 type Node struct {
-	mc.NodeIdentity
+	mc.PeerIdentity
 	publisher mc.PublisherIdentity
 	status    int
 	laddr     multiaddr.Multiaddr

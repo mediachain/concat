@@ -10,13 +10,13 @@ import (
 	"path"
 )
 
-// Identities: NodeIdentity and PublisherIdentity
+// Identities: PeerIdentity and PublisherIdentity
 // the structs are different because the semantics of id differ
-// NodeIdentities use the raw public key hash as dictated by libp2p
+// PeerIdentities use the raw public key hash as dictated by libp2p
 //  they use RSA keys for interop with js, which is lagging in libp2p-crypto
 // PublisherIdentities use the base58 encoded public key as identifier
 //  they use ECC (Ed25519) keys and sign statements with them
-type NodeIdentity struct {
+type PeerIdentity struct {
 	ID      p2p_peer.ID
 	PrivKey p2p_crypto.PrivKey
 }
@@ -27,23 +27,23 @@ type PublisherIdentity struct {
 }
 
 // Node Identities
-func (id NodeIdentity) Pretty() string {
+func (id PeerIdentity) Pretty() string {
 	return id.ID.Pretty()
 }
 
-func MakeNodeIdentity(home string) (empty NodeIdentity, err error) {
+func MakePeerIdentity(home string) (empty PeerIdentity, err error) {
 	kpath := path.Join(home, "identity.node")
 	_, err = os.Stat(kpath)
 	if os.IsNotExist(err) {
-		return generateNodeIdentity(kpath)
+		return generatePeerIdentity(kpath)
 	}
 	if err != nil {
 		return
 	}
-	return loadNodeIdentity(kpath)
+	return loadPeerIdentity(kpath)
 }
 
-func generateNodeIdentity(kpath string) (empty NodeIdentity, err error) {
+func generatePeerIdentity(kpath string) (empty PeerIdentity, err error) {
 	log.Printf("Generating new node identity")
 	// RSA keys for interop with js
 	privk, pubk, err := generateRSAKeyPair()
@@ -63,10 +63,10 @@ func generateNodeIdentity(kpath string) (empty NodeIdentity, err error) {
 	}
 
 	log.Printf("Node ID: %s", id.Pretty())
-	return NodeIdentity{ID: id, PrivKey: privk}, nil
+	return PeerIdentity{ID: id, PrivKey: privk}, nil
 }
 
-func loadNodeIdentity(kpath string) (empty NodeIdentity, err error) {
+func loadPeerIdentity(kpath string) (empty PeerIdentity, err error) {
 	log.Printf("Loading node identity from %s", kpath)
 	privk, err := loadKey(kpath)
 	if err != nil {
@@ -79,7 +79,7 @@ func loadNodeIdentity(kpath string) (empty NodeIdentity, err error) {
 	}
 
 	log.Printf("Node ID: %s", id.Pretty())
-	return NodeIdentity{id, privk}, nil
+	return PeerIdentity{id, privk}, nil
 }
 
 // Publisher Identities

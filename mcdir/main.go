@@ -16,7 +16,7 @@ import (
 )
 
 type Directory struct {
-	mc.NodeIdentity
+	mc.PeerIdentity
 	host  p2p_host.Host
 	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
 	mx    sync.Mutex
@@ -136,7 +136,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	id, err := mc.MakeNodeIdentity(*home)
+	id, err := mc.MakePeerIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{NodeIdentity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)

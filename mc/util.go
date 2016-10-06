@@ -59,7 +59,7 @@ func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
 	return p2p_pstore.PeerInfo{ID: pid}, nil
 }
 
-func NewHost(id NodeIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, error) {
+func NewHost(id PeerIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, error) {
 	pstore := p2p_pstore.NewPeerstore()
 	pstore.AddPrivKey(id.ID, id.PrivKey)
 	pstore.AddPubKey(id.ID, id.PrivKey.GetPublic())
