@@ -10,7 +10,7 @@ import (
 	"path"
 )
 
-// Identities: PeerIdentity and PublisherIdentity
+// Node identities: PeerIdentity and PublisherIdentity
 // the structs are different because the semantics of id differ
 // PeerIdentities use the raw public key hash as dictated by libp2p
 //  they use RSA keys for interop with js, which is lagging in libp2p-crypto
@@ -34,7 +34,7 @@ func (id PublisherIdentity) Pretty() string {
 	return id.ID58
 }
 
-// Node Identities
+// Peer Identities
 func MakePeerIdentity(home string) (empty PeerIdentity, err error) {
 	kpath := path.Join(home, "identity.node")
 	_, err = os.Stat(kpath)
