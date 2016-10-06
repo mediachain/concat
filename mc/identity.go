@@ -1,6 +1,7 @@
 package mc
 
 import (
+	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	"io/ioutil"
@@ -25,6 +26,7 @@ type PublisherIdentity struct {
 	PrivKey p2p_crypto.PrivKey
 }
 
+// Node Identities
 func (id NodeIdentity) Pretty() string {
 	return id.ID.Pretty()
 }
@@ -77,7 +79,70 @@ func loadNodeIdentity(kpath string) (empty NodeIdentity, err error) {
 	}
 
 	log.Printf("Node ID: %s", id.Pretty())
-	return NodeIdentity{ID: id, PrivKey: privk}, nil
+	return NodeIdentity{id, privk}, nil
+}
+
+// Publisher Identities
+func MakePublisherIdentity(home string) (empty PublisherIdentity, err error) {
+	kpath := path.Join(home, "identity.publisher") // .pub would be unfortunate
+	_, err = os.Stat(kpath)
+	if os.IsNotExist(err) {
+		return generatePublisherIdentity(kpath)
+	}
+	if err != nil {
+		return
+	}
+	return loadPublisherIdentity(kpath)
+}
+
+func generatePublisherIdentity(kpath string) (empty PublisherIdentity, err error) {
+	log.Printf("Generating new publisher identity")
+
+	privk, pubk, err := generateECCKeyPair()
+	if err != nil {
+		return
+	}
+
+	id58, err := PublisherID58(pubk)
+	if err != nil {
+		return
+	}
+
+	log.Printf("Saving key to %s", kpath)
+	err = saveKey(privk, kpath)
+	if err != nil {
+		return
+	}
+
+	log.Printf("Publisher ID: %s", id58)
+	return PublisherIdentity{id58, privk}, nil
+
+}
+
+func loadPublisherIdentity(kpath string) (empty PublisherIdentity, err error) {
+	log.Printf("Loading publisher identity from %s", kpath)
+	privk, err := loadKey(kpath)
+	if err != nil {
+		return
+	}
+
+	id58, err := PublisherID58(privk.GetPublic())
+	if err != nil {
+		return
+	}
+
+	log.Printf("Publisher ID: %s", id58)
+	return PublisherIdentity{id58, privk}, nil
+}
+
+func PublisherID58(pubk p2p_crypto.PubKey) (string, error) {
+	bytes, err := pubk.Bytes()
+	if err != nil {
+		return "", err
+	}
+
+	id58 := b58.Encode(bytes)
+	return id58, nil
 }
 
 // Key management
@@ -101,4 +166,8 @@ func saveKey(privk p2p_crypto.PrivKey, kpath string) error {
 
 func generateRSAKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
 	return p2p_crypto.GenerateKeyPair(p2p_crypto.RSA, 2048)
+}
+
+func generateECCKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
+	return p2p_crypto.GenerateKeyPair(p2p_crypto.Ed25519, 0)
 }
