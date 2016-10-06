@@ -260,6 +260,11 @@ func (sdb *SQLDB) createTables() error {
 	}
 
 	_, err = sdb.db.Exec("CREATE UNIQUE INDEX EnvelopeId ON Envelope (id)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE INDEX EnvelopeNS ON Envelope (namespace)")
 	return err
 }
 
