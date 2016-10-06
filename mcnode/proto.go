@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	ggio "github.com/gogo/protobuf/io"
-	p2p_peer "github.com/ipfs/go-libp2p-peer"
-	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
-	multiaddr "github.com/jbenet/go-multiaddr"
-	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
+	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
+	p2p_net "github.com/libp2p/go-libp2p-net"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
+	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"log"
 	"time"
 )
@@ -64,7 +65,7 @@ func (node *Node) goOnline() error {
 }
 
 func (node *Node) _goOnline() error {
-	host, err := mc.NewHost(node.Identity, node.laddr)
+	host, err := mc.NewHost(node.PeerIdentity, node.laddr)
 	if err != nil {
 		return err
 	}
@@ -452,10 +453,22 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 		return 0, err
 	}
 
+	// publisher key cache
+	pkcache := make(map[string]p2p_crypto.PubKey)
+
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
-			// TODO statement signature verification
+			verify, err := node.verifyStatementCacheKeys(val, pkcache)
+			if err != nil {
+				return count, err
+			}
+
+			// a verification failure taints the result set; abort the merge
+			if !verify {
+				return count, BadStatement
+			}
+
 			ins, err := node.db.Merge(val)
 			if err != nil {
 				return count, err

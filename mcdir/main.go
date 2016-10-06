@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
-	p2p_peer "github.com/ipfs/go-libp2p-peer"
-	p2p_pstore "github.com/ipfs/go-libp2p-peerstore"
-	p2p_host "github.com/libp2p/go-libp2p/p2p/host"
-	p2p_net "github.com/libp2p/go-libp2p/p2p/net"
+	p2p_host "github.com/libp2p/go-libp2p-host"
+	p2p_net "github.com/libp2p/go-libp2p-net"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
+	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	"log"
@@ -16,7 +16,7 @@ import (
 )
 
 type Directory struct {
-	mc.Identity
+	mc.PeerIdentity
 	host  p2p_host.Host
 	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
 	mx    sync.Mutex
@@ -136,7 +136,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	id, err := mc.NodeIdentity(*home)
+	id, err := mc.MakePeerIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{Identity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)

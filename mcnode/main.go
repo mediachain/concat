@@ -32,12 +32,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	id, err := mc.NodeIdentity(*home)
+	id, err := mc.MakePeerIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node := &Node{Identity: id, home: *home, laddr: addr}
+	pubid, err := mc.MakePublisherIdentity(*home)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node := &Node{PeerIdentity: id, publisher: pubid, home: *home, laddr: addr}
 
 	err = node.loadDB()
 	if err != nil {

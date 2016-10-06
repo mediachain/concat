@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mux "github.com/gorilla/mux"
-	p2p_peer "github.com/ipfs/go-libp2p-peer"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
@@ -29,7 +29,18 @@ func apiError(w http.ResponseWriter, status int, err error) {
 // GET /id
 // Returns the node peer identity.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, node.Identity.Pretty())
+	nids := NodeIds{node.PeerIdentity.Pretty(), node.publisher.Pretty()}
+
+	err := json.NewEncoder(w).Encode(nids)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+type NodeIds struct {
+	Peer      string `json:"peer"`
+	Publisher string `json:"publisher"`
 }
 
 // GET /ping/{peerId}
