@@ -29,7 +29,7 @@ func apiError(w http.ResponseWriter, status int, err error) {
 // GET /id
 // Returns the node peer identity.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, node.Identity.Pretty())
+	fmt.Fprintln(w, node.NodeIdentity.Pretty())
 }
 
 // GET /ping/{peerId}

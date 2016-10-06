@@ -9,31 +9,42 @@ import (
 	"path"
 )
 
-// node identities
-type Identity struct {
+// Identities: NodeIdentity and PublisherIdentity
+// the structs are different because the semantics of id differ
+// NodeIdentities use the raw public key hash as dictated by libp2p
+//  they use RSA keys for interop with js, which is lagging in libp2p-crypto
+// PublisherIdentities use the base58 encoded public key as identifier
+//  they use ECC (Ed25519) keys and sign statements with them
+type NodeIdentity struct {
 	ID      p2p_peer.ID
 	PrivKey p2p_crypto.PrivKey
 }
 
-func (id Identity) Pretty() string {
+type PublisherIdentity struct {
+	ID58    string
+	PrivKey p2p_crypto.PrivKey
+}
+
+func (id NodeIdentity) Pretty() string {
 	return id.ID.Pretty()
 }
 
-func NodeIdentity(home string) (empty Identity, err error) {
-	kpath := path.Join(home, "identity")
+func MakeNodeIdentity(home string) (empty NodeIdentity, err error) {
+	kpath := path.Join(home, "identity.node")
 	_, err = os.Stat(kpath)
 	if os.IsNotExist(err) {
-		return generateIdentity(kpath)
+		return generateNodeIdentity(kpath)
 	}
 	if err != nil {
 		return
 	}
-	return loadIdentity(kpath)
+	return loadNodeIdentity(kpath)
 }
 
-func generateIdentity(kpath string) (empty Identity, err error) {
-	log.Printf("Generating new identity")
-	privk, pubk, err := generateKeyPair()
+func generateNodeIdentity(kpath string) (empty NodeIdentity, err error) {
+	log.Printf("Generating new node identity")
+	// RSA keys for interop with js
+	privk, pubk, err := generateRSAKeyPair()
 	if err != nil {
 		return
 	}
@@ -43,29 +54,19 @@ func generateIdentity(kpath string) (empty Identity, err error) {
 		return
 	}
 
-	log.Printf("Saving identity to %s", kpath)
-	bytes, err := privk.Bytes()
+	log.Printf("Saving key to %s", kpath)
+	err = saveKey(privk, kpath)
 	if err != nil {
 		return
 	}
 
-	err = ioutil.WriteFile(kpath, bytes, 0600)
-	if err != nil {
-		return
-	}
-
-	log.Printf("ID: %s", id.Pretty())
-	return Identity{ID: id, PrivKey: privk}, nil
+	log.Printf("Node ID: %s", id.Pretty())
+	return NodeIdentity{ID: id, PrivKey: privk}, nil
 }
 
-func loadIdentity(kpath string) (empty Identity, err error) {
-	log.Printf("Loading identity from %s", kpath)
-	bytes, err := ioutil.ReadFile(kpath)
-	if err != nil {
-		return
-	}
-
-	privk, err := p2p_crypto.UnmarshalPrivateKey(bytes)
+func loadNodeIdentity(kpath string) (empty NodeIdentity, err error) {
+	log.Printf("Loading node identity from %s", kpath)
+	privk, err := loadKey(kpath)
 	if err != nil {
 		return
 	}
@@ -75,11 +76,29 @@ func loadIdentity(kpath string) (empty Identity, err error) {
 		return
 	}
 
-	log.Printf("ID: %s", id.Pretty())
-	return Identity{ID: id, PrivKey: privk}, nil
+	log.Printf("Node ID: %s", id.Pretty())
+	return NodeIdentity{ID: id, PrivKey: privk}, nil
 }
 
-func generateKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
-	// 1kbit RSA just for now -- until ECC key support is merged in libp2p
-	return p2p_crypto.GenerateKeyPair(p2p_crypto.RSA, 1024)
+// Key management
+func loadKey(kpath string) (p2p_crypto.PrivKey, error) {
+	bytes, err := ioutil.ReadFile(kpath)
+	if err != nil {
+		return nil, err
+	}
+
+	return p2p_crypto.UnmarshalPrivateKey(bytes)
+}
+
+func saveKey(privk p2p_crypto.PrivKey, kpath string) error {
+	bytes, err := privk.Bytes()
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(kpath, bytes, 0600)
+}
+
+func generateRSAKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
+	return p2p_crypto.GenerateKeyPair(p2p_crypto.RSA, 2048)
 }

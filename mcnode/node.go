@@ -15,7 +15,7 @@ import (
 )
 
 type Node struct {
-	mc.Identity
+	mc.NodeIdentity
 	status    int
 	laddr     multiaddr.Multiaddr
 	host      p2p_host.Host

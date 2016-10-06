@@ -64,7 +64,7 @@ func (node *Node) goOnline() error {
 }
 
 func (node *Node) _goOnline() error {
-	host, err := mc.NewHost(node.Identity, node.laddr)
+	host, err := mc.NewHost(node.NodeIdentity, node.laddr)
 	if err != nil {
 		return err
 	}

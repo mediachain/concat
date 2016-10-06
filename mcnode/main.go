@@ -32,12 +32,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	id, err := mc.NodeIdentity(*home)
+	id, err := mc.MakeNodeIdentity(*home)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node := &Node{Identity: id, home: *home, laddr: addr}
+	node := &Node{NodeIdentity: id, home: *home, laddr: addr}
 
 	err = node.loadDB()
 	if err != nil {
