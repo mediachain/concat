@@ -97,10 +97,11 @@ func isAddrSubnet(addr multiaddr.Multiaddr, prefix []string) bool {
 }
 
 var (
-	localhostSubnet = []string{"127."}
-	linkLocalSubnet = []string{"169.254."}
-	privateSubnet   = []string{"10.", "172.16.", "192.168."}
-	internalSubnet  = []string{"127.", "169.254.", "10.", "172.16.", "192.168."}
+	localhostSubnet  = []string{"127."}
+	linkLocalSubnet  = []string{"169.254."}
+	privateSubnet    = []string{"10.", "172.16.", "192.168."}
+	unroutableSubnet = []string{"0.", "127.", "169.254."}
+	internalSubnet   = []string{"0.", "127.", "169.254.", "10.", "172.16.", "192.168."}
 )
 
 func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
@@ -113,6 +114,10 @@ func IsLinkLocalAddr(addr multiaddr.Multiaddr) bool {
 
 func IsPrivateAddr(addr multiaddr.Multiaddr) bool {
 	return isAddrSubnet(addr, privateSubnet)
+}
+
+func IsRoutableAddr(addr multiaddr.Multiaddr) bool {
+	return !isAddrSubnet(addr, unroutableSubnet)
 }
 
 func IsPublicAddr(addr multiaddr.Multiaddr) bool {

@@ -158,7 +158,9 @@ func main() {
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
 
 	for _, addr := range host.Addrs() {
-		log.Printf("I am %s/%s", addr, id.Pretty())
+		if !mc.IsLinkLocalAddr(addr) {
+			log.Printf("I am %s/%s", addr, id.Pretty())
+		}
 	}
 	select {}
 }

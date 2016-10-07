@@ -310,10 +310,8 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 // So, depending on the directory ip address:
 //  If the directory is on the localhost, return the localhost address reported
 //   by the host
-//  If the directory is link local, return the link local address reported
-//   by the host
 //  If the directory is in a private range, filter Addrs reported by the
-//   host, dropping localhost and link local addresses
+//   host, dropping unroutable addresses
 //  If the directory is in a public range, then
 //   If the NAT config is manual, return the configured address
 //   If the NAT is auto or none, filter the addresses returned by the host,
@@ -328,13 +326,8 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 	case mc.IsLocalhostAddr(dir):
 		return mc.FilterAddrs(node.host.Addrs(), mc.IsLocalhostAddr)
 
-	case mc.IsLinkLocalAddr(dir):
-		return mc.FilterAddrs(node.host.Addrs(), mc.IsLinkLocalAddr)
-
 	case mc.IsPrivateAddr(dir):
-		return mc.FilterAddrs(node.host.Addrs(), func(addr multiaddr.Multiaddr) bool {
-			return !mc.IsLocalhostAddr(addr) && !mc.IsLinkLocalAddr(addr)
-		})
+		return mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
 
 	default:
 		switch node.natCfg.opt {
