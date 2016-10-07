@@ -102,7 +102,8 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) listHandler(s p2p_net.Stream) {
-
+	// Implement Me!
+	s.Close()
 }
 
 func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
@@ -141,7 +142,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *port))
+	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *port))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -156,6 +157,10 @@ func main() {
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
 
-	log.Printf("I am %s/%s", addr, id.Pretty())
+	for _, addr := range host.Addrs() {
+		if !mc.IsLinkLocalAddr(addr) {
+			log.Printf("I am %s/%s", addr, id.Pretty())
+		}
+	}
 	select {}
 }

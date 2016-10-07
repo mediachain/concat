@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *pport))
+	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *pport))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,6 +44,11 @@ func main() {
 
 	node := &Node{PeerIdentity: id, publisher: pubid, home: *home, laddr: addr}
 
+	err = node.loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = node.loadDB()
 	if err != nil {
 		log.Fatal(err)
@@ -64,6 +69,7 @@ func main() {
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
 	router.HandleFunc("/config/dir", node.httpConfigDir)
+	router.HandleFunc("/config/nat", node.httpConfigNAT)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)

@@ -11,6 +11,8 @@ import (
 	p2p_swarm "github.com/libp2p/go-libp2p-swarm"
 	p2p_bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"log"
+	"net"
 	"strings"
 )
 
@@ -59,14 +61,17 @@ func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
 	return p2p_pstore.PeerInfo{ID: pid}, nil
 }
 
-func NewHost(id PeerIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, error) {
+// re-export this option to avoid basic host interface leakage
+const NATPortMap = p2p_bhost.NATPortMap
+
+func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p2p_host.Host, error) {
 	pstore := p2p_pstore.NewPeerstore()
 	pstore.AddPrivKey(id.ID, id.PrivKey)
 	pstore.AddPubKey(id.ID, id.PrivKey.GetPublic())
 
 	netw, err := p2p_swarm.NewNetwork(
 		context.Background(),
-		addrs,
+		[]multiaddr.Multiaddr{laddr},
 		id.ID,
 		pstore,
 		p2p_metrics.NewBandwidthCounter())
@@ -74,5 +79,92 @@ func NewHost(id PeerIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, erro
 		return nil, err
 	}
 
-	return p2p_bhost.New(netw), nil
+	return p2p_bhost.New(netw, opts...), nil
+}
+
+// multiaddr juggling
+func isAddrSubnet(addr multiaddr.Multiaddr, nets []*net.IPNet) bool {
+	ipstr, err := addr.ValueForProtocol(multiaddr.P_IP4)
+	if err != nil {
+		return false
+	}
+
+	ip := net.ParseIP(ipstr)
+	if ip == nil {
+		return false
+	}
+
+	for _, net := range nets {
+		if net.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
+}
+
+var (
+	localhostCIDR  = []string{"127.0.0.0/8"}
+	linkLocalCIDR  = []string{"169.254.0.0/16"}
+	privateCIDR    = []string{"10.0.0.0/8", "100.64.0.0/10", "172.16.0.0/12", "192.168.0.0/16"}
+	unroutableCIDR = []string{"0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16"}
+	internalCIDR   = []string{"0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "10.0.0.0/8", "100.64.0.0/10", "172.16.0.0/12", "192.168.0.0/16"}
+)
+
+var (
+	localhostSubnet  []*net.IPNet
+	linkLocalSubnet  []*net.IPNet
+	privateSubnet    []*net.IPNet
+	unroutableSubnet []*net.IPNet
+	internalSubnet   []*net.IPNet
+)
+
+func makeSubnetSpec(subnets []string) []*net.IPNet {
+	nets := make([]*net.IPNet, len(subnets))
+	for x, subnet := range subnets {
+		_, net, err := net.ParseCIDR(subnet)
+		if err != nil {
+			log.Fatal(err)
+		}
+		nets[x] = net
+	}
+	return nets
+}
+
+func init() {
+	localhostSubnet = makeSubnetSpec(localhostCIDR)
+	linkLocalSubnet = makeSubnetSpec(linkLocalCIDR)
+	privateSubnet = makeSubnetSpec(privateCIDR)
+	unroutableSubnet = makeSubnetSpec(unroutableCIDR)
+	internalSubnet = makeSubnetSpec(internalCIDR)
+}
+
+func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
+	return isAddrSubnet(addr, localhostSubnet)
+}
+
+func IsLinkLocalAddr(addr multiaddr.Multiaddr) bool {
+	return isAddrSubnet(addr, linkLocalSubnet)
+}
+
+func IsPrivateAddr(addr multiaddr.Multiaddr) bool {
+	return isAddrSubnet(addr, privateSubnet)
+}
+
+func IsRoutableAddr(addr multiaddr.Multiaddr) bool {
+	return !isAddrSubnet(addr, unroutableSubnet)
+}
+
+func IsPublicAddr(addr multiaddr.Multiaddr) bool {
+	return !isAddrSubnet(addr, internalSubnet)
+}
+
+func FilterAddrs(addrs []multiaddr.Multiaddr, predf func(multiaddr.Multiaddr) bool) []multiaddr.Multiaddr {
+	res := make([]multiaddr.Multiaddr, 0, len(addrs))
+	for _, addr := range addrs {
+		if predf(addr) {
+			res = append(res, addr)
+		}
+	}
+	return res
 }

@@ -65,7 +65,12 @@ func (node *Node) goOnline() error {
 }
 
 func (node *Node) _goOnline() error {
-	host, err := mc.NewHost(node.PeerIdentity, node.laddr)
+	var opts []interface{}
+	if node.natCfg.opt == NATConfigAuto {
+		opts = []interface{}{mc.NATPortMap}
+	}
+
+	host, err := mc.NewHost(node.PeerIdentity, node.laddr, opts...)
 	if err != nil {
 		return err
 	}
@@ -100,7 +105,7 @@ func (node *Node) goPublic() error {
 		fallthrough
 
 	case StatusOnline:
-		go node.registerPeer(node.netCtx, node.laddr)
+		go node.registerPeer(node.netCtx)
 		node.status = StatusPublic
 
 		log.Println("Node is public")
@@ -230,9 +235,9 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 	}
 }
 
-func (node *Node) registerPeer(ctx context.Context, addrs ...multiaddr.Multiaddr) {
+func (node *Node) registerPeer(ctx context.Context) {
 	for {
-		err := node.registerPeerImpl(ctx, addrs...)
+		err := node.registerPeerImpl(ctx)
 		if err == nil {
 			return
 		}
@@ -249,7 +254,7 @@ func (node *Node) registerPeer(ctx context.Context, addrs ...multiaddr.Multiaddr
 	}
 }
 
-func (node *Node) registerPeerImpl(ctx context.Context, addrs ...multiaddr.Multiaddr) error {
+func (node *Node) registerPeerImpl(ctx context.Context) error {
 	err := node.host.Connect(ctx, *node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
@@ -263,18 +268,30 @@ func (node *Node) registerPeerImpl(ctx context.Context, addrs ...multiaddr.Multi
 	}
 	defer s.Close()
 
-	pinfo := p2p_pstore.PeerInfo{node.ID, addrs}
+	var pinfo = p2p_pstore.PeerInfo{ID: node.ID}
 	var pbpi pb.PeerInfo
-	mc.PBFromPeerInfo(&pbpi, pinfo)
-	msg := pb.RegisterPeer{&pbpi}
 
 	w := ggio.NewDelimitedWriter(s)
 	for {
-		log.Printf("Registering with directory")
-		err = w.WriteMsg(&msg)
-		if err != nil {
-			log.Printf("Failed to register with directory: %s", err.Error())
-			return err
+		addrs := node.publicAddrs()
+
+		if len(addrs) > 0 {
+			log.Printf("Registering with directory")
+			for _, addr := range addrs {
+				log.Printf("Public address: %s", addr.String())
+			}
+
+			pinfo.Addrs = addrs
+			mc.PBFromPeerInfo(&pbpi, pinfo)
+			msg := pb.RegisterPeer{&pbpi}
+
+			err = w.WriteMsg(&msg)
+			if err != nil {
+				log.Printf("Failed to register with directory: %s", err.Error())
+				return err
+			}
+		} else {
+			log.Printf("Skipped directory registration; no public address")
 		}
 
 		select {
@@ -283,6 +300,42 @@ func (node *Node) registerPeerImpl(ctx context.Context, addrs ...multiaddr.Multi
 
 		case <-time.After(5 * time.Minute):
 			continue
+		}
+	}
+}
+
+// The notion of public address is relative to the network location of the directory
+// We want to support directories running on localhost (testing) or in a private network,
+// and on the same time not leak internal addresses in public directory announcements.
+// So, depending on the directory ip address:
+//  If the directory is on the localhost, return the localhost address reported
+//   by the host
+//  If the directory is in a private range, filter Addrs reported by the
+//   host, dropping unroutable addresses
+//  If the directory is in a public range, then
+//   If the NAT config is manual, return the configured address
+//   If the NAT is auto or none, filter the addresses returned by the host,
+//      and return only public addresses
+func (node *Node) publicAddrs() []multiaddr.Multiaddr {
+	if node.status == StatusOffline || node.dir == nil {
+		return nil
+	}
+
+	dir := node.dir.Addrs[0]
+	switch {
+	case mc.IsLocalhostAddr(dir):
+		return mc.FilterAddrs(node.host.Addrs(), mc.IsLocalhostAddr)
+
+	case mc.IsPrivateAddr(dir):
+		return mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
+
+	default:
+		switch node.natCfg.opt {
+		case NATConfigManual:
+			return []multiaddr.Multiaddr{node.natCfg.addr}
+
+		default:
+			return mc.FilterAddrs(node.host.Addrs(), mc.IsPublicAddr)
 		}
 	}
 }

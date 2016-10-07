@@ -365,31 +365,40 @@ func (node *Node) httpStatusSet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, statusString[node.status])
 }
 
-// GET  /config/dir
-// POST /config/dir
-// retrieve/set the configured directory
-func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
+// config api
+func apiConfigMethod(w http.ResponseWriter, r *http.Request, getf, setf http.HandlerFunc) {
 	switch r.Method {
 	case http.MethodHead:
 		return
 	case http.MethodGet:
-		if node.dir != nil {
-			fmt.Fprintln(w, mc.FormatHandle(*node.dir))
-		} else {
-			fmt.Fprintln(w, "nil")
-		}
+		getf(w, r)
 	case http.MethodPost:
-		node.httpConfigDirSet(w, r)
+		setf(w, r)
 
 	default:
 		apiError(w, http.StatusBadRequest, BadMethod)
 	}
 }
 
+// GET  /config/dir
+// POST /config/dir
+// retrieve/set the configured directory
+func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpConfigDirGet, node.httpConfigDirSet)
+}
+
+func (node *Node) httpConfigDirGet(w http.ResponseWriter, r *http.Request) {
+	if node.dir != nil {
+		fmt.Fprintln(w, mc.FormatHandle(*node.dir))
+	} else {
+		fmt.Fprintln(w, "nil")
+	}
+}
+
 func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("http/query: Error reading request body: %s", err.Error())
+		log.Printf("http/config/dir: Error reading request body: %s", err.Error())
 		return
 	}
 
@@ -402,5 +411,48 @@ func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.dir = &pinfo
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// GET  /config/nat
+// POST /config/nat
+// retrieve/set the NAT configuration
+func (node *Node) httpConfigNAT(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpConfigNATGet, node.httpConfigNATSet)
+}
+
+func (node *Node) httpConfigNATGet(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, node.natCfg.String())
+}
+
+func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/config/nat: Error reading request body: %s", err.Error())
+		return
+	}
+
+	opt := strings.TrimSpace(string(body))
+	cfg, err := NATConfigFromString(opt)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	node.natCfg = cfg
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	fmt.Fprintln(w, "OK")
 }

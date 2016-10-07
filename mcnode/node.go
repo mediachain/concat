@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
@@ -12,6 +13,9 @@ import (
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"io/ioutil"
+	"os"
+	"path"
 	"sync"
 	"time"
 )
@@ -25,6 +29,7 @@ type Node struct {
 	netCtx    context.Context
 	netCancel context.CancelFunc
 	dir       *p2p_pstore.PeerInfo
+	natCfg    NATConfig
 	home      string
 	db        StatementDB
 	mx        sync.Mutex
@@ -44,14 +49,6 @@ type StatementDB interface {
 	Close() error
 }
 
-const (
-	StatusOffline = iota
-	StatusOnline
-	StatusPublic
-)
-
-var statusString = []string{"offline", "online", "public"}
-
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	BadStatementBody = errors.New("Unrecognized statement body")
@@ -63,6 +60,55 @@ var (
 	BadStatement     = errors.New("Bad statement; verification failed")
 	NoResult         = errors.New("Empty result set")
 )
+
+const (
+	StatusOffline = iota
+	StatusOnline
+	StatusPublic
+)
+
+var statusString = []string{"offline", "online", "public"}
+
+type NATConfig struct {
+	opt  int
+	addr multiaddr.Multiaddr // public address when option = NATConfigManual
+}
+
+const (
+	NATConfigNone = iota
+	NATConfigAuto
+	NATConfigManual
+)
+
+var natConfigString = []string{"none", "auto", "manual"}
+
+func (cfg NATConfig) String() string {
+	switch cfg.opt {
+	case NATConfigManual:
+		return cfg.addr.String()
+	default:
+		return natConfigString[cfg.opt]
+	}
+}
+
+func NATConfigFromString(str string) (cfg NATConfig, err error) {
+	switch str {
+	case "none":
+		cfg.opt = NATConfigNone
+		return cfg, nil
+	case "auto":
+		cfg.opt = NATConfigAuto
+		return cfg, nil
+	default:
+		addr, err := mc.ParseAddress(str)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.opt = NATConfigManual
+		cfg.addr = addr
+		return cfg, nil
+	}
+}
 
 type StreamError struct {
 	Err string `json:"error"`
@@ -207,4 +253,60 @@ func (node *Node) verifyStatementSig(stmt *pb.Statement, pubk p2p_crypto.PubKey)
 func (node *Node) loadDB() error {
 	node.db = &SQLiteDB{}
 	return node.db.Open(node.home)
+}
+
+// persistent configuration
+type NodeConfig struct {
+	NAT string `json:"nat,omitempty"`
+	Dir string `json:"dir,omitempty"`
+}
+
+func (node *Node) saveConfig() error {
+	var cfg NodeConfig
+	cfg.NAT = node.natCfg.String()
+	if node.dir != nil {
+		cfg.Dir = mc.FormatHandle(*node.dir)
+	}
+
+	bytes, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	cfgpath := path.Join(node.home, "config.json")
+	return ioutil.WriteFile(cfgpath, bytes, 0644)
+}
+
+func (node *Node) loadConfig() error {
+	cfgpath := path.Join(node.home, "config.json")
+
+	bytes, err := ioutil.ReadFile(cfgpath)
+	switch {
+	case os.IsNotExist(err):
+		return nil
+	case err != nil:
+		return err
+	}
+
+	var cfg NodeConfig
+	err = json.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return err
+	}
+
+	natCfg, err := NATConfigFromString(cfg.NAT)
+	if err != nil {
+		return err
+	}
+	node.natCfg = natCfg
+
+	if cfg.Dir != "" {
+		pinfo, err := mc.ParseHandle(cfg.Dir)
+		if err != nil {
+			return err
+		}
+		node.dir = &pinfo
+	}
+
+	return nil
 }
