@@ -422,12 +422,7 @@ func (node *Node) httpConfigNAT(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpConfigNATGet(w http.ResponseWriter, r *http.Request) {
-	switch node.natCfg.opt {
-	case NATConfigManual:
-		fmt.Fprintln(w, node.natCfg.addr.String())
-	default:
-		fmt.Fprintln(w, natConfigString[node.natCfg.opt])
-	}
+	fmt.Fprintln(w, node.natCfg.String())
 }
 
 func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
@@ -438,20 +433,12 @@ func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opt := strings.TrimSpace(string(body))
-	switch opt {
-	case "none":
-		node.natCfg.opt = NATConfigNone
-	case "auto":
-		node.natCfg.opt = NATConfigAuto
-	default:
-		addr, err := mc.ParseAddress(opt)
-		if err != nil {
-			apiError(w, http.StatusBadRequest, err)
-			return
-		}
-		node.natCfg.opt = NATConfigManual
-		node.natCfg.addr = addr
+	cfg, err := NATConfigFromString(opt)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
 	}
 
+	node.natCfg = cfg
 	fmt.Fprintln(w, "OK")
 }

@@ -45,6 +45,18 @@ type StatementDB interface {
 	Close() error
 }
 
+var (
+	UnknownStatement = errors.New("Unknown statement")
+	BadStatementBody = errors.New("Unrecognized statement body")
+	BadQuery         = errors.New("Unexpected query")
+	BadState         = errors.New("Unrecognized state")
+	BadMethod        = errors.New("Unsupported method")
+	BadNamespace     = errors.New("Illegal namespace")
+	BadResult        = errors.New("Bad result set")
+	BadStatement     = errors.New("Bad statement; verification failed")
+	NoResult         = errors.New("Empty result set")
+)
+
 const (
 	StatusOffline = iota
 	StatusOnline
@@ -66,17 +78,33 @@ const (
 
 var natConfigString = []string{"none", "auto", "manual"}
 
-var (
-	UnknownStatement = errors.New("Unknown statement")
-	BadStatementBody = errors.New("Unrecognized statement body")
-	BadQuery         = errors.New("Unexpected query")
-	BadState         = errors.New("Unrecognized state")
-	BadMethod        = errors.New("Unsupported method")
-	BadNamespace     = errors.New("Illegal namespace")
-	BadResult        = errors.New("Bad result set")
-	BadStatement     = errors.New("Bad statement; verification failed")
-	NoResult         = errors.New("Empty result set")
-)
+func (cfg NATConfig) String() string {
+	switch cfg.opt {
+	case NATConfigManual:
+		return cfg.addr.String()
+	default:
+		return natConfigString[cfg.opt]
+	}
+}
+
+func NATConfigFromString(str string) (cfg NATConfig, err error) {
+	switch str {
+	case "none":
+		cfg.opt = NATConfigNone
+		return cfg, nil
+	case "auto":
+		cfg.opt = NATConfigAuto
+		return cfg, nil
+	default:
+		addr, err := mc.ParseAddress(str)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.opt = NATConfigManual
+		cfg.addr = addr
+		return cfg, nil
+	}
+}
 
 type StreamError struct {
 	Err string `json:"error"`
