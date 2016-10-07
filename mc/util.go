@@ -81,20 +81,42 @@ func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p
 }
 
 // multiaddr juggling
-func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
+func isAddrSubnet(addr multiaddr.Multiaddr, prefix []string) bool {
+	ip, err := addr.ValueForProtocol(multiaddr.P_IP4)
+	if err != nil {
+		return false
+	}
+
+	for _, pre := range prefix {
+		if strings.HasPrefix(ip, pre) {
+			return true
+		}
+	}
+
 	return false
+}
+
+var (
+	localhostSubnet = []string{"127."}
+	linkLocalSubnet = []string{"169.254."}
+	privateSubnet   = []string{"10.", "172.16.", "192.168."}
+	internalSubnet  = []string{"127.", "169.254.", "10.", "172.16.", "192.168."}
+)
+
+func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
+	return isAddrSubnet(addr, localhostSubnet)
 }
 
 func IsLinkLocalAddr(addr multiaddr.Multiaddr) bool {
-	return false
+	return isAddrSubnet(addr, linkLocalSubnet)
 }
 
 func IsPrivateAddr(addr multiaddr.Multiaddr) bool {
-	return false
+	return isAddrSubnet(addr, privateSubnet)
 }
 
 func IsPublicAddr(addr multiaddr.Multiaddr) bool {
-	return false
+	return !isAddrSubnet(addr, internalSubnet)
 }
 
 func FilterAddrs(addrs []multiaddr.Multiaddr, predf func(multiaddr.Multiaddr) bool) []multiaddr.Multiaddr {
