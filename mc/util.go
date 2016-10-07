@@ -11,6 +11,8 @@ import (
 	p2p_swarm "github.com/libp2p/go-libp2p-swarm"
 	p2p_bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"log"
+	"net"
 	"strings"
 )
 
@@ -81,14 +83,19 @@ func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p
 }
 
 // multiaddr juggling
-func isAddrSubnet(addr multiaddr.Multiaddr, prefix []string) bool {
-	ip, err := addr.ValueForProtocol(multiaddr.P_IP4)
+func isAddrSubnet(addr multiaddr.Multiaddr, nets []*net.IPNet) bool {
+	ipstr, err := addr.ValueForProtocol(multiaddr.P_IP4)
 	if err != nil {
 		return false
 	}
 
-	for _, pre := range prefix {
-		if strings.HasPrefix(ip, pre) {
+	ip := net.ParseIP(ipstr)
+	if ip == nil {
+		return false
+	}
+
+	for _, net := range nets {
+		if net.Contains(ip) {
 			return true
 		}
 	}
@@ -97,12 +104,40 @@ func isAddrSubnet(addr multiaddr.Multiaddr, prefix []string) bool {
 }
 
 var (
-	localhostSubnet  = []string{"127."}
-	linkLocalSubnet  = []string{"169.254."}
-	privateSubnet    = []string{"10.", "172.16.", "192.168."}
-	unroutableSubnet = []string{"0.", "127.", "169.254."}
-	internalSubnet   = []string{"0.", "127.", "169.254.", "10.", "172.16.", "192.168."}
+	localhostCIDR  = []string{"127.0.0.0/8"}
+	linkLocalCIDR  = []string{"169.254.0.0/16"}
+	privateCIDR    = []string{"10.0.0.0/8", "100.64.0.0/10", "172.16.0.0/12", "192.168.0.0/16"}
+	unroutableCIDR = []string{"0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16"}
+	internalCIDR   = []string{"0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "10.0.0.0/8", "100.64.0.0/10", "172.16.0.0/12", "192.168.0.0/16"}
 )
+
+var (
+	localhostSubnet  []*net.IPNet
+	linkLocalSubnet  []*net.IPNet
+	privateSubnet    []*net.IPNet
+	unroutableSubnet []*net.IPNet
+	internalSubnet   []*net.IPNet
+)
+
+func makeSubnetSpec(subnets []string) []*net.IPNet {
+	nets := make([]*net.IPNet, len(subnets))
+	for x, subnet := range subnets {
+		_, net, err := net.ParseCIDR(subnet)
+		if err != nil {
+			log.Fatal(err)
+		}
+		nets[x] = net
+	}
+	return nets
+}
+
+func init() {
+	localhostSubnet = makeSubnetSpec(localhostCIDR)
+	linkLocalSubnet = makeSubnetSpec(linkLocalCIDR)
+	privateSubnet = makeSubnetSpec(privateCIDR)
+	unroutableSubnet = makeSubnetSpec(unroutableCIDR)
+	internalSubnet = makeSubnetSpec(internalCIDR)
+}
 
 func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
 	return isAddrSubnet(addr, localhostSubnet)
