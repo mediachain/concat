@@ -44,6 +44,11 @@ func main() {
 
 	node := &Node{PeerIdentity: id, publisher: pubid, home: *home, laddr: addr}
 
+	err = node.loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = node.loadDB()
 	if err != nil {
 		log.Fatal(err)

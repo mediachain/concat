@@ -411,6 +411,13 @@ func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.dir = &pinfo
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	fmt.Fprintln(w, "OK")
 }
 
@@ -440,5 +447,12 @@ func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.natCfg = cfg
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	fmt.Fprintln(w, "OK")
 }
