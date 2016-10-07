@@ -25,6 +25,7 @@ type Node struct {
 	netCtx    context.Context
 	netCancel context.CancelFunc
 	dir       *p2p_pstore.PeerInfo
+	natCfg    NATConfig
 	home      string
 	db        StatementDB
 	mx        sync.Mutex
@@ -51,6 +52,17 @@ const (
 )
 
 var statusString = []string{"offline", "online", "public"}
+
+type NATConfig struct {
+	opt  int
+	addr multiaddr.Multiaddr // public address when option = NATConfigManual
+}
+
+const (
+	NATConfigNone = iota
+	NATConfigAuto
+	NATConfigManual
+)
 
 var (
 	UnknownStatement = errors.New("Unknown statement")

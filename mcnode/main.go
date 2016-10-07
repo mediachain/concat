@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", *pport))
+	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *pport))
 	if err != nil {
 		log.Fatal(err)
 	}

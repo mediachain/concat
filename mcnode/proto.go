@@ -65,7 +65,12 @@ func (node *Node) goOnline() error {
 }
 
 func (node *Node) _goOnline() error {
-	host, err := mc.NewHost(node.PeerIdentity, node.laddr)
+	var opts []interface{}
+	if node.natCfg.opt == NATConfigAuto {
+		opts = []interface{}{mc.NATPortMap}
+	}
+
+	host, err := mc.NewHost(node.PeerIdentity, node.laddr, opts...)
 	if err != nil {
 		return err
 	}

@@ -59,14 +59,17 @@ func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
 	return p2p_pstore.PeerInfo{ID: pid}, nil
 }
 
-func NewHost(id PeerIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, error) {
+// re-export this option to avoid basic host interface leakage
+const NATPortMap = p2p_bhost.NATPortMap
+
+func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p2p_host.Host, error) {
 	pstore := p2p_pstore.NewPeerstore()
 	pstore.AddPrivKey(id.ID, id.PrivKey)
 	pstore.AddPubKey(id.ID, id.PrivKey.GetPublic())
 
 	netw, err := p2p_swarm.NewNetwork(
 		context.Background(),
-		addrs,
+		[]multiaddr.Multiaddr{laddr},
 		id.ID,
 		pstore,
 		p2p_metrics.NewBandwidthCounter())
@@ -74,5 +77,5 @@ func NewHost(id PeerIdentity, addrs ...multiaddr.Multiaddr) (p2p_host.Host, erro
 		return nil, err
 	}
 
-	return p2p_bhost.New(netw), nil
+	return p2p_bhost.New(netw, opts...), nil
 }
