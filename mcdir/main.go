@@ -157,12 +157,7 @@ func main() {
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
 
-	addrs, err := host.Network().InterfaceListenAddresses()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, addr := range addrs {
+	for _, addr := range host.Addrs() {
 		log.Printf("I am %s/%s", addr, id.Pretty())
 	}
 	select {}
