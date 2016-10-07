@@ -64,6 +64,8 @@ const (
 	NATConfigManual
 )
 
+var natConfigString = []string{"none", "auto", "manual"}
+
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	BadStatementBody = errors.New("Unrecognized statement body")
