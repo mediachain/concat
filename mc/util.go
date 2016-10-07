@@ -79,3 +79,30 @@ func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p
 
 	return p2p_bhost.New(netw, opts...), nil
 }
+
+// multiaddr juggling
+func IsLocalhostAddr(addr multiaddr.Multiaddr) bool {
+	return false
+}
+
+func IsLinkLocalAddr(addr multiaddr.Multiaddr) bool {
+	return false
+}
+
+func IsPrivateAddr(addr multiaddr.Multiaddr) bool {
+	return false
+}
+
+func IsPublicAddr(addr multiaddr.Multiaddr) bool {
+	return false
+}
+
+func FilterAddrs(addrs []multiaddr.Multiaddr, predf func(multiaddr.Multiaddr) bool) []multiaddr.Multiaddr {
+	res := make([]multiaddr.Multiaddr, 0, len(addrs))
+	for _, addr := range addrs {
+		if predf(addr) {
+			res = append(res, addr)
+		}
+	}
+	return res
+}
