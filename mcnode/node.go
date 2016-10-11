@@ -268,8 +268,8 @@ func (node *Node) openDB() error {
 }
 
 func (node *Node) openDS() error {
-	// XXX Implement me!
-	return nil
+	node.ds = &RocksDS{}
+	return node.ds.Open(node.home)
 }
 
 // persistent configuration
