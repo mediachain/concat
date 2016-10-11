@@ -49,7 +49,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = node.loadDB()
+	err = node.openDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = node.openDS()
 	if err != nil {
 		log.Fatal(err)
 	}

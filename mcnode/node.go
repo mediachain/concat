@@ -13,6 +13,7 @@ import (
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	multihash "github.com/multiformats/go-multihash"
 	"io/ioutil"
 	"os"
 	"path"
@@ -32,6 +33,7 @@ type Node struct {
 	natCfg    NATConfig
 	home      string
 	db        StatementDB
+	ds        Datastore
 	mx        sync.Mutex
 	counter   int
 }
@@ -46,6 +48,16 @@ type StatementDB interface {
 	QueryOne(*mcq.Query) (interface{}, error)
 	Merge(*pb.Statement) (bool, error)
 	Delete(*mcq.Query) (int, error)
+	Close() error
+}
+
+type Key multihash.Multihash
+type Datastore interface {
+	Open(home string) error
+	Put(data []byte) (Key, error)
+	Has(Key) (bool, error)
+	Get(Key) ([]byte, error)
+	Delete(Key) error
 	Close() error
 }
 
@@ -250,9 +262,14 @@ func (node *Node) verifyStatementSig(stmt *pb.Statement, pubk p2p_crypto.PubKey)
 	return pubk.Verify(bytes, sig)
 }
 
-func (node *Node) loadDB() error {
+func (node *Node) openDB() error {
 	node.db = &SQLiteDB{}
 	return node.db.Open(node.home)
+}
+
+func (node *Node) openDS() error {
+	// XXX Implement me!
+	return nil
 }
 
 // persistent configuration
