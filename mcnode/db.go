@@ -315,8 +315,14 @@ func (sdb *SQLiteDB) Open(home string) error {
 		dbpath = home
 		mktables = true
 	} else {
-		dbpath = path.Join(home, "stmt.db")
-		_, err := os.Stat(dbpath)
+		dbdir := path.Join(home, "stmt")
+		err := os.MkdirAll(dbdir, 0755)
+		if err != nil {
+			return err
+		}
+
+		dbpath = path.Join(dbdir, "stmt.db")
+		_, err = os.Stat(dbpath)
 		switch {
 		case os.IsNotExist(err):
 			mktables = true
