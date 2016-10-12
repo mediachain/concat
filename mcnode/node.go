@@ -64,6 +64,7 @@ type Datastore interface {
 
 var (
 	UnknownStatement = errors.New("Unknown statement")
+	UnknownObject    = errors.New("Unknown Object")
 	BadStatementBody = errors.New("Unrecognized statement body")
 	BadQuery         = errors.New("Unexpected query")
 	BadState         = errors.New("Unrecognized state")

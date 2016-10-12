@@ -10,6 +10,7 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	multihash "github.com/multiformats/go-multihash"
 	"io"
 	"io/ioutil"
 	"log"
@@ -33,8 +34,7 @@ func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewEncoder(w).Encode(nids)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
-		return
+		log.Printf("Error writing response body: %s", err.Error())
 	}
 }
 
@@ -150,8 +150,7 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(stmt)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
-		return
+		log.Printf("Error writing response body: %s", err.Error())
 	}
 }
 
@@ -326,6 +325,48 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, count)
+}
+
+// datastore interface
+type DataObject struct {
+	Data []byte `json:"data"`
+}
+
+// Get /data/get/{objectId}
+// Retrieves a data object from the datastore
+func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key58 := vars["objectId"]
+	key, err := multihash.FromB58String(key58)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := node.ds.Get(Key(key))
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if data == nil {
+		apiError(w, http.StatusNotFound, UnknownObject)
+		return
+	}
+
+	dao := DataObject{data}
+	err = json.NewEncoder(w).Encode(dao)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
+// POST /data/put
+// DATA: A stream of json-encoded data objects
+// Puts a batch of objects to the datastore
+// returns a stream of object ids (B58 encoded content multihashes)
+func (node *Node) httpPutData(w http.ResponseWriter, r *http.Request) {
+
 }
 
 // GET /status
