@@ -366,7 +366,40 @@ func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
 // Puts a batch of objects to the datastore
 // returns a stream of object ids (B58 encoded content multihashes)
 func (node *Node) httpPutData(w http.ResponseWriter, r *http.Request) {
+	rbody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/data/put: Error reading request body: %s", err.Error())
+		return
+	}
 
+	dec := json.NewDecoder(bytes.NewReader(rbody))
+	batch := make([][]byte, 0)
+
+	var dao DataObject
+loop:
+	for {
+		err = dec.Decode(&dao)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			apiError(w, http.StatusBadRequest, err)
+			return
+		default:
+			batch = append(batch, dao.Data)
+			dao.Data = nil
+		}
+	}
+
+	keys, err := node.ds.PutBatch(batch)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, key := range keys {
+		fmt.Fprintln(w, multihash.Multihash(key).B58String())
+	}
 }
 
 // GET /status
