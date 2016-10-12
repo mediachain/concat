@@ -13,6 +13,7 @@ import (
 func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
+	bindaddr := flag.String("b", "127.0.0.1", "Peer control bind address [http]")
 	home := flag.String("d", "/tmp/mcnode", "Node home")
 	flag.Parse()
 
@@ -56,7 +57,7 @@ func main() {
 
 	log.Println("Node is offline")
 
-	haddr := fmt.Sprintf("127.0.0.1:%d", *cport)
+	haddr := fmt.Sprintf("%s:%d", *bindaddr, *cport)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/id", node.httpId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
