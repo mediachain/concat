@@ -55,6 +55,7 @@ type Key multihash.Multihash
 type Datastore interface {
 	Open(home string) error
 	Put(data []byte) (Key, error)
+	PutBatch(batch [][]byte) ([]Key, error)
 	Has(Key) (bool, error)
 	Get(Key) ([]byte, error)
 	Delete(Key) error

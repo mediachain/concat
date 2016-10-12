@@ -51,6 +51,25 @@ func (ds *RocksDS) Put(data []byte) (Key, error) {
 	return Key(key), err
 }
 
+func (ds *RocksDS) PutBatch(batch [][]byte) ([]Key, error) {
+	keys := make([]Key, len(batch))
+	wb := rocksdb.NewWriteBatch()
+	defer wb.Destroy()
+
+	for x, data := range batch {
+		key := mc.Hash(data)
+		wb.Put(key[2:], data)
+		keys[x] = Key(key)
+	}
+
+	err := ds.db.Write(ds.wo, wb)
+	if err != nil {
+		return nil, err
+	}
+
+	return keys, nil
+}
+
 func (ds *RocksDS) Has(key Key) (bool, error) {
 	// gorocksdb has no native key check, so we need to do a get
 	// small optimization: use Get instead of GetBytes to avoid the extra copy
