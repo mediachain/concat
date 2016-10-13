@@ -589,7 +589,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	defer s.Close()
 
 	const batch = 8192
-	stmts := make([]*pb.Statement, 0, batch)
+	keys := make(map[string]Key)
 
 	for val := range ch {
 		switch val := val.(type) {
@@ -616,14 +616,17 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 				count += 1
 			}
 
-			stmts = append(stmts, val)
-			if len(stmts) == batch {
-				bcount, err := node.doMergeData(s, stmts)
+			err = node.statementMergeKeys(val, keys)
+			if err != nil {
+				return count, ocount, err
+			}
+
+			if len(keys) > batch {
+				bcount, err := node.doMergeData(s, keys)
 				ocount += bcount
 				if err != nil {
 					return count, ocount, err
 				}
-				stmts = stmts[:0]
 			}
 
 		case StreamError:
@@ -634,8 +637,8 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 		}
 	}
 
-	if len(stmts) > 0 {
-		bcount, err := node.doMergeData(s, stmts)
+	if len(keys) > 0 {
+		bcount, err := node.doMergeData(s, keys)
 		ocount += bcount
 		if err != nil {
 			return count, ocount, err
@@ -645,20 +648,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	return count, ocount, nil
 }
 
-func (node *Node) doMergeData(s p2p_net.Stream, stmts []*pb.Statement) (count int, err error) {
-	keys := make(map[string]Key) // object set for this statement batch
-
-	for _, stmt := range stmts {
-		err = node.statementMergeKeys(stmt, keys)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	if len(keys) == 0 { // nothing to merge
-		return 0, nil
-	}
-
+func (node *Node) doMergeData(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
 	keys58 := make([]string, 0, len(keys))
 	for key58, _ := range keys {
 		keys58 = append(keys58, key58)
