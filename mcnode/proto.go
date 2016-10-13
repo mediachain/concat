@@ -157,12 +157,12 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 	w := ggio.NewDelimitedWriter(s)
 
 	writeError := func(err error) {
-		res.Result = &pb.QueryResult_Error{&pb.QueryResultError{err.Error()}}
+		res.Result = &pb.QueryResult_Error{&pb.StreamError{err.Error()}}
 		w.WriteMsg(&res)
 	}
 
 	writeEnd := func() error {
-		res.Result = &pb.QueryResult_End{&pb.QueryResultEnd{}}
+		res.Result = &pb.QueryResult_End{&pb.StreamEnd{}}
 		return w.WriteMsg(&res)
 	}
 
