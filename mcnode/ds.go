@@ -3,8 +3,11 @@ package main
 import (
 	mc "github.com/mediachain/concat/mc"
 	rocksdb "github.com/tecbot/gorocksdb"
+	"log"
+	"os"
 	"path"
 	"runtime"
+	"strconv"
 )
 
 type RocksDS struct {
@@ -29,9 +32,21 @@ func (ds *RocksDS) Open(home string) error {
 	opts.IncreaseParallelism(runtime.NumCPU())
 
 	// We are not going to be iterating over the datastore as far as I can tell
-	// so we can use this option.
-	// I don't know if 16MB is a good value for the block cache size
-	opts.OptimizeForPointLookup(16)
+	// so we can use OptimizeForPointLookup
+	// I don't know what a good value for the blockcache size is, so configure
+	// from ENV, with a default of 64MB
+	bcmb := 64
+	ev := os.Getenv("MCBLOCKCACHESZ")
+	if ev != "" {
+		mb, err := strconv.Atoi(ev)
+		if err == nil && mb > 0 {
+			log.Printf("Using %dMB for datastore block cache", mb)
+			bcmb = mb
+		} else {
+			log.Printf("Warning: Ignoring bad block cache size: %s", ev)
+		}
+	}
+	opts.OptimizeForPointLookup(uint64(bcmb))
 
 	db, err := rocksdb.OpenDb(opts, dbpath)
 	if err != nil {
