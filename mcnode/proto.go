@@ -588,7 +588,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	}
 	defer s.Close()
 
-	const batch = 1024
+	const batch = 8192
 	stmts := make([]*pb.Statement, 0, batch)
 
 	for val := range ch {
@@ -649,32 +649,9 @@ func (node *Node) doMergeData(s p2p_net.Stream, stmts []*pb.Statement) (count in
 	keys := make(map[string]Key) // object set for this statement batch
 
 	for _, stmt := range stmts {
-		switch body := stmt.Body.Body.(type) {
-		case *pb.StatementBody_Simple:
-			key58 := body.Simple.Object
-
-			_, have := keys[key58]
-			if have {
-				continue
-			}
-
-			mhash, err := multihash.FromB58String(key58)
-			if err != nil {
-				return 0, err
-			}
-
-			key := Key(mhash)
-			have, err = node.ds.Has(key)
-			if err != nil {
-				return 0, err
-			}
-
-			if !have {
-				keys[key58] = key
-			}
-
-		default:
-			return 0, BadStatementBody
+		err = node.statementMergeKeys(stmt, keys)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -745,4 +722,36 @@ loop:
 	}
 
 	return count, nil
+}
+
+func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) error {
+	switch body := stmt.Body.Body.(type) {
+	case *pb.StatementBody_Simple:
+		key58 := body.Simple.Object
+
+		_, have := keys[key58]
+		if have {
+			return nil
+		}
+
+		mhash, err := multihash.FromB58String(key58)
+		if err != nil {
+			return err
+		}
+
+		key := Key(mhash)
+		have, err = node.ds.Has(key)
+		if err != nil {
+			return err
+		}
+
+		if !have {
+			keys[key58] = key
+		}
+
+		return nil
+
+	default:
+		return BadStatementBody
+	}
 }
