@@ -73,6 +73,9 @@ var (
 	BadResult        = errors.New("Bad result set")
 	BadStatement     = errors.New("Bad statement; verification failed")
 	NoResult         = errors.New("Empty result set")
+	MissingData      = errors.New("Missing statement metadata")
+	UnexpectedData   = errors.New("Unexpected data object")
+	BadData          = errors.New("Bad data object; hash mismatch")
 )
 
 const (
@@ -224,6 +227,15 @@ func (node *Node) signStatement(stmt *pb.Statement) error {
 
 	stmt.Signature = sig
 	return nil
+}
+
+func (node *Node) checkStatement(stmt *pb.Statement) bool {
+	return stmt.Id != "" &&
+		stmt.Publisher != "" &&
+		stmt.Namespace != "" &&
+		stmt.Timestamp > 0 &&
+		stmt.Body != nil &&
+		stmt.Signature != nil
 }
 
 func (node *Node) verifyStatement(stmt *pb.Statement) (bool, error) {

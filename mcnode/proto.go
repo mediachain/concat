@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	ggio "github.com/gogo/protobuf/io"
@@ -575,9 +576,28 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	// publisher key cache
 	pkcache := make(map[string]p2p_crypto.PubKey)
 
+	// stream for fetching metadata
+	// Note: the metadata are merged synchronously in batches
+	//       this is fine for small merges, but likely inefficient at large
+	//       a more efficient implementation is possible where the
+	//       metadata are fetched pipelined in parallel with background goroutine(s)
+	//       but the cost is significant synchronization and error handling complexity.
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
+	if err != nil {
+		return 0, err
+	}
+	defer s.Close()
+
+	const batch = 1024
+	stmts := make([]*pb.Statement, 0, batch)
+
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
+			if !node.checkStatement(val) {
+				return count, BadStatement
+			}
+
 			verify, err := node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
 				return count, err
@@ -596,12 +616,130 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 				count += 1
 			}
 
+			stmts = append(stmts, val)
+			if len(stmts) == batch {
+				_, err := node.doMergeData(s, stmts) // FIXME object count
+				if err != nil {
+					return count, err
+				}
+				stmts = stmts[:0]
+			}
+
 		case StreamError:
 			return count, val
 
 		default:
 			return count, BadResult
 		}
+	}
+
+	if len(stmts) > 0 {
+		_, err := node.doMergeData(s, stmts) // FIXME object count
+		if err != nil {
+			return count, err
+		}
+	}
+
+	return count, nil
+}
+
+func (node *Node) doMergeData(s p2p_net.Stream, stmts []*pb.Statement) (count int, err error) {
+	keys := make(map[string]Key) // object set for this statement batch
+
+	for _, stmt := range stmts {
+		switch body := stmt.Body.Body.(type) {
+		case *pb.StatementBody_Simple:
+			key58 := body.Simple.Object
+
+			_, have := keys[key58]
+			if have {
+				continue
+			}
+
+			mhash, err := multihash.FromB58String(key58)
+			if err != nil {
+				return 0, err
+			}
+
+			key := Key(mhash)
+			have, err = node.ds.Has(key)
+			if err != nil {
+				return 0, err
+			}
+
+			if !have {
+				keys[key58] = key
+			}
+
+		default:
+			return 0, BadStatementBody
+		}
+	}
+
+	if len(keys) == 0 { // nothing to merge
+		return 0, nil
+	}
+
+	keys58 := make([]string, 0, len(keys))
+	for key58, _ := range keys {
+		keys58 = append(keys58, key58)
+	}
+
+	var req pb.DataRequest
+	var res pb.DataResult
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	req.Keys = keys58
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return 0, err
+	}
+
+loop:
+	for {
+		err := r.ReadMsg(&res)
+
+		switch res := res.Result.(type) {
+		case *pb.DataResult_Data:
+			key58 := res.Data.Key
+
+			key, ok := keys[key58]
+			if !ok {
+				return count, UnexpectedData
+			}
+
+			// verify data hash
+			data := res.Data.Data
+			hash := mc.Hash(data)
+			if !bytes.Equal([]byte(key), []byte(hash)) {
+				return count, BadData
+			}
+
+			_, err = node.ds.Put(data)
+			if err != nil {
+				return count, err
+			}
+
+			delete(keys, key58)
+			count++
+
+		case *pb.DataResult_End:
+			break loop
+
+		case *pb.DataResult_Error:
+			return count, StreamError{res.Error.Error}
+
+		default:
+			return count, BadResult
+		}
+
+		res.Reset()
+	}
+
+	if len(keys) > 0 { // we didn't get all the data we asked for, signal error
+		return count, MissingData
 	}
 
 	return count, nil
