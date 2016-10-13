@@ -17,16 +17,19 @@ It has these top-level messages:
 	LookupPeerResponse
 	ListPeersRequest
 	ListPeersResponse
+	StreamEnd
+	StreamError
 	Ping
 	Pong
 	QueryRequest
 	QueryResult
-	QueryResultEnd
-	QueryResultError
 	QueryResultValue
 	SimpleValue
 	CompoundValue
 	KeyValuePair
+	DataRequest
+	DataResult
+	DataObject
 	Statement
 	StatementBody
 	SimpleStatement

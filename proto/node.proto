@@ -3,11 +3,19 @@ package proto;
 
 import "stmt.proto";
 
-// node/ping
+// end of result stream marker
+message StreamEnd {}
+
+// stream errors
+message StreamError {
+  string error = 1;
+}
+
+// /mediachain/node/ping
 message Ping {}
 message Pong {}
 
-// node/query
+// /mediachain/node/query
 message QueryRequest {
   string query = 1;
 }
@@ -15,15 +23,9 @@ message QueryRequest {
 message QueryResult {
   oneof result {
     QueryResultValue value = 1;
-    QueryResultEnd end = 2;
-    QueryResultError error = 3;
+    StreamEnd end = 2;
+    StreamError error = 3;
   }
-}
-
-message QueryResultEnd {}
-
-message QueryResultError {
-  string error = 1;
 }
 
 message QueryResultValue {
@@ -51,4 +53,20 @@ message KeyValuePair {
   SimpleValue value = 2;
 }
 
+// /mediachain/node/data
+message DataRequest {
+  repeated string keys = 1;
+}
 
+message DataResult {
+  oneof result {
+    DataObject data = 1;
+    StreamEnd end = 2;
+    StreamError error = 3;
+  }
+}
+
+message DataObject {
+  string key = 1;
+  bytes data = 2;
+}
