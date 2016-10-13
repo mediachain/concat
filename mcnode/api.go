@@ -281,16 +281,21 @@ func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	count, err := node.doMerge(ctx, pid, q)
+	count, ocount, err := node.doMerge(ctx, pid, q)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		if count > 0 {
 			fmt.Fprintf(w, "Partial merge: %d statements merged\n", count)
 		}
+		if ocount > 0 {
+			fmt.Fprintf(w, "Partial merge: %d objects merged\n", ocount)
+		}
+
 		return
 	}
 
 	fmt.Fprintln(w, count)
+	fmt.Fprintln(w, ocount)
 }
 
 // POST /delete

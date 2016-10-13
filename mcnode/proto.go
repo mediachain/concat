@@ -567,10 +567,10 @@ func (node *Node) doRemoteQueryStream(ctx context.Context, s p2p_net.Stream, ch 
 	}
 }
 
-func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count int, err error) {
+func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count int, ocount int, err error) {
 	ch, err := node.doRemoteQuery(ctx, pid, q)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	// publisher key cache
@@ -584,7 +584,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	//       but the cost is significant synchronization and error handling complexity.
 	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer s.Close()
 
@@ -595,22 +595,22 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 		switch val := val.(type) {
 		case *pb.Statement:
 			if !node.checkStatement(val) {
-				return count, BadStatement
+				return count, ocount, BadStatement
 			}
 
 			verify, err := node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
-				return count, err
+				return count, ocount, err
 			}
 
 			// a verification failure taints the result set; abort the merge
 			if !verify {
-				return count, BadStatement
+				return count, ocount, BadStatement
 			}
 
 			ins, err := node.db.Merge(val)
 			if err != nil {
-				return count, err
+				return count, ocount, err
 			}
 			if ins {
 				count += 1
@@ -618,29 +618,31 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 
 			stmts = append(stmts, val)
 			if len(stmts) == batch {
-				_, err := node.doMergeData(s, stmts) // FIXME object count
+				bcount, err := node.doMergeData(s, stmts)
+				ocount += bcount
 				if err != nil {
-					return count, err
+					return count, ocount, err
 				}
 				stmts = stmts[:0]
 			}
 
 		case StreamError:
-			return count, val
+			return count, ocount, val
 
 		default:
-			return count, BadResult
+			return count, ocount, BadResult
 		}
 	}
 
 	if len(stmts) > 0 {
-		_, err := node.doMergeData(s, stmts) // FIXME object count
+		bcount, err := node.doMergeData(s, stmts)
+		ocount += bcount
 		if err != nil {
-			return count, err
+			return count, ocount, err
 		}
 	}
 
-	return count, nil
+	return count, ocount, nil
 }
 
 func (node *Node) doMergeData(s p2p_net.Stream, stmts []*pb.Statement) (count int, err error) {
