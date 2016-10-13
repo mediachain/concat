@@ -12,6 +12,7 @@ import (
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	multihash "github.com/multiformats/go-multihash"
 	"log"
 	"time"
 )
@@ -77,6 +78,7 @@ func (node *Node) _goOnline() error {
 
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
+	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
 	node.host = host
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -223,6 +225,70 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 			err = writeValue(val)
 			if err != nil {
 				return
+			}
+		}
+
+		err = writeEnd()
+		if err != nil {
+			return
+		}
+
+		req.Reset()
+	}
+}
+
+func (node *Node) dataHandler(s p2p_net.Stream) {
+	defer s.Close()
+	pid := s.Conn().RemotePeer()
+	log.Printf("node/data: new stream from %s", pid.Pretty())
+
+	var req pb.DataRequest
+	var res pb.DataResult
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	writeError := func(err error) {
+		res.Result = &pb.DataResult_Error{&pb.StreamError{err.Error()}}
+		w.WriteMsg(&res)
+	}
+
+	writeEnd := func() error {
+		res.Result = &pb.DataResult_End{&pb.StreamEnd{}}
+		return w.WriteMsg(&res)
+	}
+
+	writeData := func(key string, data []byte) error {
+		res.Result = &pb.DataResult_Data{&pb.DataObject{key, data}}
+		return w.WriteMsg(&res)
+	}
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			return
+		}
+
+		log.Printf("node/data: %s asked for %d objects", pid.Pretty(), len(req.Keys))
+
+		for _, key58 := range req.Keys {
+			key, err := multihash.FromB58String(key58)
+			if err != nil {
+				writeError(err)
+				return
+			}
+
+			data, err := node.ds.Get(Key(key))
+			if err != nil {
+				writeError(err)
+				return
+			}
+
+			if data != nil {
+				err = writeData(key58, data)
+				if err != nil {
+					return
+				}
 			}
 		}
 
