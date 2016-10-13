@@ -396,10 +396,23 @@ loop:
 		}
 	}
 
-	keys, err := node.ds.PutBatch(batch)
-	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
-		return
+	// We don't use the PutBatch interface, as it performs a synchronous write
+	// of the batch, which requires us to carefully tune batch sizes in order
+	// to achieve comparable performance with async writes.
+	// But we do want a single error response from the API, without forcing the
+	// client to parse a stream.
+	// So the batch is written individually with asynchronous writes, and produces
+	// a single error result or a stream of hashes.
+	// Writes are idempotent, so there is no deleterious effect from partial writes
+	// (other than a subset of the objects written in the datastore)
+	keys := make([]Key, len(batch))
+	for x, data := range batch {
+		key, err := node.ds.Put(data)
+		if err != nil {
+			apiError(w, http.StatusInternalServerError, err)
+			return
+		}
+		keys[x] = key
 	}
 
 	for _, key := range keys {
