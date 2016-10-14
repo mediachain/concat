@@ -621,7 +621,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 				return count, ocount, err
 			}
 
-			if len(keys) > batch {
+			if len(keys) >= batch {
 				bcount, err := node.doMergeData(s, keys)
 				ocount += bcount
 				if err != nil {
