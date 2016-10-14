@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -85,24 +84,18 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
 
-	rbody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("http/publish: Error reading request body: %s", err.Error())
-		return
-	}
-
 	if !nsrx.Match([]byte(ns)) {
 		apiError(w, http.StatusBadRequest, BadNamespace)
 		return
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(rbody))
-	stmts := make([]interface{}, 0)
+	dec := json.NewDecoder(r.Body)
+	stmts := make([]interface{}, 0, 1024)
 
 loop:
 	for {
 		sbody := new(pb.SimpleStatement)
-		err = dec.Decode(sbody)
+		err := dec.Decode(sbody)
 		switch {
 		case err == io.EOF:
 			break loop
@@ -371,19 +364,13 @@ func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
 // Puts a batch of objects to the datastore
 // returns a stream of object ids (B58 encoded content multihashes)
 func (node *Node) httpPutData(w http.ResponseWriter, r *http.Request) {
-	rbody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("http/data/put: Error reading request body: %s", err.Error())
-		return
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(rbody))
-	batch := make([][]byte, 0)
+	dec := json.NewDecoder(r.Body)
+	batch := make([][]byte, 0, 1024)
 
 	var dao DataObject
 loop:
 	for {
-		err = dec.Decode(&dao)
+		err := dec.Decode(&dao)
 		switch {
 		case err == io.EOF:
 			break loop
