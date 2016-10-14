@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	multihash "github.com/multiformats/go-multihash"
 	"io"
 	"io/ioutil"
 	"log"
@@ -33,8 +33,7 @@ func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewEncoder(w).Encode(nids)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
-		return
+		log.Printf("Error writing response body: %s", err.Error())
 	}
 }
 
@@ -85,24 +84,18 @@ func (node *Node) httpPublish(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
 
-	rbody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("http/publish: Error reading request body: %s", err.Error())
-		return
-	}
-
 	if !nsrx.Match([]byte(ns)) {
 		apiError(w, http.StatusBadRequest, BadNamespace)
 		return
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(rbody))
-	stmts := make([]interface{}, 0)
+	dec := json.NewDecoder(r.Body)
+	stmts := make([]interface{}, 0, 1024)
 
 loop:
 	for {
 		sbody := new(pb.SimpleStatement)
-		err = dec.Decode(sbody)
+		err := dec.Decode(sbody)
 		switch {
 		case err == io.EOF:
 			break loop
@@ -150,8 +143,7 @@ func (node *Node) httpStatement(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(stmt)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
-		return
+		log.Printf("Error writing response body: %s", err.Error())
 	}
 }
 
@@ -282,16 +274,21 @@ func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	count, err := node.doMerge(ctx, pid, q)
+	count, ocount, err := node.doMerge(ctx, pid, q)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		if count > 0 {
 			fmt.Fprintf(w, "Partial merge: %d statements merged\n", count)
 		}
+		if ocount > 0 {
+			fmt.Fprintf(w, "Partial merge: %d objects merged\n", ocount)
+		}
+
 		return
 	}
 
 	fmt.Fprintln(w, count)
+	fmt.Fprintln(w, ocount)
 }
 
 // POST /delete
@@ -326,6 +323,88 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, count)
+}
+
+// datastore interface
+type DataObject struct {
+	Data []byte `json:"data"`
+}
+
+// Get /data/get/{objectId}
+// Retrieves a data object from the datastore
+func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key58 := vars["objectId"]
+	key, err := multihash.FromB58String(key58)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := node.ds.Get(Key(key))
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if data == nil {
+		apiError(w, http.StatusNotFound, UnknownObject)
+		return
+	}
+
+	dao := DataObject{data}
+	err = json.NewEncoder(w).Encode(dao)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
+// POST /data/put
+// DATA: A stream of json-encoded data objects
+// Puts a batch of objects to the datastore
+// returns a stream of object ids (B58 encoded content multihashes)
+func (node *Node) httpPutData(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	batch := make([][]byte, 0, 1024)
+
+	var dao DataObject
+loop:
+	for {
+		err := dec.Decode(&dao)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			apiError(w, http.StatusBadRequest, err)
+			return
+		default:
+			batch = append(batch, dao.Data)
+			dao.Data = nil
+		}
+	}
+
+	// We don't use the PutBatch interface, as it performs a synchronous write
+	// of the batch, which requires us to carefully tune batch sizes in order
+	// to achieve comparable performance with async writes.
+	// But we do want a single error response from the API, without forcing the
+	// client to parse a stream.
+	// So the batch is written individually with asynchronous writes, and produces
+	// a single error result or a stream of hashes.
+	// Writes are idempotent, so there is no deleterious effect from partial writes
+	// (other than a subset of the objects written in the datastore)
+	keys := make([]Key, len(batch))
+	for x, data := range batch {
+		key, err := node.ds.Put(data)
+		if err != nil {
+			apiError(w, http.StatusInternalServerError, err)
+			return
+		}
+		keys[x] = key
+	}
+
+	for _, key := range keys {
+		fmt.Fprintln(w, multihash.Multihash(key).B58String())
+	}
 }
 
 // GET /status

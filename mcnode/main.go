@@ -50,7 +50,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = node.loadDB()
+	err = node.openDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = node.openDS()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,6 +72,8 @@ func main() {
 	router.HandleFunc("/query/{peerId}", node.httpRemoteQuery)
 	router.HandleFunc("/merge/{peerId}", node.httpMerge)
 	router.HandleFunc("/delete", node.httpDelete)
+	router.HandleFunc("/data/put", node.httpPutData)
+	router.HandleFunc("/data/get/{objectId}", node.httpGetData)
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
 	router.HandleFunc("/config/dir", node.httpConfigDir)

@@ -11,10 +11,17 @@ import (
 	p2p_swarm "github.com/libp2p/go-libp2p-swarm"
 	p2p_bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	multihash "github.com/multiformats/go-multihash"
 	"log"
 	"net"
 	"strings"
 )
+
+func Hash(data []byte) multihash.Multihash {
+	// this can only fail with an error because of an incorrect hash family
+	mh, _ := multihash.Sum(data, multihash.SHA2_256, -1)
+	return mh
+}
 
 func ParseAddress(str string) (multiaddr.Multiaddr, error) {
 	return multiaddr.NewMultiaddr(str)

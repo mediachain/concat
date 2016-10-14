@@ -13,6 +13,7 @@ import (
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	multihash "github.com/multiformats/go-multihash"
 	"io/ioutil"
 	"os"
 	"path"
@@ -32,6 +33,7 @@ type Node struct {
 	natCfg    NATConfig
 	home      string
 	db        StatementDB
+	ds        Datastore
 	mx        sync.Mutex
 	counter   int
 }
@@ -49,8 +51,20 @@ type StatementDB interface {
 	Close() error
 }
 
+type Key multihash.Multihash
+type Datastore interface {
+	Open(home string) error
+	Put(data []byte) (Key, error)
+	PutBatch(batch [][]byte) ([]Key, error)
+	Has(Key) (bool, error)
+	Get(Key) ([]byte, error)
+	Delete(Key) error
+	Close()
+}
+
 var (
 	UnknownStatement = errors.New("Unknown statement")
+	UnknownObject    = errors.New("Unknown Object")
 	BadStatementBody = errors.New("Unrecognized statement body")
 	BadQuery         = errors.New("Unexpected query")
 	BadState         = errors.New("Unrecognized state")
@@ -59,6 +73,9 @@ var (
 	BadResult        = errors.New("Bad result set")
 	BadStatement     = errors.New("Bad statement; verification failed")
 	NoResult         = errors.New("Empty result set")
+	MissingData      = errors.New("Missing statement metadata")
+	UnexpectedData   = errors.New("Unexpected data object")
+	BadData          = errors.New("Bad data object; hash mismatch")
 )
 
 const (
@@ -212,6 +229,15 @@ func (node *Node) signStatement(stmt *pb.Statement) error {
 	return nil
 }
 
+func (node *Node) checkStatement(stmt *pb.Statement) bool {
+	return stmt.Id != "" &&
+		stmt.Publisher != "" &&
+		stmt.Namespace != "" &&
+		stmt.Timestamp > 0 &&
+		stmt.Body != nil &&
+		stmt.Signature != nil
+}
+
 func (node *Node) verifyStatement(stmt *pb.Statement) (bool, error) {
 	pubk, err := mc.PublisherKey(stmt.Publisher)
 	if err != nil {
@@ -250,9 +276,14 @@ func (node *Node) verifyStatementSig(stmt *pb.Statement, pubk p2p_crypto.PubKey)
 	return pubk.Verify(bytes, sig)
 }
 
-func (node *Node) loadDB() error {
+func (node *Node) openDB() error {
 	node.db = &SQLiteDB{}
 	return node.db.Open(node.home)
+}
+
+func (node *Node) openDS() error {
+	node.ds = &RocksDS{}
+	return node.ds.Open(node.home)
 }
 
 // persistent configuration
