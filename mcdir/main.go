@@ -10,6 +10,7 @@ import (
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
+	homedir "github.com/mitchellh/go-homedir"
 	"log"
 	"os"
 	"sync"
@@ -129,15 +130,26 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 
 func main() {
 	port := flag.Int("l", 9000, "Listen port")
-	home := flag.String("d", "/tmp/mcdir", "Directory home")
+	hdir := flag.String("d", "~/.mediachain/mcdir", "Directory home")
 	flag.Parse()
 
-	err := os.MkdirAll(*home, 0755)
+	if len(flag.Args()) != 0 {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options ...]\nOptions:\n", os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	home, err := homedir.Expand(*hdir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	id, err := mc.MakePeerIdentity(*home)
+	err = os.MkdirAll(home, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	id, err := mc.MakePeerIdentity(home)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	mux "github.com/gorilla/mux"
 	mc "github.com/mediachain/concat/mc"
+	homedir "github.com/mitchellh/go-homedir"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,7 @@ func main() {
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
 	bindaddr := flag.String("b", "127.0.0.1", "Peer control bind address [http]")
-	home := flag.String("d", "/tmp/mcnode", "Node home")
+	hdir := flag.String("d", "~/.mediachain/mcnode", "Node home")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
@@ -28,22 +29,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = os.MkdirAll(*home, 0755)
+	home, err := homedir.Expand(*hdir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	id, err := mc.MakePeerIdentity(*home)
+	err = os.MkdirAll(home, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pubid, err := mc.MakePublisherIdentity(*home)
+	id, err := mc.MakePeerIdentity(home)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node := &Node{PeerIdentity: id, publisher: pubid, home: *home, laddr: addr}
+	pubid, err := mc.MakePublisherIdentity(home)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node := &Node{PeerIdentity: id, publisher: pubid, home: home, laddr: addr}
 
 	err = node.loadConfig()
 	if err != nil {
