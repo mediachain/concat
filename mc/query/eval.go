@@ -129,6 +129,10 @@ var rangeCriteriaFilterSelect = map[string]RangeCriteriaFilterSelect{
 	"counter":   counterCriteriaFilter}
 
 func wkiCriteriaFilter(stmt *pb.Statement) []string {
+	return StatementRefs(stmt)
+}
+
+func StatementRefs(stmt *pb.Statement) []string {
 	switch body := stmt.Body.Body.(type) {
 	case *pb.StatementBody_Simple:
 		return body.Simple.Refs

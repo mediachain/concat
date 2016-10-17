@@ -63,6 +63,8 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR counter > 10",
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
+	"SELECT * FROM foo.bar WHERE wki = mywki:abc",
+	"SELECT * FROM foo.bar WHERE wki = mywki:abc-defg_123-ABC",
 	"SELECT * FROM foo.bar LIMIT 10",
 	"SELECT * FROM * WHERE id = abc",
 	"SELECT * FROM * ORDER BY id",
@@ -177,21 +179,21 @@ func TestQueryEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA", Refs: []string{"aaa"}}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB", Refs: []string{"bbb"}}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC", Refs: []string{"ccc"}}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
@@ -566,6 +568,34 @@ func TestQueryEval(t *testing.T) {
 		checkContains(t, qs, res, map[string]interface{}{"id": "a", "publisher": "A", "*": a, "body": a.Body})
 	}
 
+	// check wki selection
+	qs = "SELECT * FROM * WHERE wki = aaa"
+	res, err = parseEval(qs, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE wki = bbb OR wki = ccc"
+	res, err = parseEval(qs, stmts)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
+	}
+
+}
+
+func parseEval(qs string, stmts []*pb.Statement) ([]interface{}, error) {
+	q, err := ParseQuery(qs)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := EvalQuery(q, stmts)
+	return res, err
 }
 
 func TestQueryCompile(t *testing.T) {
@@ -605,21 +635,21 @@ func TestQueryCompileEval(t *testing.T) {
 		Id:        "a",
 		Publisher: "A",
 		Namespace: "foo.a",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmAAA", Refs: []string{"aaa"}}}},
 		Timestamp: 100}
 
 	b := &pb.Statement{
 		Id:        "b",
 		Publisher: "B",
 		Namespace: "foo.b",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmBBB", Refs: []string{"bbb"}}}},
 		Timestamp: 200}
 
 	c := &pb.Statement{
 		Id:        "c",
 		Publisher: "A",
 		Namespace: "bar.c",
-		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC"}}},
+		Body:      &pb.StatementBody{&pb.StatementBody_Simple{&pb.SimpleStatement{Object: "QmCCC", Refs: []string{"ccc"}}}},
 		Timestamp: 300}
 
 	stmts := []*pb.Statement{a, b, c}
@@ -1145,6 +1175,33 @@ func TestQueryCompileEval(t *testing.T) {
 	if checkResultLen(t, qs, res, 1) {
 		checkContains(t, qs, res, a)
 	}
+
+	// check wki
+	qs = "SELECT * FROM * WHERE wki = aaa"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 1) {
+		checkContains(t, qs, res, a)
+	}
+
+	qs = "SELECT * FROM * WHERE wki = bbb OR wki = ccc"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, b)
+		checkContains(t, qs, res, c)
+	}
+
+	qs = "SELECT * FROM * WHERE wki = aaa OR timestamp > 200"
+	res, err = parseCompileEval(db, qs)
+	checkErrorNow(t, qs, err)
+
+	if checkResultLen(t, qs, res, 2) {
+		checkContains(t, qs, res, a)
+		checkContains(t, qs, res, c)
+	}
 }
 
 func makeStmtDb() (*sql.DB, error) {
@@ -1159,6 +1216,11 @@ func makeStmtDb() (*sql.DB, error) {
 	}
 
 	_, err = db.Exec("CREATE TABLE Envelope (counter INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR(32), namespace VARCHAR, publisher VARCHAR, source VARCHAR, timestamp INTEGER)")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec("CREATE TABLE Refs (id VARCHAR(32), wki VARCHAR)")
 	if err != nil {
 		return nil, err
 	}
@@ -1181,7 +1243,14 @@ func insertStmt(db *sql.DB, stmt *pb.Statement) error {
 	// source = publisher only for simple statements
 	_, err = db.Exec("INSERT INTO Envelope VALUES (NULL,?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
 
-	return err
+	for _, wki := range StatementRefs(stmt) {
+		_, err = db.Exec("INSERT INTO Refs VALUES (?, ?)", stmt.Id, wki)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func parseCompileEval(db *sql.DB, qs string) ([]interface{}, error) {
