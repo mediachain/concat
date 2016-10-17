@@ -98,6 +98,14 @@ func (ps *ParseState) addRangeCriteria() {
 	ps.push(crit)
 }
 
+func (ps *ParseState) addIndexCriteria() {
+	// stack: val selector ...
+	val := ps.pop().(string)
+	sel := ps.pop().(string)
+	crit := &IndexCriteria{sel: sel, val: val}
+	ps.push(crit)
+}
+
 func (ps *ParseState) addCompoundCriteria() {
 	// stack: criteria op criteria ...
 	right := ps.pop().(QueryCriteria)
