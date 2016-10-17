@@ -50,16 +50,6 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 }
 
 func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
-	// marshal statements before starting the tx, minimize critical section
-	data := make([][]byte, len(stmts))
-	for x, stmt := range stmts {
-		bytes, err := ggproto.Marshal(stmt)
-		if err != nil {
-			return err
-		}
-		data[x] = bytes
-	}
-
 	tx, err := sdb.db.Begin()
 	if err != nil {
 		return err
@@ -68,8 +58,14 @@ func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
 	insertStmtData := tx.Stmt(sdb.insertStmtData)
 	insertStmtEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
 
-	for x, stmt := range stmts {
-		_, err = insertStmtData.Exec(stmt.Id, data[x])
+	for _, stmt := range stmts {
+		bytes, err := ggproto.Marshal(stmt)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = insertStmtData.Exec(stmt.Id, bytes)
 		if err != nil {
 			tx.Rollback()
 			return err
