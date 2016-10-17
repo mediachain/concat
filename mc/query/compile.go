@@ -170,7 +170,7 @@ func compileQueryCriteria(q *Query, join bool) (string, error) {
 			src = fmt.Sprintf("%s JOIN %s ON Envelope.id = %s.id", src, tab, tab)
 		}
 
-		scrit = fmt.Sprint("Envelope.id IN (SELECT Envelope.id FROM %s WHERE %s)", src, scrit)
+		scrit = fmt.Sprintf("Envelope.id IN (SELECT Envelope.id FROM %s WHERE %s)", src, scrit)
 	}
 
 	if nscrit != "" {
