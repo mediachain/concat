@@ -50,6 +50,7 @@ type ValueCriteriaFilterSelect func(*pb.Statement) string
 type ValueCriteriaFilterCompare func(a, b string) bool
 type RangeCriteriaFilterSelect func(*pb.Statement) int64
 type RangeCriteriaFilterCompare func(a, b int64) bool
+type IndexCriteriaFilterSelect func(*pb.Statement) []string
 type CompoundCriteriaFilter func(stmt *pb.Statement, left, right StatementFilter) bool
 
 func idCriteriaFilter(stmt *pb.Statement) string {
@@ -127,6 +128,29 @@ var rangeCriteriaFilterSelect = map[string]RangeCriteriaFilterSelect{
 	"timestamp": timestampCriteriaFilter,
 	"counter":   counterCriteriaFilter}
 
+func wkiCriteriaFilter(stmt *pb.Statement) []string {
+	switch body := stmt.Body.Body.(type) {
+	case *pb.StatementBody_Simple:
+		return body.Simple.Refs
+
+	default:
+		// TODO compound statements etc
+		return nil
+	}
+}
+
+func indexCriteriaContains(keys []string, val string) bool {
+	for _, key := range keys {
+		if key == val {
+			return true
+		}
+	}
+	return false
+}
+
+var indexCriteriaFilterSelect = map[string]IndexCriteriaFilterSelect{
+	"wki": wkiCriteriaFilter}
+
 func compoundCriteriaAND(stmt *pb.Statement, left, right StatementFilter) bool {
 	return left(stmt) && right(stmt)
 }
@@ -201,6 +225,16 @@ func makeCriteriaFilterF(c QueryCriteria) (StatementFilter, error) {
 
 		return func(stmt *pb.Statement) bool {
 			return filter(getf(stmt), c.val)
+		}, nil
+
+	case *IndexCriteria:
+		getf, ok := indexCriteriaFilterSelect[c.sel]
+		if !ok {
+			return nil, QueryEvalError(fmt.Sprintf("Unexpected index selector: %s", c.sel))
+		}
+
+		return func(stmt *pb.Statement) bool {
+			return indexCriteriaContains(getf(stmt), c.val)
 		}, nil
 
 	case *CompoundCriteria:
