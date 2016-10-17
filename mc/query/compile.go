@@ -610,4 +610,4 @@ func collectIndexCriteriaTables(tabs map[string]string, c QueryCriteria) error {
 }
 
 var indexCriteriaTableNames = map[string]string{
-	"wki": "References"}
+	"wki": "Refs"}
