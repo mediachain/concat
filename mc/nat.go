@@ -39,6 +39,10 @@ func (cfg *NATConfig) String() string {
 }
 
 func (cfg *NATConfig) PublicAddr(base multiaddr.Multiaddr) (multiaddr.Multiaddr, error) {
+	if cfg.Opt != NATConfigManual {
+		return nil, BadAddressSpec
+	}
+
 	if cfg.addr != nil {
 		return cfg.addr, nil
 	}
@@ -51,7 +55,7 @@ func (cfg *NATConfig) PublicAddr(base multiaddr.Multiaddr) (multiaddr.Multiaddr,
 			return nil, err
 		}
 
-		port, err := base.ValueForProtocol(multiaddr.P_IP4)
+		port, err := base.ValueForProtocol(multiaddr.P_TCP)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +119,7 @@ func NATConfigFromString(str string) (cfg NATConfig, err error) {
 }
 
 func GetPublicIP() (string, error) {
-	res, err := http.Get("ifconfig.me/ip")
+	res, err := http.Get("http://ifconfig.me/ip")
 	if err != nil {
 		return "", err
 	}
