@@ -175,3 +175,7 @@ func FilterAddrs(addrs []multiaddr.Multiaddr, predf func(multiaddr.Multiaddr) bo
 	}
 	return res
 }
+
+func GetPublicIP() (string, error) {
+	return "", nil
+}

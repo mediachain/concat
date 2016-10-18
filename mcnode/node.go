@@ -15,8 +15,11 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -76,6 +79,7 @@ var (
 	MissingData      = errors.New("Missing statement metadata")
 	UnexpectedData   = errors.New("Unexpected data object")
 	BadData          = errors.New("Bad data object; hash mismatch")
+	BadAddressSpec   = errors.New("Bad NAT address specification")
 )
 
 const (
@@ -88,6 +92,7 @@ var statusString = []string{"offline", "online", "public"}
 
 type NATConfig struct {
 	opt  int
+	spec string              // address spec when option = NATConfigManual
 	addr multiaddr.Multiaddr // public address when option = NATConfigManual
 }
 
@@ -99,13 +104,71 @@ const (
 
 var natConfigString = []string{"none", "auto", "manual"}
 
-func (cfg NATConfig) String() string {
+func (cfg *NATConfig) String() string {
 	switch cfg.opt {
 	case NATConfigManual:
-		return cfg.addr.String()
+		return cfg.spec
 	default:
 		return natConfigString[cfg.opt]
 	}
+}
+
+func (cfg *NATConfig) PublicAddr(base multiaddr.Multiaddr) (multiaddr.Multiaddr, error) {
+	if cfg.addr != nil {
+		return cfg.addr, nil
+	}
+
+	ix := strings.LastIndex(cfg.spec, ":")
+	switch {
+	case ix < 0:
+		addr, err := mc.GetPublicIP()
+		if err != nil {
+			return nil, err
+		}
+
+		port, err := base.ValueForProtocol(multiaddr.P_IP4)
+		if err != nil {
+			return nil, err
+		}
+
+		return cfg.MakePublicAddr(addr, port)
+
+	case cfg.spec[:ix] == "*":
+		addr, err := mc.GetPublicIP()
+		if err != nil {
+			return nil, err
+		}
+		port := cfg.spec[ix+1:]
+		return cfg.MakePublicAddr(addr, port)
+
+	default:
+		addr, port := cfg.spec[:ix], cfg.spec[ix+1:]
+		return cfg.MakePublicAddr(addr, port)
+	}
+}
+
+func (cfg *NATConfig) MakePublicAddr(addr, port string) (multiaddr.Multiaddr, error) {
+	maddr, err := mc.ParseAddress(fmt.Sprintf("/ip4/%s/tcp/%s", addr, port))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.addr = maddr
+	return maddr, nil
+}
+
+func (cfg *NATConfig) Clear() {
+	cfg.addr = nil
+}
+
+var natcfgrx *regexp.Regexp
+
+func init() {
+	rx, err := regexp.Compile("([*])|([*]:[0-9]+)|([0-9]{1,3}([.][0-9]{1,3}){3}:[0-9]+)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	natcfgrx = rx
 }
 
 func NATConfigFromString(str string) (cfg NATConfig, err error) {
@@ -117,12 +180,11 @@ func NATConfigFromString(str string) (cfg NATConfig, err error) {
 		cfg.opt = NATConfigAuto
 		return cfg, nil
 	default:
-		addr, err := mc.ParseAddress(str)
-		if err != nil {
-			return cfg, err
+		if !natcfgrx.Match([]byte(str)) {
+			return cfg, BadAddressSpec
 		}
 		cfg.opt = NATConfigManual
-		cfg.addr = addr
+		cfg.spec = str
 		return cfg, nil
 	}
 }

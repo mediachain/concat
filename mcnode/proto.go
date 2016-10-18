@@ -37,6 +37,7 @@ func (node *Node) goOffline() error {
 		node.netCancel()
 		err := node.host.Close()
 		node.status = StatusOffline
+		node.natCfg.Clear()
 		log.Println("Node is offline")
 		return err
 
@@ -399,7 +400,13 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 	default:
 		switch node.natCfg.opt {
 		case NATConfigManual:
-			return []multiaddr.Multiaddr{node.natCfg.addr}
+			addr, err := node.natCfg.PublicAddr(node.laddr)
+			if err != nil {
+				log.Printf("Error determining pubic address: %s", err.Error())
+				return []multiaddr.Multiaddr{}
+			}
+
+			return []multiaddr.Multiaddr{addr}
 
 		default:
 			return mc.FilterAddrs(node.host.Addrs(), mc.IsPublicAddr)
