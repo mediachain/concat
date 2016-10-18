@@ -132,17 +132,6 @@ func wkiCriteriaFilter(stmt *pb.Statement) []string {
 	return StatementRefs(stmt)
 }
 
-func StatementRefs(stmt *pb.Statement) []string {
-	switch body := stmt.Body.Body.(type) {
-	case *pb.StatementBody_Simple:
-		return body.Simple.Refs
-
-	default:
-		// TODO compound statements etc
-		return nil
-	}
-}
-
 func indexCriteriaContains(keys []string, val string) bool {
 	for _, key := range keys {
 		if key == val {
@@ -299,8 +288,7 @@ func simpleSelectorNamespace(stmt *pb.Statement) interface{} {
 }
 
 func simpleSelectorSource(stmt *pb.Statement) interface{} {
-	// simple statements, source = publisher
-	return stmt.Publisher
+	return StatementSource(stmt)
 }
 
 func simpleSelectorTimestamp(stmt *pb.Statement) interface{} {
