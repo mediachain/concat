@@ -294,7 +294,7 @@ func (sdb *SQLDB) createTables() error {
 		return err
 	}
 
-	_, err = sdb.db.Exec("CREATE TABLE Refs (id VARCHAR(128), wki VARCHAR")
+	_, err = sdb.db.Exec("CREATE TABLE Refs (id VARCHAR(128), wki VARCHAR)")
 	if err != nil {
 		return err
 	}
