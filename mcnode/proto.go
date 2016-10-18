@@ -323,7 +323,7 @@ func (node *Node) registerPeer(ctx context.Context) {
 }
 
 func (node *Node) registerPeerImpl(ctx context.Context) error {
-	err := node.host.Connect(ctx, *node.dir)
+	err := node.host.Connect(node.netCtx, *node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
 		return err
