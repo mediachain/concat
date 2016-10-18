@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -54,7 +56,7 @@ func (cfg *NATConfig) PublicAddr(base multiaddr.Multiaddr) (multiaddr.Multiaddr,
 			return nil, err
 		}
 
-		return cfg.MakePublicAddr(addr, port)
+		return cfg.makePublicAddr(addr, port)
 
 	case cfg.spec[:ix] == "*":
 		addr, err := GetPublicIP()
@@ -62,15 +64,15 @@ func (cfg *NATConfig) PublicAddr(base multiaddr.Multiaddr) (multiaddr.Multiaddr,
 			return nil, err
 		}
 		port := cfg.spec[ix+1:]
-		return cfg.MakePublicAddr(addr, port)
+		return cfg.makePublicAddr(addr, port)
 
 	default:
 		addr, port := cfg.spec[:ix], cfg.spec[ix+1:]
-		return cfg.MakePublicAddr(addr, port)
+		return cfg.makePublicAddr(addr, port)
 	}
 }
 
-func (cfg *NATConfig) MakePublicAddr(addr, port string) (multiaddr.Multiaddr, error) {
+func (cfg *NATConfig) makePublicAddr(addr, port string) (multiaddr.Multiaddr, error) {
 	maddr, err := ParseAddress(fmt.Sprintf("/ip4/%s/tcp/%s", addr, port))
 	if err != nil {
 		return nil, err
@@ -113,5 +115,16 @@ func NATConfigFromString(str string) (cfg NATConfig, err error) {
 }
 
 func GetPublicIP() (string, error) {
-	return "", nil
+	res, err := http.Get("ifconfig.me/ip")
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(body)), nil
 }
