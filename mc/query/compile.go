@@ -41,6 +41,19 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 		join = true
 	}
 
+	if isIndexCriteria(q.criteria) {
+		tabs, err := indexCriteriaTables(q.criteria)
+		if err != nil {
+			return "", nil, err
+		}
+
+		for _, tab := range tabs {
+			sqlq = fmt.Sprintf("%s JOIN %s ON Envelope.id = %s.id", sqlq, tab, tab)
+		}
+
+		join = true
+	}
+
 	cols, err := compileQueryColumns(q, join)
 	if err != nil {
 		return "", nil, err
@@ -149,28 +162,9 @@ func compileQueryCriteria(q *Query, join bool) (string, error) {
 		return nscrit, nil
 	}
 
-	isindex := isIndexCriteria(q.criteria)
-	if isindex {
-		join = true
-	}
-
 	scrit, err := compileSelectorCriteria(q.criteria, join)
 	if err != nil {
 		return "", err
-	}
-
-	if isindex {
-		tabs, err := indexCriteriaTables(q.criteria)
-		if err != nil {
-			return "", err
-		}
-
-		src := "Envelope"
-		for _, tab := range tabs {
-			src = fmt.Sprintf("%s JOIN %s ON Envelope.id = %s.id", src, tab, tab)
-		}
-
-		scrit = fmt.Sprintf("Envelope.id IN (SELECT Envelope.id FROM %s WHERE %s)", src, scrit)
 	}
 
 	if nscrit != "" {
