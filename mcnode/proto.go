@@ -69,7 +69,7 @@ func (node *Node) goOnline() error {
 
 func (node *Node) _goOnline() error {
 	var opts []interface{}
-	if node.natCfg.opt == NATConfigAuto {
+	if node.natCfg.Opt == mc.NATConfigAuto {
 		opts = []interface{}{mc.NATPortMap}
 	}
 
@@ -398,8 +398,8 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 		return mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
 
 	default:
-		switch node.natCfg.opt {
-		case NATConfigManual:
+		switch node.natCfg.Opt {
+		case mc.NATConfigManual:
 			addr, err := node.natCfg.PublicAddr(node.laddr)
 			if err != nil {
 				log.Printf("Error determining pubic address: %s", err.Error())
