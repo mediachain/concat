@@ -447,7 +447,7 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 
 	addrs := node.host.Peerstore().Addrs(pid)
 	if len(addrs) > 0 {
-		return node.host.Connect(ctx, p2p_pstore.PeerInfo{pid, nil})
+		return node.host.Connect(node.netCtx, p2p_pstore.PeerInfo{pid, nil})
 	}
 
 	pinfo, err := node.doLookup(ctx, pid)
@@ -455,7 +455,7 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 		return err
 	}
 
-	return node.host.Connect(ctx, pinfo)
+	return node.host.Connect(node.netCtx, pinfo)
 }
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
@@ -467,7 +467,7 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 		return empty, NoDirectory
 	}
 
-	node.host.Connect(ctx, *node.dir)
+	node.host.Connect(node.netCtx, *node.dir)
 	if err != nil {
 		return empty, err
 	}
