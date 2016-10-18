@@ -62,7 +62,8 @@ CompoundCriteria <- SimpleCriteria
                   / 'NOT' WS CompoundCriteria { p.addNegatedCriteria() }
 
 SimpleCriteria <- ValueCriteria { p.addValueCriteria() }
-                / RangeCriteria  { p.addRangeCriteria() }  
+                / RangeCriteria  { p.addRangeCriteria() }
+                / IndexCriteria { p.addIndexCriteria() }
 
 ValueCriteria <- IdCriteria
                / PublisherCriteria 
@@ -94,6 +95,10 @@ ComparisonOp <- '<='
               / '>='
               / '>'
 
+IndexCriteria <- WKICriteria
+
+WKICriteria <- < 'wki' > { p.push(text) } WSX '=' WSX WKI { p.push(text) }
+
 Order <- 'ORDER' WS 'BY' WS OrderSpec { p.setOrder() }
 
 OrderSpec <- OrderSelectorSpec (',' WSX OrderSelectorSpec)*
@@ -117,11 +122,10 @@ Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
 # Lexemes
 StatementId <- < [a-zA-Z0-9:]+ >
 PublisherId <- < [a-zA-Z0-9]+ >
+WKI         <- < [-a-zA-Z0-9:_]+ >
 UInt        <- < [0-9]+ >
 WS          <- WhiteSpace+
 WSX         <- WhiteSpace*
 WhiteSpace  <- ' ' / '\t' / EOL
 EOL         <- '\r\n' / '\n' / '\r'
 EOF	        <- !.
-
-

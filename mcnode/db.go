@@ -15,9 +15,11 @@ type SQLDB struct {
 	db                 *sql.DB
 	insertStmtData     *sql.Stmt
 	insertStmtEnvelope *sql.Stmt
+	insertStmtRefs     *sql.Stmt
 	selectStmtData     *sql.Stmt
 	deleteStmtData     *sql.Stmt
 	deleteStmtEnvelope *sql.Stmt
+	deleteStmtRefs     *sql.Stmt
 }
 
 func (sdb *SQLDB) Put(stmt *pb.Statement) error {
@@ -39,11 +41,19 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 	}
 
 	xstmt = tx.Stmt(sdb.insertStmtEnvelope)
-	// XXX source = publisher only for simple statements
-	_, err = xstmt.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+	_, err = xstmt.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, mcq.StatementSource(stmt), stmt.Timestamp)
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	xstmt = tx.Stmt(sdb.insertStmtRefs)
+	for _, wki := range mcq.StatementRefs(stmt) {
+		_, err = xstmt.Exec(stmt.Id, wki)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -55,8 +65,9 @@ func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
 		return err
 	}
 
-	insertStmtData := tx.Stmt(sdb.insertStmtData)
-	insertStmtEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
+	insertData := tx.Stmt(sdb.insertStmtData)
+	insertEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
+	insertRefs := tx.Stmt(sdb.insertStmtRefs)
 
 	for _, stmt := range stmts {
 		bytes, err := ggproto.Marshal(stmt)
@@ -65,17 +76,24 @@ func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
 			return err
 		}
 
-		_, err = insertStmtData.Exec(stmt.Id, bytes)
+		_, err = insertData.Exec(stmt.Id, bytes)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// XXX source = publisher only for simple statements
-		_, err = insertStmtEnvelope.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
+		_, err = insertEnvelope.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, mcq.StatementSource(stmt), stmt.Timestamp)
 		if err != nil {
 			tx.Rollback()
 			return err
+		}
+
+		for _, wki := range mcq.StatementRefs(stmt) {
+			_, err = insertRefs.Exec(stmt.Id, wki)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
 	}
 
@@ -193,7 +211,7 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (count int, err error) {
 	// Partial deletes are possible because of an error in some batch,
 	// which will result in both count > 0 and the error being returned.
 
-	const batch = 8192 // 1MB worth of ids
+	const batch = 65536 // up to 16MB worth of ids
 	q = q.WithLimit(batch)
 
 loop:
@@ -212,6 +230,7 @@ loop:
 
 		delData := tx.Stmt(sdb.deleteStmtData)
 		delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
+		delRefs := tx.Stmt(sdb.deleteStmtRefs)
 
 		for _, id := range res {
 			_, err = delData.Exec(id)
@@ -221,6 +240,12 @@ loop:
 			}
 
 			_, err = delEnvelope.Exec(id)
+			if err != nil {
+				tx.Rollback()
+				break loop
+			}
+
+			_, err = delRefs.Exec(id)
 			if err != nil {
 				tx.Rollback()
 				break loop
@@ -265,6 +290,21 @@ func (sdb *SQLDB) createTables() error {
 	}
 
 	_, err = sdb.db.Exec("CREATE INDEX EnvelopeNS ON Envelope (namespace)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE TABLE Refs (id VARCHAR(128), wki VARCHAR)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE INDEX RefsId ON Refs (id)")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("CREATE INDEX RefsWki ON Refs (wki)")
 	return err
 }
 
@@ -280,6 +320,12 @@ func (sdb *SQLDB) prepareStatements() error {
 		return err
 	}
 	sdb.insertStmtEnvelope = stmt
+
+	stmt, err = sdb.db.Prepare("INSERT INTO Refs VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	sdb.insertStmtRefs = stmt
 
 	stmt, err = sdb.db.Prepare("SELECT data FROM Statement WHERE id = ?")
 	if err != nil {
@@ -298,6 +344,12 @@ func (sdb *SQLDB) prepareStatements() error {
 		return err
 	}
 	sdb.deleteStmtEnvelope = stmt
+
+	stmt, err = sdb.db.Prepare("DELETE FROM Refs WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	sdb.deleteStmtRefs = stmt
 
 	return nil
 }

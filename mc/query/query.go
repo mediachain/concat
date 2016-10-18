@@ -71,6 +71,11 @@ type RangeCriteria struct {
 	val int64
 }
 
+type IndexCriteria struct {
+	sel string
+	val string
+}
+
 type CompoundCriteria struct {
 	op          string
 	left, right QueryCriteria
@@ -86,6 +91,10 @@ func (c *ValueCriteria) criteriaType() string {
 
 func (c *RangeCriteria) criteriaType() string {
 	return "range"
+}
+
+func (c *IndexCriteria) criteriaType() string {
+	return "index"
 }
 
 func (c *CompoundCriteria) criteriaType() string {

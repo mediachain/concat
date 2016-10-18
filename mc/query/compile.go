@@ -41,6 +41,19 @@ func CompileQuery(q *Query) (string, RowSelector, error) {
 		join = true
 	}
 
+	if isIndexCriteria(q.criteria) {
+		tabs, err := indexCriteriaTables(q.criteria)
+		if err != nil {
+			return "", nil, err
+		}
+
+		for _, tab := range tabs {
+			sqlq = fmt.Sprintf("%s JOIN %s ON Envelope.id = %s.id", sqlq, tab, tab)
+		}
+
+		join = true
+	}
+
 	cols, err := compileQueryColumns(q, join)
 	if err != nil {
 		return "", nil, err
@@ -155,8 +168,9 @@ func compileQueryCriteria(q *Query, join bool) (string, error) {
 	}
 
 	if nscrit != "" {
-		return fmt.Sprintf("%s AND %s", nscrit, scrit), nil
+		scrit = fmt.Sprintf("%s AND %s", nscrit, scrit)
 	}
+
 	return scrit, nil
 }
 
@@ -196,6 +210,9 @@ func compileSelectorCriteria(c QueryCriteria, join bool) (string, error) {
 
 	case *RangeCriteria:
 		return fmt.Sprintf("%s %s %d", c.sel, c.op, c.val), nil
+
+	case *IndexCriteria:
+		return fmt.Sprintf("%s = '%s'", c.sel, c.val), nil
 
 	case *CompoundCriteria:
 		left, err := compileSelectorCriteria(c.left, join)
@@ -522,9 +539,6 @@ func isStatementCriteria(c QueryCriteria) bool {
 	case *ValueCriteria:
 		return c.sel == "id"
 
-	case *RangeCriteria:
-		return false
-
 	case *CompoundCriteria:
 		return isStatementCriteria(c.left) && isStatementCriteria(c.right)
 
@@ -535,3 +549,59 @@ func isStatementCriteria(c QueryCriteria) bool {
 		return false
 	}
 }
+
+func isIndexCriteria(c QueryCriteria) bool {
+	switch c := c.(type) {
+	case *IndexCriteria:
+		return true
+
+	case *CompoundCriteria:
+		return isIndexCriteria(c.left) || isIndexCriteria(c.right)
+
+	case *NegatedCriteria:
+		return isIndexCriteria(c.e)
+
+	default:
+		return false
+	}
+}
+
+func indexCriteriaTables(c QueryCriteria) (map[string]string, error) {
+	tabs := make(map[string]string)
+
+	err := collectIndexCriteriaTables(tabs, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return tabs, err
+}
+
+func collectIndexCriteriaTables(tabs map[string]string, c QueryCriteria) error {
+	switch c := c.(type) {
+	case *IndexCriteria:
+		tab, ok := indexCriteriaTableNames[c.sel]
+		if !ok {
+			return QueryCompileError(fmt.Sprintf("Unexpected index selector: %s", c.sel))
+		}
+
+		tabs[c.sel] = tab
+		return nil
+
+	case *CompoundCriteria:
+		err := collectIndexCriteriaTables(tabs, c.left)
+		if err != nil {
+			return err
+		}
+		return collectIndexCriteriaTables(tabs, c.right)
+
+	case *NegatedCriteria:
+		return collectIndexCriteriaTables(tabs, c.e)
+
+	default:
+		return nil
+	}
+}
+
+var indexCriteriaTableNames = map[string]string{
+	"wki": "Refs"}
