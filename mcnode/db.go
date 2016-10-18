@@ -211,7 +211,7 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (count int, err error) {
 	// Partial deletes are possible because of an error in some batch,
 	// which will result in both count > 0 and the error being returned.
 
-	const batch = 8192 // 1MB worth of ids
+	const batch = 65536 // up to 16MB worth of ids
 	q = q.WithLimit(batch)
 
 loop:
