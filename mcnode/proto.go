@@ -408,21 +408,12 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 }
 
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
-	if node.status == StatusOffline {
-		return NodeOffline
-	}
-
-	pinfo, err := node.doLookup(ctx, pid)
+	err := node.doConnect(ctx, pid)
 	if err != nil {
 		return err
 	}
 
-	err = node.host.Connect(ctx, pinfo)
-	if err != nil {
-		return err
-	}
-
-	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/ping")
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/ping")
 	if err != nil {
 		return err
 	}
@@ -440,6 +431,24 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	err = r.ReadMsg(&pong)
 
 	return err
+}
+
+func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
+	if node.status == StatusOffline {
+		return NodeOffline
+	}
+
+	addrs := node.host.Peerstore().Addrs(pid)
+	if len(addrs) > 0 {
+		return node.host.Connect(ctx, p2p_pstore.PeerInfo{pid, nil})
+	}
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		return err
+	}
+
+	return node.host.Connect(ctx, pinfo)
 }
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
@@ -489,22 +498,12 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 }
 
 func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
-
-	if node.status == StatusOffline {
-		return nil, NodeOffline
-	}
-
-	pinfo, err := node.doLookup(ctx, pid)
+	err := node.doConnect(ctx, pid)
 	if err != nil {
 		return nil, err
 	}
 
-	err = node.host.Connect(ctx, pinfo)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/query")
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/query")
 	if err != nil {
 		return nil, err
 	}
