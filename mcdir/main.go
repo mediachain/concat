@@ -27,7 +27,8 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 	defer s.Close()
 
 	pid := s.Conn().RemotePeer()
-	log.Printf("directory/register: new stream from %s\n", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("directory/register: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
 	req := new(pb.RegisterPeer)
@@ -39,18 +40,18 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 		}
 
 		if req.Info == nil {
-			log.Printf("directory/register: empty peer info from %s\n", pid.Pretty())
+			log.Printf("directory/register: empty peer info from %s", pid.Pretty())
 			break
 		}
 
 		pinfo, err := mc.PBToPeerInfo(req.Info)
 		if err != nil {
-			log.Printf("directory/register: bad peer info from %s\n", pid.Pretty())
+			log.Printf("directory/register: bad peer info from %s", pid.Pretty())
 			break
 		}
 
 		if pinfo.ID != pid {
-			log.Printf("directory/register: bogus peer info from %s\n", pid.Pretty())
+			log.Printf("directory/register: bogus peer info from %s", pid.Pretty())
 			break
 		}
 
@@ -66,7 +67,8 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 	defer s.Close()
 
 	pid := s.Conn().RemotePeer()
-	log.Printf("directory/lookup: new stream from %s\n", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("directory/lookup: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
 	w := ggio.NewDelimitedWriter(s)
@@ -81,7 +83,7 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 
 		xid, err := p2p_peer.IDB58Decode(req.Id)
 		if err != nil {
-			log.Printf("directory/lookup: bad request from %s\n", pid.Pretty())
+			log.Printf("directory/lookup: bad request from %s", pid.Pretty())
 			break
 		}
 
@@ -108,14 +110,14 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
-	log.Printf("directory: register %s\n", info.ID.Pretty())
+	log.Printf("directory: register %s", info.ID.Pretty())
 	dir.mx.Lock()
 	dir.peers[info.ID] = info
 	dir.mx.Unlock()
 }
 
 func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
-	log.Printf("directory: unregister %s\n", pid.Pretty())
+	log.Printf("directory: unregister %s", pid.Pretty())
 	dir.mx.Lock()
 	delete(dir.peers, pid)
 	dir.mx.Unlock()

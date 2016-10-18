@@ -124,7 +124,8 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 	defer s.Close()
 
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/ping: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/ping: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	var ping pb.Ping
 	var pong pb.Pong
@@ -149,7 +150,8 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 func (node *Node) queryHandler(s p2p_net.Stream) {
 	defer s.Close()
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/query: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/query: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	ctx, cancel := context.WithCancel(node.netCtx)
 	defer cancel()
@@ -242,7 +244,8 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 func (node *Node) dataHandler(s p2p_net.Stream) {
 	defer s.Close()
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/data: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/data: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	var req pb.DataRequest
 	var res pb.DataResult
