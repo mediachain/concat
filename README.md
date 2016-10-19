@@ -41,10 +41,77 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /dir/list` -- list known peers
 * `GET /net/addr` -- list known addresses
 
+### MCQL
+A limited SQL-like language is provided to query and delete statements and system metadata. Some possible queries:
+
+```sql
+SELECT namespace FROM *
+```
+```sql
+SELECT COUNT(*) FROM *
+```
+```sql
+SELECT (id, timestamp) FROM foo.bar -- foo.bar here is a namespace
+```
+
+Note that full relational algebra semantics are not (yet) supported and more complex queries may yield unexpected results.
+
 ## Installation
-TODO
+After cloning to the appropriate GOPATH,
+```sh
+./setup.sh
+./build.sh
+```
 
 ## Usage
-TODO
+```sh
+# start directory
+shell0 $ mcdir
+2016/09/09 21:20:02 Generating key pair
+2016/09/09 21:20:02 ID: QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
+2016/09/09 21:20:02 I am /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS`
+...
+
+# start and register node 1
+shell1 $ mcnode /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
+2016/09/09 21:20:30 Generating key pair
+2016/09/09 21:20:30 ID: QmXdkCFvS4EzuSF3XeaWAS5HxM2uPC9TKWcTZGoiBERobU
+2016/09/09 21:20:30 I am /ip4/127.0.0.1/tcp/9001/QmXdkCFvS4EzuSF3XeaWAS5HxM2uPC9TKWcTZGoiBERobU
+2016/09/09 21:20:30 Serving client interface at 127.0.0.1:9002
+2016/09/09 21:20:30 Registering with directory
+...
+
+# start and register node 2
+shell2 $ mcnode -l 9003 -c 9004 /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
+2016/09/09 21:21:13 Generating key pair
+2016/09/09 21:21:13 ID: QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
+2016/09/09 21:21:13 I am /ip4/127.0.0.1/tcp/9003/QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
+2016/09/09 21:21:13 Serving client interface at 127.0.0.1:9004
+2016/09/09 21:21:13 Registering with directory
+...
+
+# ping
+shell3 $ curl http://127.0.0.1:9002/ping/QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
+OK
+
+# publish a statement
+shell3 $ curl -H "Content-Type: application/json" -d '{"object": "QmABC", "refs": ["abc"], "tags": ["test"]}' http://127.0.0.1:9002/publish/foo.bar
+QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
+shell3 $ ls /tmp/mcnode/stmt/
+QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
+shell3 $ curl http://127.0.0.1:9002/stmt/QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
+{"id":"QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0","publisher":"QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK","namespace":"foo.bar","Body":{"Simple":{"object":"QmABC","refs":["abc"],"tags":["test"]}}}
+
+# save some arbitrary metadata
+shell3 $ curl -s -H "Content-Type: application/json" -d '{"data": "FCG389RpiSmWkbK96fd0if4gmhw="}' http://127.0.0.1:9002/data/put
+QmT7KTeJYJ7pnvsUk8g56AqFgp1Cqk91HnuhyhmaYZW4dr
+
+# read it back
+shell3 $ curl http://127.0.0.1:9002/data/get/QmT7KTeJYJ7pnvsUk8g56AqFgp1Cqk91HnuhyhmaYZW4dr
+{"data":"FCG389RpiSmWkbK96fd0if4gmhw="}
+
+# merge etc
+```
+
 
 1. <a name="footnote-1"></a> alternately [funes](http://www4.ncsu.edu/~jjsakon/FunestheMemorious.pdf), cf. [aleph](https://github.com/mediachain/aleph)
