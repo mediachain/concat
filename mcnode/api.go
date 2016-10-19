@@ -64,6 +64,15 @@ func (node *Node) httpRemoteId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /net/addr
+// Returns all routable node addrs
+func (node *Node) httpNetAddr(w http.ResponseWriter, r *http.Request) {
+	addrs := node.netAddrs()
+	for _, addr := range addrs {
+		fmt.Fprintln(w, addr.String())
+	}
+}
+
 // GET /ping/{peerId}
 // Lookup a peer in the directory and ping it with the /mediachain/node/ping protocol.
 // The node must be online and a directory must have been configured.
