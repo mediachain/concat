@@ -375,11 +375,6 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 		addrs := node.publicAddrs()
 
 		if len(addrs) > 0 {
-			log.Printf("Registering with directory")
-			for _, addr := range addrs {
-				log.Printf("Public address: %s", addr.String())
-			}
-
 			pinfo.Addrs = addrs
 			mc.PBFromPeerInfo(&pbpi, pinfo)
 			msg := pb.RegisterPeer{&pbpi}
