@@ -36,6 +36,9 @@ func (node *Node) goOffline() error {
 	case StatusOnline:
 		node.netCancel()
 		err := node.host.Close()
+		if err != nil {
+			log.Printf("Error closing host: %s", err.Error())
+		}
 		node.status = StatusOffline
 		node.natCfg.Clear()
 		log.Println("Node is offline")
