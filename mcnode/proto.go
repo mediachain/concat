@@ -489,17 +489,17 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	defer s.Close()
 
 	var ping pb.Ping
+	var pong pb.Pong
+
 	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
 	err = w.WriteMsg(&ping)
 	if err != nil {
 		return err
 	}
 
-	var pong pb.Pong
-	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
-	err = r.ReadMsg(&pong)
-
-	return err
+	return r.ReadMsg(&pong)
 }
 
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
