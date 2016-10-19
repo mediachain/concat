@@ -105,8 +105,33 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 }
 
 func (dir *Directory) listHandler(s p2p_net.Stream) {
-	// Implement Me!
-	s.Close()
+	defer s.Close()
+
+	pid := s.Conn().RemotePeer()
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("directory/list: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	var req pb.ListPeersRequest
+	var res pb.ListPeersResponse
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			break
+		}
+
+		res.Peers = dir.listPeers()
+
+		err = w.WriteMsg(&res)
+		if err != nil {
+			break
+		}
+
+		res.Reset()
+	}
 }
 
 func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
@@ -128,6 +153,16 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 	pinfo, ok := dir.peers[pid]
 	dir.mx.Unlock()
 	return pinfo, ok
+}
+
+func (dir *Directory) listPeers() []string {
+	dir.mx.Lock()
+	lst := make([]string, len(dir.peers))
+	for pid, _ := range dir.peers {
+		lst = append(lst, pid.Pretty())
+	}
+	dir.mx.Unlock()
+	return lst
 }
 
 func main() {

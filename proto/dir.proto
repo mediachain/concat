@@ -25,5 +25,5 @@ message ListPeersRequest {
 }
 
 message ListPeersResponse {
-  repeated PeerInfo peers = 1;
+  repeated string peers = 1;
 }
