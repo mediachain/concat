@@ -426,18 +426,45 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 	default:
 		switch node.natCfg.Opt {
 		case mc.NATConfigManual:
-			addr, err := node.natCfg.PublicAddr(node.laddr)
-			if err != nil {
-				log.Printf("Error determining pubic address: %s", err.Error())
-				return []multiaddr.Multiaddr{}
+			addr := node.natAddr()
+			if addr == nil {
+				return nil
 			}
-
 			return []multiaddr.Multiaddr{addr}
 
 		default:
 			return mc.FilterAddrs(node.host.Addrs(), mc.IsPublicAddr)
 		}
 	}
+}
+
+// netAddrs retrieves all routable addresses for the node, regardless of directory
+// this includes the auto-detected or manually configured NAT address
+func (node *Node) netAddrs() []multiaddr.Multiaddr {
+	if node.status == StatusOffline {
+		return nil
+	}
+
+	addrs := mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
+
+	nataddr := node.natAddr()
+	if nataddr != nil {
+		addrs = append(addrs, nataddr)
+	}
+
+	return addrs
+}
+
+func (node *Node) natAddr() multiaddr.Multiaddr {
+	if node.natCfg.Opt != mc.NATConfigManual {
+		return nil
+	}
+
+	addr, err := node.natCfg.PublicAddr(node.laddr)
+	if err != nil {
+		log.Printf("Error determining pubic address: %s", err.Error())
+	}
+	return addr
 }
 
 func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeInfo, err error) {
