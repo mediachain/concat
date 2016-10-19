@@ -566,6 +566,45 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 	return pinfo, nil
 }
 
+func (node *Node) doDirList(ctx context.Context) ([]string, error) {
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	if node.dir == nil {
+		return nil, NoDirectory
+	}
+
+	err := node.host.Connect(node.netCtx, *node.dir)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/list")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ListPeersRequest
+	var res pb.ListPeersResponse
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Peers, nil
+}
+
 func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
 	err := node.doConnect(ctx, pid)
 	if err != nil {

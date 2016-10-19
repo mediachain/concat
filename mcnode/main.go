@@ -86,6 +86,7 @@ func main() {
 	router.HandleFunc("/config/dir", node.httpConfigDir)
 	router.HandleFunc("/config/nat", node.httpConfigNAT)
 	router.HandleFunc("/config/info", node.httpConfigInfo)
+	router.HandleFunc("/dir/list", node.httpDirList)
 
 	log.Printf("Serving client interface at %s", haddr)
 	err = http.ListenAndServe(haddr, router)

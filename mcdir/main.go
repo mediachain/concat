@@ -158,7 +158,7 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 
 func (dir *Directory) listPeers() []string {
 	dir.mx.Lock()
-	lst := make([]string, len(dir.peers))
+	lst := make([]string, 0, len(dir.peers))
 	for pid, _ := range dir.peers {
 		lst = append(lst, pid.Pretty())
 	}
