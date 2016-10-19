@@ -100,8 +100,12 @@ func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// filter self from result set
+	mypid := node.PeerIdentity.Pretty()
 	for _, peer := range peers {
-		fmt.Fprintln(w, peer)
+		if peer != mypid {
+			fmt.Fprintln(w, peer)
+		}
 	}
 }
 
