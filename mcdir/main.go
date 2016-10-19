@@ -30,11 +30,11 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 	paddr := s.Conn().RemoteMultiaddr()
 	log.Printf("directory/register: new stream from %s at %s", pid.Pretty(), paddr.String())
 
+	var req pb.RegisterPeer
 	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
-	req := new(pb.RegisterPeer)
 
 	for {
-		err := r.ReadMsg(req)
+		err := r.ReadMsg(&req)
 		if err != nil {
 			break
 		}
@@ -70,13 +70,14 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 	paddr := s.Conn().RemoteMultiaddr()
 	log.Printf("directory/lookup: new stream from %s at %s", pid.Pretty(), paddr.String())
 
+	var req pb.LookupPeerRequest
+	var res pb.LookupPeerResponse
+
 	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
 	w := ggio.NewDelimitedWriter(s)
-	req := new(pb.LookupPeerRequest)
-	resp := new(pb.LookupPeerResponse)
 
 	for {
-		err := r.ReadMsg(req)
+		err := r.ReadMsg(&req)
 		if err != nil {
 			break
 		}
@@ -91,16 +92,16 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 		if ok {
 			var pbpi pb.PeerInfo
 			mc.PBFromPeerInfo(&pbpi, pinfo)
-			resp.Peer = &pbpi
+			res.Peer = &pbpi
 		}
 
-		err = w.WriteMsg(resp)
+		err = w.WriteMsg(&res)
 		if err != nil {
 			break
 		}
 
 		req.Reset()
-		resp.Reset()
+		res.Reset()
 	}
 }
 
