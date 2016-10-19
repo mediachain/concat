@@ -88,6 +88,23 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+// GET /dir/list
+// List peers known to the directory
+func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	peers, err := node.doDirList(ctx)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, peer := range peers {
+		fmt.Fprintln(w, peer)
+	}
+}
+
 var nsrx *regexp.Regexp
 
 func init() {
