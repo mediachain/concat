@@ -64,7 +64,7 @@ var simpleq []string = []string{
 	"SELECT * FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
 	"SELECT * FROM foo.bar WHERE publisher = abc LIMIT 10",
 	"SELECT * FROM foo.bar WHERE wki = mywki:abc",
-	"SELECT * FROM foo.bar WHERE wki = mywki:abc-defg_123-ABC",
+	"SELECT * FROM foo.bar WHERE wki = mywki:abc-defg_123-ABC/xyz.XYZ",
 	"SELECT * FROM foo.bar LIMIT 10",
 	"SELECT * FROM * WHERE id = abc",
 	"SELECT * FROM * ORDER BY id",

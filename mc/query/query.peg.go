@@ -1794,6 +1794,18 @@ func (p *QueryParser) Init() {
 													depth++
 													{
 														switch buffer[position] {
+														case '.':
+															if buffer[position] != rune('.') {
+																goto l88
+															}
+															position++
+															break
+														case '/':
+															if buffer[position] != rune('/') {
+																goto l88
+															}
+															position++
+															break
 														case '_':
 															if buffer[position] != rune('_') {
 																goto l88
@@ -1838,6 +1850,18 @@ func (p *QueryParser) Init() {
 														position101, tokenIndex101, depth101 := position, tokenIndex, depth
 														{
 															switch buffer[position] {
+															case '.':
+																if buffer[position] != rune('.') {
+																	goto l101
+																}
+																position++
+																break
+															case '/':
+																if buffer[position] != rune('/') {
+																	goto l101
+																}
+																position++
+																break
 															case '_':
 																if buffer[position] != rune('_') {
 																	goto l101
@@ -2826,7 +2850,7 @@ func (p *QueryParser) Init() {
 			position, tokenIndex, depth = position191, tokenIndex191, depth191
 			return false
 		},
-		/* 43 WKI <- <<((&('_') '_') | (&(':') ':') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('-') '-') | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+>> */
+		/* 43 WKI <- <<((&('.') '.') | (&('/') '/') | (&('_') '_') | (&(':') ':') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('-') '-') | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+>> */
 		nil,
 		/* 44 UInt <- <<[0-9]+>> */
 		func() bool {
