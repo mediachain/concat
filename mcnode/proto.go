@@ -36,7 +36,11 @@ func (node *Node) goOffline() error {
 	case StatusOnline:
 		node.netCancel()
 		err := node.host.Close()
+		if err != nil {
+			log.Printf("Error closing host: %s", err.Error())
+		}
 		node.status = StatusOffline
+		node.natCfg.Clear()
 		log.Println("Node is offline")
 		return err
 
@@ -68,7 +72,7 @@ func (node *Node) goOnline() error {
 
 func (node *Node) _goOnline() error {
 	var opts []interface{}
-	if node.natCfg.opt == NATConfigAuto {
+	if node.natCfg.Opt == mc.NATConfigAuto {
 		opts = []interface{}{mc.NATPortMap}
 	}
 
@@ -123,7 +127,8 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 	defer s.Close()
 
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/ping: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/ping: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	var ping pb.Ping
 	var pong pb.Pong
@@ -148,7 +153,8 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 func (node *Node) queryHandler(s p2p_net.Stream) {
 	defer s.Close()
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/query: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/query: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	ctx, cancel := context.WithCancel(node.netCtx)
 	defer cancel()
@@ -241,7 +247,8 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 func (node *Node) dataHandler(s p2p_net.Stream) {
 	defer s.Close()
 	pid := s.Conn().RemotePeer()
-	log.Printf("node/data: new stream from %s", pid.Pretty())
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/data: new stream from %s at %s", pid.Pretty(), paddr.String())
 
 	var req pb.DataRequest
 	var res pb.DataResult
@@ -322,7 +329,7 @@ func (node *Node) registerPeer(ctx context.Context) {
 }
 
 func (node *Node) registerPeerImpl(ctx context.Context) error {
-	err := node.host.Connect(ctx, *node.dir)
+	err := node.host.Connect(node.netCtx, *node.dir)
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
 		return err
@@ -397,9 +404,15 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 		return mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
 
 	default:
-		switch node.natCfg.opt {
-		case NATConfigManual:
-			return []multiaddr.Multiaddr{node.natCfg.addr}
+		switch node.natCfg.Opt {
+		case mc.NATConfigManual:
+			addr, err := node.natCfg.PublicAddr(node.laddr)
+			if err != nil {
+				log.Printf("Error determining pubic address: %s", err.Error())
+				return []multiaddr.Multiaddr{}
+			}
+
+			return []multiaddr.Multiaddr{addr}
 
 		default:
 			return mc.FilterAddrs(node.host.Addrs(), mc.IsPublicAddr)
@@ -408,21 +421,12 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 }
 
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
-	if node.status == StatusOffline {
-		return NodeOffline
-	}
-
-	pinfo, err := node.doLookup(ctx, pid)
+	err := node.doConnect(ctx, pid)
 	if err != nil {
 		return err
 	}
 
-	err = node.host.Connect(ctx, pinfo)
-	if err != nil {
-		return err
-	}
-
-	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/ping")
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/ping")
 	if err != nil {
 		return err
 	}
@@ -442,6 +446,24 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	return err
 }
 
+func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
+	if node.status == StatusOffline {
+		return NodeOffline
+	}
+
+	addrs := node.host.Peerstore().Addrs(pid)
+	if len(addrs) > 0 {
+		return node.host.Connect(node.netCtx, p2p_pstore.PeerInfo{pid, nil})
+	}
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		return err
+	}
+
+	return node.host.Connect(node.netCtx, pinfo)
+}
+
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
 	if node.status == StatusOffline {
 		return empty, NodeOffline
@@ -451,7 +473,7 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 		return empty, NoDirectory
 	}
 
-	node.host.Connect(ctx, *node.dir)
+	node.host.Connect(node.netCtx, *node.dir)
 	if err != nil {
 		return empty, err
 	}
@@ -489,22 +511,12 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_psto
 }
 
 func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
-
-	if node.status == StatusOffline {
-		return nil, NodeOffline
-	}
-
-	pinfo, err := node.doLookup(ctx, pid)
+	err := node.doConnect(ctx, pid)
 	if err != nil {
 		return nil, err
 	}
 
-	err = node.host.Connect(ctx, pinfo)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := node.host.NewStream(ctx, pinfo.ID, "/mediachain/node/query")
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/query")
 	if err != nil {
 		return nil, err
 	}

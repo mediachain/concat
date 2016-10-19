@@ -519,7 +519,7 @@ func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opt := strings.TrimSpace(string(body))
-	cfg, err := NATConfigFromString(opt)
+	cfg, err := mc.NATConfigFromString(opt)
 	if err != nil {
 		apiError(w, http.StatusBadRequest, err)
 		return

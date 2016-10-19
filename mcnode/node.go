@@ -30,7 +30,7 @@ type Node struct {
 	netCtx    context.Context
 	netCancel context.CancelFunc
 	dir       *p2p_pstore.PeerInfo
-	natCfg    NATConfig
+	natCfg    mc.NATConfig
 	home      string
 	db        StatementDB
 	ds        Datastore
@@ -85,47 +85,6 @@ const (
 )
 
 var statusString = []string{"offline", "online", "public"}
-
-type NATConfig struct {
-	opt  int
-	addr multiaddr.Multiaddr // public address when option = NATConfigManual
-}
-
-const (
-	NATConfigNone = iota
-	NATConfigAuto
-	NATConfigManual
-)
-
-var natConfigString = []string{"none", "auto", "manual"}
-
-func (cfg NATConfig) String() string {
-	switch cfg.opt {
-	case NATConfigManual:
-		return cfg.addr.String()
-	default:
-		return natConfigString[cfg.opt]
-	}
-}
-
-func NATConfigFromString(str string) (cfg NATConfig, err error) {
-	switch str {
-	case "none":
-		cfg.opt = NATConfigNone
-		return cfg, nil
-	case "auto":
-		cfg.opt = NATConfigAuto
-		return cfg, nil
-	default:
-		addr, err := mc.ParseAddress(str)
-		if err != nil {
-			return cfg, err
-		}
-		cfg.opt = NATConfigManual
-		cfg.addr = addr
-		return cfg, nil
-	}
-}
 
 type StreamError struct {
 	Err string `json:"error"`
@@ -325,7 +284,7 @@ func (node *Node) loadConfig() error {
 		return err
 	}
 
-	natCfg, err := NATConfigFromString(cfg.NAT)
+	natCfg, err := mc.NATConfigFromString(cfg.NAT)
 	if err != nil {
 		return err
 	}
