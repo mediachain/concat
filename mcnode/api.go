@@ -28,7 +28,7 @@ func apiError(w http.ResponseWriter, status int, err error) {
 
 // GET /id
 // Returns the node info, which includes the peer and publisher ids, and the
-// configured public node information.
+// configured node information.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 	nids := NodeInfo{node.PeerIdentity.Pretty(), node.publisher.Pretty(), node.info}
 
@@ -528,6 +528,35 @@ func (node *Node) httpConfigNATSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.natCfg = cfg
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// GET  /config/info
+// POST /config/info
+// retrieve/set node information
+func (node *Node) httpConfigInfo(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpConfigInfoGet, node.httpConfigInfoSet)
+}
+
+func (node *Node) httpConfigInfoGet(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, node.info)
+}
+
+func (node *Node) httpConfigInfoSet(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/config/info: Error reading request body: %s", err.Error())
+		return
+	}
+
+	node.info = strings.TrimSpace(string(body))
 
 	err = node.saveConfig()
 	if err != nil {
