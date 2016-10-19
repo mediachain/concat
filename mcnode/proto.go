@@ -602,7 +602,20 @@ func (node *Node) doDirList(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	return res.Peers, nil
+	// filter self from result when public
+	if node.status != StatusPublic {
+		return res.Peers, nil
+	}
+
+	lst := make([]string, 0, len(res.Peers))
+	mypid := node.PeerIdentity.Pretty()
+	for _, pid := range res.Peers {
+		if pid != mypid {
+			lst = append(lst, pid)
+		}
+	}
+
+	return lst, nil
 }
 
 func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
