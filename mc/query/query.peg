@@ -122,7 +122,7 @@ Limit <- 'LIMIT' WS UInt { p.setLimit(text) }
 # Lexemes
 StatementId <- < [a-zA-Z0-9:]+ >
 PublisherId <- < [a-zA-Z0-9]+ >
-WKI         <- < [-a-zA-Z0-9:_]+ >
+WKI         <- < [-a-zA-Z0-9:_/.]+ >
 UInt        <- < [0-9]+ >
 WS          <- WhiteSpace+
 WSX         <- WhiteSpace*
