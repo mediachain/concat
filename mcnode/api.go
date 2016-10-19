@@ -27,9 +27,10 @@ func apiError(w http.ResponseWriter, status int, err error) {
 // Local node REST API implementation
 
 // GET /id
-// Returns the node peer identity.
+// Returns the node info, which includes the peer and publisher ids, and the
+// configured public node information.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	nids := NodeIds{node.PeerIdentity.Pretty(), node.publisher.Pretty()}
+	nids := NodeInfo{node.PeerIdentity.Pretty(), node.publisher.Pretty(), node.info}
 
 	err := json.NewEncoder(w).Encode(nids)
 	if err != nil {
@@ -37,9 +38,10 @@ func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type NodeIds struct {
+type NodeInfo struct {
 	Peer      string `json:"peer"`
 	Publisher string `json:"publisher"`
+	Info      string `json:"info"`
 }
 
 // GET /ping/{peerId}

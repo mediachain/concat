@@ -24,6 +24,7 @@ import (
 type Node struct {
 	mc.PeerIdentity
 	publisher mc.PublisherIdentity
+	info      string
 	status    int
 	laddr     multiaddr.Multiaddr
 	host      p2p_host.Host
@@ -247,12 +248,14 @@ func (node *Node) openDS() error {
 
 // persistent configuration
 type NodeConfig struct {
-	NAT string `json:"nat,omitempty"`
-	Dir string `json:"dir,omitempty"`
+	Info string `json:"info,omitempty"`
+	NAT  string `json:"nat,omitempty"`
+	Dir  string `json:"dir,omitempty"`
 }
 
 func (node *Node) saveConfig() error {
 	var cfg NodeConfig
+	cfg.Info = node.info
 	cfg.NAT = node.natCfg.String()
 	if node.dir != nil {
 		cfg.Dir = mc.FormatHandle(*node.dir)
@@ -283,6 +286,8 @@ func (node *Node) loadConfig() error {
 	if err != nil {
 		return err
 	}
+
+	node.info = cfg.Info
 
 	natCfg, err := mc.NATConfigFromString(cfg.NAT)
 	if err != nil {
