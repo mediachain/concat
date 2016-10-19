@@ -19,6 +19,8 @@ It has these top-level messages:
 	ListPeersResponse
 	StreamEnd
 	StreamError
+	NodeInfoRequest
+	NodeInfo
 	Ping
 	Pong
 	QueryRequest
@@ -64,7 +66,7 @@ func (m *PeerInfo) String() string            { return proto1.CompactTextString(
 func (*PeerInfo) ProtoMessage()               {}
 func (*PeerInfo) Descriptor() ([]byte, []int) { return fileDescriptorDir, []int{0} }
 
-// directory/register
+// /mediachain/dir/register
 type RegisterPeer struct {
 	Info *PeerInfo `protobuf:"bytes,1,opt,name=info" json:"info,omitempty"`
 }
@@ -81,7 +83,7 @@ func (m *RegisterPeer) GetInfo() *PeerInfo {
 	return nil
 }
 
-// directory/lookup
+// /mediachain/dir/lookup
 type LookupPeerRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
@@ -107,7 +109,7 @@ func (m *LookupPeerResponse) GetPeer() *PeerInfo {
 	return nil
 }
 
-// directory/list
+// /mediachain/dir/list
 type ListPeersRequest struct {
 }
 

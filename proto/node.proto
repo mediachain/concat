@@ -11,6 +11,15 @@ message StreamError {
   string error = 1;
 }
 
+// /mediachain/node/id
+message NodeInfoRequest {}
+
+message NodeInfo {
+  string peer = 1;
+  string publisher = 2;
+  string info = 3;
+}
+
 // /mediachain/node/ping
 message Ping {}
 message Pong {}

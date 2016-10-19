@@ -6,12 +6,12 @@ message PeerInfo {
   repeated bytes addr = 2;  // peer multiaddrs
 }
 
-// directory/register
+// /mediachain/dir/register
 message RegisterPeer {
   PeerInfo info = 1;
 }
 
-// directory/lookup
+// /mediachain/dir/lookup
 message LookupPeerRequest {
   string id = 1;
 }
@@ -20,7 +20,7 @@ message LookupPeerResponse {
   PeerInfo peer = 1;       // abset if peer not found
 }
 
-// directory/list
+// /mediachain/dir/list
 message ListPeersRequest {
 }
 
