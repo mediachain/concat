@@ -63,6 +63,12 @@ type Datastore interface {
 	Close()
 }
 
+type NodeInfo struct {
+	Peer      string `json:"peer"`
+	Publisher string `json:"publisher"`
+	Info      string `json:"info"`
+}
+
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	UnknownObject    = errors.New("Unknown Object")

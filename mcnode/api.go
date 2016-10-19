@@ -30,18 +30,38 @@ func apiError(w http.ResponseWriter, status int, err error) {
 // Returns the node info, which includes the peer and publisher ids, and the
 // configured node information.
 func (node *Node) httpId(w http.ResponseWriter, r *http.Request) {
-	nids := NodeInfo{node.PeerIdentity.Pretty(), node.publisher.Pretty(), node.info}
+	ninfo := NodeInfo{node.PeerIdentity.Pretty(), node.publisher.Pretty(), node.info}
 
-	err := json.NewEncoder(w).Encode(nids)
+	err := json.NewEncoder(w).Encode(ninfo)
 	if err != nil {
 		log.Printf("Error writing response body: %s", err.Error())
 	}
 }
 
-type NodeInfo struct {
-	Peer      string `json:"peer"`
-	Publisher string `json:"publisher"`
-	Info      string `json:"info"`
+// GET /id/{peerId}
+// Returns the node info from a remote peer
+func (node *Node) httpRemoteId(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	ninfo, err := node.doRemoteId(ctx, pid)
+	if err != nil {
+		apiError(w, http.StatusNotFound, err)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(ninfo)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
 }
 
 // GET /ping/{peerId}
