@@ -81,6 +81,7 @@ func (node *Node) _goOnline() error {
 		return err
 	}
 
+	host.SetStreamHandler("/mediachain/node/id", node.idHandler)
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
@@ -148,6 +149,30 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 			return
 		}
 	}
+}
+
+func (node *Node) idHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	pid := s.Conn().RemotePeer()
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/id: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	var req pb.NodeInfoRequest
+	var res pb.NodeInfo
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	err := r.ReadMsg(&req)
+	if err != nil {
+		return
+	}
+
+	res.Peer = node.PeerIdentity.Pretty()
+	res.Publisher = node.publisher.ID58
+	res.Info = node.info
+
+	w.WriteMsg(&res)
 }
 
 func (node *Node) queryHandler(s p2p_net.Stream) {
