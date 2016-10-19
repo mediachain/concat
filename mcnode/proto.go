@@ -445,6 +445,37 @@ func (node *Node) publicAddrs() []multiaddr.Multiaddr {
 	}
 }
 
+func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeInfo, err error) {
+	err = node.doConnect(ctx, pid)
+	if err != nil {
+		return empty, err
+	}
+
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/id")
+	if err != nil {
+		return empty, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.NodeInfoRequest
+	var res pb.NodeInfo
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return empty, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return empty, err
+	}
+
+	return NodeInfo{res.Peer, res.Publisher, res.Info}, nil
+}
+
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 	err := node.doConnect(ctx, pid)
 	if err != nil {

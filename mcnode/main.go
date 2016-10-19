@@ -71,6 +71,7 @@ func main() {
 	haddr := fmt.Sprintf("%s:%d", *bindaddr, *cport)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/id", node.httpId)
+	router.HandleFunc("/id/{peerId}", node.httpRemoteId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
 	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
