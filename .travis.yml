@@ -17,7 +17,7 @@ script: gx-go rewrite && go test ./mc/...
 before_cache:
   - rm -rf $GOPATH/src/github.com/mediachain/concat
 
-# cache go dependencies (espeically /pkg with compiled gorocksdb)
+# cache go dependencies (espeically /pkg with gorocksdb)
 cache:
   directories:
     - $GOPATH/src
