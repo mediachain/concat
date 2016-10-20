@@ -1,12 +1,6 @@
 language: go
-sudo: required
 go:
   - 1.7
-
-before_install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get -qq update
-  - sudo apt-get install gcc-4.8 g++-4.8 -y --force-yes
 
 install:
   - go get -u github.com/whyrusleeping/gx
@@ -26,3 +20,11 @@ cache:
   directories:
     - $GOPATH/src
     - $GOPATH/pkg
+
+addons:
+  apt:
+    source:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
