@@ -3,6 +3,7 @@ go:
   - 1.7
 
 install:
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   - go get -u github.com/whyrusleeping/gx
   - go get -u github.com/whyrusleeping/gx-go
   - gx install
@@ -23,7 +24,7 @@ cache:
 
 addons:
   apt:
-    source:
+    sources:
       - ubuntu-toolchain-r-test
     packages:
       - gcc-4.8
