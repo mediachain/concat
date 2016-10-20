@@ -24,6 +24,71 @@ $ ./setup.sh && ./install.sh
 
 ## Usage
 
+### Getting Started
+You can run your local mediachain node by invoking `mcnode` without arguments:
+```
+$ mcnode
+2016/10/20 19:29:24 Generating new node identity
+2016/10/20 19:29:25 Saving key to /home/vyzo/.mediachain/mcnode/identity.node
+2016/10/20 19:29:25 Node ID: QmeBkfxcaBfA9pvzivRwhF2PM7sXpp4HHQbp7jfTkRCWEa
+2016/10/20 19:29:25 Generating new publisher identity
+2016/10/20 19:29:25 Saving key to /home/vyzo/.mediachain/mcnode/identity.publisher
+2016/10/20 19:29:25 Publisher ID: 4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey
+2016/10/20 19:29:25 Node is offline
+2016/10/20 19:29:25 Serving client interface at 127.0.0.1:9002
+```
+
+The first time you run `mcnode`, it will generate a pair of persistent identities and
+initialize the local store. By default, `mcnode` uses `~/.mediachain/mcnode` as its
+root directory, but you can change this using the `-d path/to/mcnode/root` command line
+option.
+
+`mcnode` is intended to be run as a daemon, so you can run it in a docker container,
+use `daemon` to daemonize, or simply run it inside a `screen`.
+
+By default, the node starts disconnected from the p2p network and provides a client control
+api in localhost.
+You can control and use your node through the api using curl, but it is recommended
+to install [Aleph](https://github.com/mediachain/aleph).
+Aleph provides a fully featured client for `mcnode` named `mcclient` and we use it in
+the examples below.
+
+Once your node is up and running you can check its status:
+```
+$ mcclient id
+Peer ID: QmeBkfxcaBfA9pvzivRwhF2PM7sXpp4HHQbp7jfTkRCWEa
+Publisher ID: 4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey
+Info: 
+$ mcclient status
+offline
+```
+
+At this point you can you should designate a directory for looking up peers:
+```
+$ mcclient config dir /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
+set directory to /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
+```
+
+And your node is ready to go online:
+```
+$ mcclient status online
+status set to online
+$ mcclient listPeers
+...
+QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ
+...
+$ mcclient id QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ
+Peer ID: QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ
+Publisher ID: 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
+Info: Metadata for CC images from DPLA, 500px, and pexels; operated by Mediachain Labs.
+```
+
+### Basic Operations
+
+TODO
+
+### Publishing Statements
+
 TODO
 
 ## mcnode
