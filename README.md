@@ -1,16 +1,29 @@
-# concat
+# Concat
 
 _concat<sup>[1](#footnote-1)</sup>: concatenating cat, by contrast to [copycat](https://github.com/atomix/copycat), used in a [previous prototype](https://github.com/mediachain/oldchain)_
 
-**concat** is a set of daemons that provide the backbone of the Mediachain system. Please see [RFC 4](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4.md), [concat.md](https://github.com/mediachain/mediachain/blob/master/docs/concat.md) and the [9/15/16](https://blog.mediachain.io/looking-backwards-looking-forwards-9149bf00f876#.c4xrhcdwj) developer update for a high level overview of this design.
+**concat** is a set of daemons that provide the backbone of the Mediachain peer-to-peer network.
+Please see [RFC 4](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4.md), [concat.md](https://github.com/mediachain/mediachain/blob/master/docs/concat.md) and the [9/15/16](https://blog.mediachain.io/looking-backwards-looking-forwards-9149bf00f876#.c4xrhcdwj) developer update for a high level overview of this design.
 
-The two principal daemons are **mcdir**, which provides a service for peer registration and discovery, and **mcnode**, which actually stores, accepts and returns data.
+The two main programs in concat is **mcnode**, which is the implementation of a fully featured Mediachain node, and **mcdir**, which implements a directory server for facilitating node discovery and connectivity.
 
-## mcdir
-See also [roles](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4-roles.md#directory-servers).
+## Installation
+Concat requires Go 1.7 or later.
 
-### API
-TODO
+First clone the repo in your `$GOPATH`:
+```
+$ mkdir -p $GOPATH/src/github.com/mediachain
+$ git clone https://github.com/mediachain/concat.git $GOPATH/src/github.com/mediachain/concat
+```
+
+You can then run the setup and install scripts which will fetch dependencies and install the programs in `$GOPATH/bin`:
+```
+$ cd $GOPATH/src/github.com/mediachain/concat
+$ ./setup.sh && ./install.sh 
+```
+
+## Usage
+
 
 ## mcnode
 ### Architecture
@@ -32,7 +45,8 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /query` -- issue MCQL SELECT query on this peer
 * `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
 * `POST /merge/{peerId}` -- query a remote peer and merge the resulting statements into this one
-* `POST /delete` -- delete statements matching this MCQL DELETE query                                                         * `POST /data/put` -- add a batch of data objects to datastore
+* `POST /delete` -- delete statements matching this MCQL DELETE query
+* `POST /data/put` -- add a batch of data objects to datastore
 * `GET /data/get/{objectId}` -- get an object from the datastore
 * `GET /status` -- get node network state
 * `POST /status/{state}` -- control network state (online/offline/public)
@@ -42,7 +56,11 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /net/addr` -- list known addresses
 
 ### MCQL
-A limited SQL-like language is provided to query and delete statements and system metadata. Some possible queries:
+MCQL is a query-language for retrieving statements from the node's statement db.
+It supports `SELECT` and `DELETE` statements with a syntax very similar to SQL, where
+namespaces play the role of tables.
+
+Some basic example statements:
 
 ```sql
 SELECT namespace FROM *
@@ -54,64 +72,13 @@ SELECT COUNT(*) FROM *
 SELECT (id, timestamp) FROM foo.bar -- foo.bar here is a namespace
 ```
 
-Note that full relational algebra semantics are not (yet) supported and more complex queries may yield unexpected results.
+The full grammar for MCQL is defined as a PEG in [query.peg](src/mc/query/query.pg)
 
-## Installation
-After cloning to the appropriate GOPATH,
-```sh
-./setup.sh
-./build.sh
-```
+## mcdir
+See also [roles](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4-roles.md#directory-servers).
 
-## Usage
-```sh
-# start directory
-shell0 $ mcdir
-2016/09/09 21:20:02 Generating key pair
-2016/09/09 21:20:02 ID: QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
-2016/09/09 21:20:02 I am /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS`
-...
-
-# start and register node 1
-shell1 $ mcnode /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
-2016/09/09 21:20:30 Generating key pair
-2016/09/09 21:20:30 ID: QmXdkCFvS4EzuSF3XeaWAS5HxM2uPC9TKWcTZGoiBERobU
-2016/09/09 21:20:30 I am /ip4/127.0.0.1/tcp/9001/QmXdkCFvS4EzuSF3XeaWAS5HxM2uPC9TKWcTZGoiBERobU
-2016/09/09 21:20:30 Serving client interface at 127.0.0.1:9002
-2016/09/09 21:20:30 Registering with directory
-...
-
-# start and register node 2
-shell2 $ mcnode -l 9003 -c 9004 /ip4/127.0.0.1/tcp/9000/QmbF87NnyoN3msnmifXhCMUpCRK6C8uXxqAgr93QVa67xS
-2016/09/09 21:21:13 Generating key pair
-2016/09/09 21:21:13 ID: QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
-2016/09/09 21:21:13 I am /ip4/127.0.0.1/tcp/9003/QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
-2016/09/09 21:21:13 Serving client interface at 127.0.0.1:9004
-2016/09/09 21:21:13 Registering with directory
-...
-
-# ping
-shell3 $ curl http://127.0.0.1:9002/ping/QmQg6PiJ6ouBK6pEukZ9rsVRJC7gnt8gvp78gp7XtippJ6
-OK
-
-# publish a statement
-shell3 $ curl -H "Content-Type: application/json" -d '{"object": "QmABC", "refs": ["abc"], "tags": ["test"]}' http://127.0.0.1:9002/publish/foo.bar
-QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
-shell3 $ ls /tmp/mcnode/stmt/
-QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
-shell3 $ curl http://127.0.0.1:9002/stmt/QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0
-{"id":"QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK:1473848347:0","publisher":"QmWwnVop4hHB3K6z2vuUgU9rh5VrDwMnwuiP9LZew7NzUK","namespace":"foo.bar","Body":{"Simple":{"object":"QmABC","refs":["abc"],"tags":["test"]}}}
-
-# save some arbitrary metadata
-shell3 $ curl -s -H "Content-Type: application/json" -d '{"data": "FCG389RpiSmWkbK96fd0if4gmhw="}' http://127.0.0.1:9002/data/put
-QmT7KTeJYJ7pnvsUk8g56AqFgp1Cqk91HnuhyhmaYZW4dr
-
-# read it back
-shell3 $ curl http://127.0.0.1:9002/data/get/QmT7KTeJYJ7pnvsUk8g56AqFgp1Cqk91HnuhyhmaYZW4dr
-{"data":"FCG389RpiSmWkbK96fd0if4gmhw="}
-
-# merge etc
-```
+### API
+TODO
 
 
 1. <a name="footnote-1"></a> alternately [funes](http://www4.ncsu.edu/~jjsakon/FunestheMemorious.pdf), cf. [aleph](https://github.com/mediachain/aleph)
