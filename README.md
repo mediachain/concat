@@ -24,6 +24,7 @@ $ ./setup.sh && ./install.sh
 
 ## Usage
 
+TODO
 
 ## mcnode
 ### Architecture
@@ -72,7 +73,7 @@ SELECT COUNT(*) FROM *
 SELECT (id, timestamp) FROM foo.bar -- foo.bar here is a namespace
 ```
 
-The full grammar for MCQL is defined as a PEG in [query.peg](src/mc/query/query.pg)
+The full grammar for MCQL is defined as a PEG in [query.peg](mc/query/query.pg)
 
 ## mcdir
 See also [roles](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4-roles.md#directory-servers).
