@@ -8,6 +8,7 @@ install:
   - go get -u github.com/whyrusleeping/gx-go
   - gx install
   - export CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++"
+  - go env
   - gx-go rewrite && go get -tags=embed ./...
   - ./install.sh
 
