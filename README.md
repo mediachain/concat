@@ -28,7 +28,9 @@ TODO
 
 ## mcnode
 ### Architecture
-The node contains the **statment db** (including **envelopes**, **refs**, etc) and the **datastore**. The datastore contains the metadata _per se_, as CBOR objects ([IPLD](https://github.com/ipld/specs/tree/master/ipld) compatible to the best of our ability) of unspecified schema, stored in RocksDB in point lookup mode.
+The node contains the **statement db** and the **datastore**.
+
+The datastore contains the metadata _per se_, as CBOR objects ([IPLD](https://github.com/ipld/specs/tree/master/ipld) compatible to the best of our ability) of unspecified schema, stored in RocksDB in point lookup mode.
 
 The statement db contains **statements** about one (currently) or more metadata objects: their publisher, namespace, timestamp and signature. Statements are [protobuf objects](https://github.com/mediachain/concat/blob/master/proto/stmt.proto) sent over the wire between peers to signal publication or sharing of metadata; when stored, they act as an index to the datastore. This db is currently stored in SQLite.
 
@@ -52,7 +54,8 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /status` -- get node network state
 * `POST /status/{state}` -- control network state (online/offline/public)
 * `GET/POST /config/dir` -- retrieve/set the configured directory
-* `GET/POST /config/nat` -- retrieve/set NAT setting                                                                           * `GET/POST /config/info` -- retrieve/set info string
+* `GET/POST /config/nat` -- retrieve/set NAT setting
+* `GET/POST /config/info` -- retrieve/set info string
 * `GET /dir/list` -- list known peers
 * `GET /net/addr` -- list known addresses
 
