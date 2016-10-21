@@ -268,7 +268,13 @@ it explicitly:
 $ mcclient config nat "*:port"
 ```
 
-At this point, your node should be reachable in the network, and you can take it public:
+Once you've configured your node's NAT traversal, you should add a short description
+about your node and its contents:
+```
+$ mcclient config info "Metadata from ...; Operated by ..."
+```
+
+At this point, your node should be ready and reachable in the network, and you can take it public:
 ```
 $ mcclient status public
 ```
