@@ -247,6 +247,12 @@ host), you don't have to do anything.
 However, chances are your node is behind a NAT and you will need to
 configure it for traversal through the `nat` option.
 
+First, take the node offline because NAT config changes only take effect when the
+node goes online:
+```
+$ mcclient status offline
+```
+
 If you are behind a home router which supports upnp port mapping, you can
 set your NAT configuration to "auto":
 ```
@@ -274,7 +280,7 @@ about your node and its contents:
 $ mcclient config info "Metadata from ...; Operated by ..."
 ```
 
-At this point, your node should be ready and reachable in the network, and you can take it public:
+At this point, your node should be ready and you can take it public:
 ```
 $ mcclient status public
 ```
@@ -348,6 +354,7 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET/POST /config/info` -- retrieve/set info string
 * `GET /dir/list` -- list known peers
 * `GET /net/addr` -- list known addresses
+* `POST /shutdown` -- shutdown the node
 
 ### P2P API
 
