@@ -184,6 +184,50 @@ $ mcclient getData Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K
 
 ### Publishing Statements
 
+You can publish statements to your local node by creating json objects with the metadata
+you want to publish.
+
+For example, let's publish hello world in a couple different variations:
+```
+$ cat /tmp/hello.json 
+{"id": "hello_1", "hello": "world"}
+{"id": "hello_2", "hola": "mundo"}
+$ mcclient publish --idSelector 'id' scratch.hello /tmp/hello.json
+statement id: 4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey:1477063161:0 -- body: QmZDxgNgUT1J3rgjvnGjoxoA5efGNSN9Qvhq4FpvefmwnA -- refs: ["hello_1"]
+statement id: 4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey:1477063161:1 -- body: QmcdACgobENfs7vuD2CpQGi8RdEkNyAmbmyqVvrA7Z57xu -- refs: ["hello_2"]
+All statements published successfully
+```
+
+The statements and the metadata are now stored by the local node:
+```
+$ mcclient query 'SELECT * FROM scratch.hello'
+{ id: '4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey:1477063161:0',
+  publisher: '4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey',
+  namespace: 'scratch.hello',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmZDxgNgUT1J3rgjvnGjoxoA5efGNSN9Qvhq4FpvefmwnA',
+           refs: [ 'hello_1' ] } } },
+  timestamp: 1477063161,
+  signature: 'Q79Vgp7bl4J7rJo3DOmtueLGqHQpG3lpSyiXbTqX60oOdbPdju06m4epiQNrGLarfCsj2Opa0psX6EWm6BJkDw==' }
+{ id: '4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey:1477063161:1',
+  publisher: '4XTTMADSKQUN3jkeZngbtuE35w9y5YnDTicVTeeji7N2Npkey',
+  namespace: 'scratch.hello',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmcdACgobENfs7vuD2CpQGi8RdEkNyAmbmyqVvrA7Z57xu',
+           refs: [ 'hello_2' ] } } },
+  timestamp: 1477063161,
+  signature: 'bN7mAW3JKJAHtInSGM08IXoUx//qFJpySaCWPEe8P6Pm46XxoOrepG2Q2KrIQ5bs5oLKJkU7qHqFI2dQaHETCQ==' }
+
+$ mcclient getData QmZDxgNgUT1J3rgjvnGjoxoA5efGNSN9Qvhq4FpvefmwnA
+{ id: 'hello_1', hello: 'world' }
+```
+
+### Going Public
+
 TODO
 
 ## mcnode
