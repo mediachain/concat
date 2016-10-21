@@ -106,37 +106,12 @@ The datastore contains the metadata _per se_, as CBOR objects ([IPLD](https://gi
 
 The statement db contains **statements** about one (currently) or more metadata objects: their publisher, namespace, timestamp and signature. Statements are [protobuf objects](https://github.com/mediachain/concat/blob/master/proto/stmt.proto) sent over the wire between peers to signal publication or sharing of metadata; when stored, they act as an index to the datastore. This db is currently stored in SQLite.
 
-### libp2p API
-TODO
-
-### REST API
-A REST API is provided for controlling the node. This is an administrative interface and should NOT be accessible to the wider network.
-
-* `GET /id` -- node info for this peer
-* `GET /id/{peerId}` -- node info for peer given by peerId
-* `GET /ping/{peerId}` -- ping!
-* `POST /publish/{namespace}` -- publish a batch of statements to the specified namespace 
-* `GET /stmt/{statementId}` -- retrieve statement by statementId
-* `POST /query` -- issue MCQL SELECT query on this peer
-* `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
-* `POST /merge/{peerId}` -- query a remote peer and merge the resulting statements into this one
-* `POST /delete` -- delete statements matching this MCQL DELETE query
-* `POST /data/put` -- add a batch of data objects to datastore
-* `GET /data/get/{objectId}` -- get an object from the datastore
-* `GET /status` -- get node network state
-* `POST /status/{state}` -- control network state (online/offline/public)
-* `GET/POST /config/dir` -- retrieve/set the configured directory
-* `GET/POST /config/nat` -- retrieve/set NAT setting
-* `GET/POST /config/info` -- retrieve/set info string
-* `GET /dir/list` -- list known peers
-* `GET /net/addr` -- list known addresses
-
 ### MCQL
 MCQL is a query-language for retrieving statements from the node's statement db.
 It supports `SELECT` and `DELETE` statements with a syntax very similar to SQL, where
 namespaces play the role of tables.
 
-Some basic queries:
+Some basic MCQL statements:
 
 ```sql
 -- see all namespaces in the database
@@ -167,10 +142,37 @@ DELETE * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7Gt
 
 The full grammar for MCQL is defined as a PEG in [query.peg](mc/query/query.peg)
 
+### REST API
+A REST API is provided for controlling the node. This is an administrative interface and should NOT be accessible to the wider network.
+
+* `GET /id` -- node info for this peer
+* `GET /id/{peerId}` -- node info for peer given by peerId
+* `GET /ping/{peerId}` -- ping!
+* `POST /publish/{namespace}` -- publish a batch of statements to the specified namespace 
+* `GET /stmt/{statementId}` -- retrieve statement by statementId
+* `POST /query` -- issue MCQL SELECT query on this peer
+* `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
+* `POST /merge/{peerId}` -- query a remote peer and merge the resulting statements into this one
+* `POST /delete` -- delete statements matching this MCQL DELETE query
+* `POST /data/put` -- add a batch of data objects to datastore
+* `GET /data/get/{objectId}` -- get an object from the datastore
+* `GET /status` -- get node network state
+* `POST /status/{state}` -- control network state (online/offline/public)
+* `GET/POST /config/dir` -- retrieve/set the configured directory
+* `GET/POST /config/nat` -- retrieve/set NAT setting
+* `GET/POST /config/info` -- retrieve/set info string
+* `GET /dir/list` -- list known peers
+* `GET /net/addr` -- list known addresses
+
+### P2P API
+
+TODO
+
 ## mcdir
 See also [roles](https://github.com/mediachain/mediachain/blob/master/rfc/mediachain-rfc-4-roles.md#directory-servers).
 
-### API
+### P2P API
+
 TODO
 
 
