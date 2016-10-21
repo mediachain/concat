@@ -250,6 +250,7 @@ host), you don't have to do anything.
 However, chances are your node is behind a NAT and you will need to
 configure it for traversal through the `nat` option.
 
+#### Configuring NAT traversal
 First, take the node offline because NAT config changes only take effect when the
 node goes online:
 ```
@@ -277,13 +278,15 @@ it explicitly:
 $ mcclient config nat "*:port"
 ```
 
-Once you've configured your node's NAT traversal, you should add a short description
+#### Registering with the Directory
+
+As a final preperation for goind public, you should add a short description
 about your node and its contents:
 ```
 $ mcclient config info "Metadata from ...; Operated by ..."
 ```
 
-At this point, your node should be ready and you can take it public:
+Then your node should be ready to take it public:
 ```
 $ mcclient status public
 ```
