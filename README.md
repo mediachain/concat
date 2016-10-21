@@ -8,6 +8,11 @@ Please see [RFC 4](https://github.com/mediachain/mediachain/blob/master/rfc/medi
 The two main programs in concat is **mcnode**, which is the implementation of a fully featured Mediachain node, and **mcdir**, which implements a directory server for facilitating node discovery and connectivity.
 
 ## Installation
+### Precompiled Binaries
+
+TODO
+
+### Installing from Source
 Concat requires Go 1.7 or later.
 
 First clone the repo in your `$GOPATH`:
@@ -16,11 +21,13 @@ $ mkdir -p $GOPATH/src/github.com/mediachain
 $ git clone https://github.com/mediachain/concat.git $GOPATH/src/github.com/mediachain/concat
 ```
 
-You can then run the setup and install scripts which will fetch dependencies and install the programs in `$GOPATH/bin`:
+You can then run the setup and install scripts which will build dependencies and install the programs in `$GOPATH/bin`:
 ```
 $ cd $GOPATH/src/github.com/mediachain/concat
 $ ./setup.sh && ./install.sh 
 ```
+
+Warning: `setup.sh` is quite slow; among the dependencies is gorocksdb, which takes several minutes to compile.
 
 ## Usage
 
