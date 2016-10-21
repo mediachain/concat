@@ -150,8 +150,8 @@ var selectorColumnCompound = map[string]string{
 	"body": "data"}
 
 var selectorColumnFun = map[string]string{
-	"*":         "*",
-	"body":      "data",
+	"*":         "1",
+	"body":      "1",
 	"namespace": "DISTINCT namespace",
 	"publisher": "DISTINCT publisher",
 	"source":    "DISTINCT source"}
@@ -505,7 +505,7 @@ var envelopeSelectorp = map[string]bool{
 	"timestamp": true,
 	"counter":   true}
 
-func selectorp(sel QuerySelector, tbl map[string]bool) bool {
+func selectorp(sel QuerySelector, tbl map[string]bool, funp bool) bool {
 	switch sel := sel.(type) {
 	case SimpleSelector:
 		return tbl[string(sel)]
@@ -519,7 +519,7 @@ func selectorp(sel QuerySelector, tbl map[string]bool) bool {
 		return true
 
 	case *FunctionSelector:
-		return tbl[string(sel.sel)]
+		return funp
 
 	default:
 		return false
@@ -527,11 +527,11 @@ func selectorp(sel QuerySelector, tbl map[string]bool) bool {
 }
 
 func isStatementSelector(sel QuerySelector) bool {
-	return selectorp(sel, statementSelectorp)
+	return selectorp(sel, statementSelectorp, false)
 }
 
 func isEnvelopeSelector(sel QuerySelector) bool {
-	return selectorp(sel, envelopeSelectorp)
+	return selectorp(sel, envelopeSelectorp, true)
 }
 
 func isStatementCriteria(c QueryCriteria) bool {

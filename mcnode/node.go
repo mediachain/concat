@@ -15,6 +15,7 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"sync"
@@ -310,4 +311,14 @@ func (node *Node) loadConfig() error {
 	}
 
 	return nil
+}
+
+func (node *Node) doShutdown() {
+	log.Printf("Node shutdown")
+	err := node.db.Close()
+	if err != nil {
+		log.Printf("Error closing StatementDB: %s", err.Error())
+	}
+	node.ds.Close()
+	os.Exit(0)
 }
