@@ -136,16 +136,33 @@ MCQL is a query-language for retrieving statements from the node's statement db.
 It supports `SELECT` and `DELETE` statements with a syntax very similar to SQL, where
 namespaces play the role of tables.
 
-Some basic example statements:
+Some basic queries:
 
 ```sql
+-- see all namespaces in the database
 SELECT namespace FROM *
-```
-```sql
-SELECT COUNT(*) FROM *
-```
-```sql
-SELECT (id, timestamp) FROM foo.bar -- foo.bar here is a namespace
+
+-- count all statements in the namespace images.dpla
+SELECT COUNT(*) FROM images.dpla
+
+-- retrieve the last 5 statements by timestamp
+SELECT * FROM images.dpla ORDER BY timestamp DESC LIMIT 5
+
+-- retrieve the last 5 statements by insertion order in the db
+SELECT * FROM images.dpla ORDER BY counter DESC LIMIT 5
+
+-- retrieve statement id, insertion counter tuples
+SELECT (id, counter) FROM images.dpla
+
+-- see all publishers in the namespace
+SELECT publisher FROM images.dpla
+
+-- retrieve all statements by a publisher
+SELECT * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
+
+-- delete all statements by a publisher
+DELETE * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
+
 ```
 
 The full grammar for MCQL is defined as a PEG in [query.peg](mc/query/query.peg)
