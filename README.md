@@ -182,6 +182,13 @@ $ mcclient getData Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K
 
 ```
 
+If you decide you no longer want to keep the statements you merged in your local store,
+you can delete them:
+```
+$ mcclient delete "DELETE FROM images.dpla"
+Deleted 5 statements
+```
+
 ### Publishing Statements
 
 You can publish statements to your local node by creating json objects with the metadata
@@ -228,7 +235,50 @@ $ mcclient getData QmZDxgNgUT1J3rgjvnGjoxoA5efGNSN9Qvhq4FpvefmwnA
 
 ### Going Public
 
-TODO
+In order to distribute statements stored in your node, it needs to become
+discoverable and accessible to other nodes. This happens by taking the node
+`public` and registering with a directory.
+
+Before you can take your node public however, you need to ensure that it is
+reachable in the network. By default, `mcnode` binds its p2p interface in port 9001
+for all interfaces, so if your node is directly connected to the Internet (eg in a vps
+host), you don't have to do anything.
+
+However, chances are your node is behind a NAT and you will need to
+configure it for traversal through the `nat` option.
+
+If you are behind a home router which supports upnp port mapping, you can
+set your NAT configuration to "auto":
+```
+$ mcclient config nat auto
+```
+
+If you are behind multiple NATs or behind a firewall that doesn't support port mapping
+(eg an AWS instance), then you need to manually configure your network to route traffic
+to the p2p port in your host.
+If you mapped the port transparently, you can set your NAT configuration to "*", which
+will automatically detect the IP address and advertise the locally bound port:
+```
+$ mcclient config nat "*"
+```
+
+If you have mapped a different port to your host interface, then you need to specify
+it explicitly:
+```
+$ mcclient config nat "*:port"
+```
+
+At this point, your node should be reachable in the network, and you can take it public:
+```
+$ mcclient status public
+```
+This will register the node with the configured directory, which will make it visible
+to other nodes through `mcclient listPeers`.
+
+If you want to take your node back offline, you can simply do so with `status offline`:
+```
+$ mcclient status offline
+```
 
 ## mcnode
 ### Architecture
@@ -239,8 +289,8 @@ The datastore contains the metadata _per se_, as CBOR objects ([IPLD](https://gi
 The statement db contains **statements** about one (currently) or more metadata objects: their publisher, namespace, timestamp and signature. Statements are [protobuf objects](https://github.com/mediachain/concat/blob/master/proto/stmt.proto) sent over the wire between peers to signal publication or sharing of metadata; when stored, they act as an index to the datastore. This db is currently stored in SQLite.
 
 ### MCQL
-MCQL is a query-language for retrieving statements from the node's statement db.
-It supports `SELECT` and `DELETE` statements with a syntax very similar to SQL, where
+MCQL is a query language for retrieving statements from the node's statement db.
+It supports `SELECT` (and `DELETE`) statements with a syntax very similar to SQL, where
 namespaces play the role of tables.
 
 Some basic MCQL statements:
@@ -266,9 +316,6 @@ SELECT publisher FROM images.dpla
 
 -- retrieve all statements by a publisher
 SELECT * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
-
--- delete all statements by a publisher
-DELETE * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
 
 ```
 
