@@ -10,7 +10,7 @@ The two main programs in concat is **mcnode**, which is the implementation of a 
 ## Installation
 ### Precompiled Binaries
 
-TODO
+You can download the latest release `mcnode` binary for your platform (Linux or Mac) from [releases](https://github.com/mediachain/concat/releases).
 
 ### Installing from Source
 Concat requires Go 1.7 or later.
@@ -47,7 +47,7 @@ $ mcnode
 
 The first time you run `mcnode`, it will generate a pair of persistent identities and
 initialize the local store. By default, `mcnode` uses `~/.mediachain/mcnode` as its
-root directory, but you can change this using the `-d path/to/mcnode/root` command line
+root directory, but you can change this using the `-d path/to/mcnode/home` command line
 option.
 
 `mcnode` is intended to be run as a daemon, so you can run it in a docker container,
