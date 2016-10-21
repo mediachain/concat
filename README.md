@@ -321,7 +321,7 @@ SELECT (id, counter) FROM images.dpla
 SELECT publisher FROM images.dpla
 
 -- retrieve all statements by a publisher
-SELECT * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
+SELECT * FROM * WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
 
 ```
 
