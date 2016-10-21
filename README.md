@@ -237,7 +237,7 @@ $ mcclient getData QmZDxgNgUT1J3rgjvnGjoxoA5efGNSN9Qvhq4FpvefmwnA
 
 In order to distribute statements stored in your node, it needs to become
 discoverable and accessible to other nodes. This happens by taking the node
-`public` and registering with a directory.
+`public`, which registers with the directory.
 
 Before you can take your node public however, you need to ensure that it is
 reachable in the network. By default, `mcnode` binds its p2p interface in port 9001
