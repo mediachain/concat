@@ -92,7 +92,174 @@ Info: Metadata for CC images from DPLA, 500px, and pexels; operated by Mediachai
 
 ### Basic Operations
 
-TODO
+The basic mediachain operations are queries, local or remote,  and merges of remote datasets.
+
+Here, we query the namespaces for statements in the discovered peer's datastore and take a small
+sample from the `images.dpla` namespace:
+```
+$ mcclient query -r QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ "SELECT namespace FROM *"
+'images.500px'
+'images.dpla'
+'images.pexels'
+
+$ mcclient query -r QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ "SELECT * FROM images.dpla LIMIT 5"
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:0',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K',
+           refs: [ 'dpla_1349ede833fa9417b6f55be6bb402f6d' ] } } },
+  timestamp: 1476970964,
+  signature: 'mZMSMdMrahd40uyJChHAFLMvB5diR8qh9QI2kw0XUR7HxTo6sh2jtCzHZVBaKnOa7w9QkSrPdEU8qqfAsBEiDA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:1',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmR4D5bUS1ddJybSJ877uAHVGaSHJ9rGcDVaRekAnThgmu',
+           refs: [ 'dpla_831a22234091e15d0f6c6166832ecbf5' ] } } },
+  timestamp: 1476970964,
+  signature: '5dhow0hWpDKgvYyVJA1LArgg7AVsWREaDXxpy1TSzIbVszE1Uwd4UyW+fnMsWL9TI2nrkVZzv6NbAaMpyZvtCw==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:2',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmbYssEPZAXq2gynremrgTvEa7GC3j2wHhoqYJtBy8322W',
+           refs: [ 'dpla_db68a5b64bff5806b9ebb4b1c082763b' ] } } },
+  timestamp: 1476970964,
+  signature: 'MabKI1Fm6RTL1w/wROsgtytX+DZroULJdhr2IyYHrDFOHvg5ELMvcvm9YUYn6MvaYCWDbXYiM/clNysDRx5sAA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:3',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmTFbRCsaXiHPogYWqfNzDvW5Ro9f47Mcg9WbfRTy7DbcW',
+           refs: [ 'dpla_b9739f7f15fdf6c926e4cbf30791ff28' ] } } },
+  timestamp: 1476970964,
+  signature: 'W1BNKFbd390UqHk3GVGTk/J6kmBI5TwHwF2e5fQ5cZisWlV2jbdfRUf2+PuIGLlmvehOefYxK33uWIhXjHvtCA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:4',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmaWVrsp7ushfQZZDwYv3zpVyCTg5wWfD6dVgVHbpRdzvf',
+           refs: [ 'dpla_871570744a860166dba198ca95e13590' ] } } },
+  timestamp: 1476970964,
+  signature: 'MA8b9NN2EgE9/WUlZvmxsxApXjiCnH64eGMrzN+nDwIIdwGToJYXWzu8msbnBJqCf6qiEp2RGrzRaNBLcf86CQ==' }
+  
+```
+
+We can merge remote datasets using a query; the node will merge in
+the statements selected by the query and associated metadata:
+
+```
+$ mcclient merge QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ "SELECT * FROM images.dpla LIMIT 5"
+merged 5 statements and 5 objects
+```
+
+The statements and the associated metadata our now stored in the local node:
+```
+$ mcclient query "SELECT * FROM images.dpla"
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:0',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K',
+           refs: [ 'dpla_1349ede833fa9417b6f55be6bb402f6d' ] } } },
+  timestamp: 1476970964,
+  signature: 'mZMSMdMrahd40uyJChHAFLMvB5diR8qh9QI2kw0XUR7HxTo6sh2jtCzHZVBaKnOa7w9QkSrPdEU8qqfAsBEiDA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:1',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmR4D5bUS1ddJybSJ877uAHVGaSHJ9rGcDVaRekAnThgmu',
+           refs: [ 'dpla_831a22234091e15d0f6c6166832ecbf5' ] } } },
+  timestamp: 1476970964,
+  signature: '5dhow0hWpDKgvYyVJA1LArgg7AVsWREaDXxpy1TSzIbVszE1Uwd4UyW+fnMsWL9TI2nrkVZzv6NbAaMpyZvtCw==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:2',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmbYssEPZAXq2gynremrgTvEa7GC3j2wHhoqYJtBy8322W',
+           refs: [ 'dpla_db68a5b64bff5806b9ebb4b1c082763b' ] } } },
+  timestamp: 1476970964,
+  signature: 'MabKI1Fm6RTL1w/wROsgtytX+DZroULJdhr2IyYHrDFOHvg5ELMvcvm9YUYn6MvaYCWDbXYiM/clNysDRx5sAA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:3',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmTFbRCsaXiHPogYWqfNzDvW5Ro9f47Mcg9WbfRTy7DbcW',
+           refs: [ 'dpla_b9739f7f15fdf6c926e4cbf30791ff28' ] } } },
+  timestamp: 1476970964,
+  signature: 'W1BNKFbd390UqHk3GVGTk/J6kmBI5TwHwF2e5fQ5cZisWlV2jbdfRUf2+PuIGLlmvehOefYxK33uWIhXjHvtCA==' }
+{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:4',
+  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
+  namespace: 'images.dpla',
+  body: 
+   { Body: 
+      { Simple: 
+         { object: 'QmaWVrsp7ushfQZZDwYv3zpVyCTg5wWfD6dVgVHbpRdzvf',
+           refs: [ 'dpla_871570744a860166dba198ca95e13590' ] } } },
+  timestamp: 1476970964,
+  signature: 'MA8b9NN2EgE9/WUlZvmxsxApXjiCnH64eGMrzN+nDwIIdwGToJYXWzu8msbnBJqCf6qiEp2RGrzRaNBLcf86CQ==' }
+
+$ mcclient getData Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K
+{ orientation: null,
+  dedupe_hsh: '4e0783f1e8f41bac',
+  licenses: [ { details: null } ],
+  native_id: 'dpla_http://dp.la/api/items/1349ede833fa9417b6f55be6bb402f6d',
+  keywords: [],
+  date_created_original: null,
+  title: [ 'Page 91' ],
+  camera_exif: {},
+  source: { url: 'https://dp.la/', name: 'dpla' },
+  transient_info: { score_hotnessviews: null, likes: null },
+  date_captured: null,
+  location: { lat_lon: null, place_name: [] },
+  attribution: null,
+  description: 'kada',
+  source_tags: [ 'dp.la' ],
+  date_created_at_source: null,
+  providers_list: 
+   [ { name: 'dpla' },
+     { name: 'University of Southern California. Libraries' } ],
+  date_source_version: null,
+  sizes: 
+   [ { bytes: null,
+       height: 120,
+       uri_external: 'http://digitallibrary.usc.edu/utils/getthumbnail/collection/p15799coll126/id/7763',
+       width: 66,
+       content_type: 'image/jpeg',
+       dpi: null } ],
+  source_dataset: 'dpla',
+  artist_names: [],
+  url_direct: { url: 'http://digitallibrary.usc.edu/utils/getthumbnail/collection/p15799coll126/id/7763' },
+  derived_qualities: 
+   { medium: null,
+     predicted_tags: null,
+     has_people: null,
+     colors: null,
+     general_type: null,
+     time_period: null },
+  url_shown_at: { url: 'http://digitallibrary.usc.edu/cdm/ref/collection/p15799coll126/id/7763' },
+  aspect_ratio: 0.55 }
+
+```
 
 ### Publishing Statements
 
