@@ -113,47 +113,7 @@ $ mcclient query -r QmeiY2eHMwK92Zt6X4kUUC3MsjMmVb2VnGZ17DhnhRPCEQ "SELECT * FRO
            refs: [ 'dpla_1349ede833fa9417b6f55be6bb402f6d' ] } } },
   timestamp: 1476970964,
   signature: 'mZMSMdMrahd40uyJChHAFLMvB5diR8qh9QI2kw0XUR7HxTo6sh2jtCzHZVBaKnOa7w9QkSrPdEU8qqfAsBEiDA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:1',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmR4D5bUS1ddJybSJ877uAHVGaSHJ9rGcDVaRekAnThgmu',
-           refs: [ 'dpla_831a22234091e15d0f6c6166832ecbf5' ] } } },
-  timestamp: 1476970964,
-  signature: '5dhow0hWpDKgvYyVJA1LArgg7AVsWREaDXxpy1TSzIbVszE1Uwd4UyW+fnMsWL9TI2nrkVZzv6NbAaMpyZvtCw==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:2',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmbYssEPZAXq2gynremrgTvEa7GC3j2wHhoqYJtBy8322W',
-           refs: [ 'dpla_db68a5b64bff5806b9ebb4b1c082763b' ] } } },
-  timestamp: 1476970964,
-  signature: 'MabKI1Fm6RTL1w/wROsgtytX+DZroULJdhr2IyYHrDFOHvg5ELMvcvm9YUYn6MvaYCWDbXYiM/clNysDRx5sAA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:3',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmTFbRCsaXiHPogYWqfNzDvW5Ro9f47Mcg9WbfRTy7DbcW',
-           refs: [ 'dpla_b9739f7f15fdf6c926e4cbf30791ff28' ] } } },
-  timestamp: 1476970964,
-  signature: 'W1BNKFbd390UqHk3GVGTk/J6kmBI5TwHwF2e5fQ5cZisWlV2jbdfRUf2+PuIGLlmvehOefYxK33uWIhXjHvtCA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:4',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmaWVrsp7ushfQZZDwYv3zpVyCTg5wWfD6dVgVHbpRdzvf',
-           refs: [ 'dpla_871570744a860166dba198ca95e13590' ] } } },
-  timestamp: 1476970964,
-  signature: 'MA8b9NN2EgE9/WUlZvmxsxApXjiCnH64eGMrzN+nDwIIdwGToJYXWzu8msbnBJqCf6qiEp2RGrzRaNBLcf86CQ==' }
-  
+...  
 ```
 
 We can merge remote datasets using a query; the node will merge in
@@ -177,46 +137,7 @@ $ mcclient query "SELECT * FROM images.dpla"
            refs: [ 'dpla_1349ede833fa9417b6f55be6bb402f6d' ] } } },
   timestamp: 1476970964,
   signature: 'mZMSMdMrahd40uyJChHAFLMvB5diR8qh9QI2kw0XUR7HxTo6sh2jtCzHZVBaKnOa7w9QkSrPdEU8qqfAsBEiDA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:1',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmR4D5bUS1ddJybSJ877uAHVGaSHJ9rGcDVaRekAnThgmu',
-           refs: [ 'dpla_831a22234091e15d0f6c6166832ecbf5' ] } } },
-  timestamp: 1476970964,
-  signature: '5dhow0hWpDKgvYyVJA1LArgg7AVsWREaDXxpy1TSzIbVszE1Uwd4UyW+fnMsWL9TI2nrkVZzv6NbAaMpyZvtCw==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:2',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmbYssEPZAXq2gynremrgTvEa7GC3j2wHhoqYJtBy8322W',
-           refs: [ 'dpla_db68a5b64bff5806b9ebb4b1c082763b' ] } } },
-  timestamp: 1476970964,
-  signature: 'MabKI1Fm6RTL1w/wROsgtytX+DZroULJdhr2IyYHrDFOHvg5ELMvcvm9YUYn6MvaYCWDbXYiM/clNysDRx5sAA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:3',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmTFbRCsaXiHPogYWqfNzDvW5Ro9f47Mcg9WbfRTy7DbcW',
-           refs: [ 'dpla_b9739f7f15fdf6c926e4cbf30791ff28' ] } } },
-  timestamp: 1476970964,
-  signature: 'W1BNKFbd390UqHk3GVGTk/J6kmBI5TwHwF2e5fQ5cZisWlV2jbdfRUf2+PuIGLlmvehOefYxK33uWIhXjHvtCA==' }
-{ id: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm:1476970964:4',
-  publisher: '4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm',
-  namespace: 'images.dpla',
-  body: 
-   { Body: 
-      { Simple: 
-         { object: 'QmaWVrsp7ushfQZZDwYv3zpVyCTg5wWfD6dVgVHbpRdzvf',
-           refs: [ 'dpla_871570744a860166dba198ca95e13590' ] } } },
-  timestamp: 1476970964,
-  signature: 'MA8b9NN2EgE9/WUlZvmxsxApXjiCnH64eGMrzN+nDwIIdwGToJYXWzu8msbnBJqCf6qiEp2RGrzRaNBLcf86CQ==' }
+...
 
 $ mcclient getData Qma1LUdw5PAjfuZLXCbT5Qm5xnQFLkEejyXbLuvcKinF8K
 { orientation: null,
