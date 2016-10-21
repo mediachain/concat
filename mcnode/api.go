@@ -616,3 +616,9 @@ func (node *Node) httpConfigInfoSet(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "OK")
 }
+
+// POST /shutdown
+// shutdown the node
+func (node *Node) httpShutdown(w http.ResponseWriter, r *http.Request) {
+	node.doShutdown()
+}
