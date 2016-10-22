@@ -314,16 +314,22 @@ namespaces play the role of tables.
 Some basic MCQL statements:
 
 ```sql
+-- count statements in the database
+SELECT COUNT(*) FROM *
+
 -- see all namespaces in the database
 SELECT namespace FROM *
 
--- count all statements in the namespace images.dpla
+-- count statements in the namespace images.dpla
 SELECT COUNT(*) FROM images.dpla
 
--- retrieve the last 5 statements by timestamp
-SELECT * FROM images.dpla ORDER BY timestamp DESC LIMIT 5
+-- lookup statements by media WKI
+SELECT * FROM images.dpla WHERE wki = dpla_871570744a860166dba198ca95e13590
 
--- retrieve the last 5 statements by insertion order in the db
+-- retrieve a sample of 5 statements from namespace
+SELECT * FROM images.dpla LIMIT 5
+
+-- retrieve the last 5 statements merged in the db
 SELECT * FROM images.dpla ORDER BY counter DESC LIMIT 5
 
 -- retrieve statement id, insertion counter tuples
@@ -333,7 +339,7 @@ SELECT (id, counter) FROM images.dpla
 SELECT publisher FROM images.dpla
 
 -- retrieve all statements by a publisher
-SELECT * FROM * WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
+SELECT * FROM images.dpla WHERE publisher = 4XTTM4K8sqTb7xYviJJcRDJ5W6TpQxMoJ7GtBstTALgh5wzGm
 
 ```
 
