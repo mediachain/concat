@@ -846,31 +846,53 @@ loop:
 func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) error {
 	switch body := stmt.Body.Body.(type) {
 	case *pb.StatementBody_Simple:
-		key58 := body.Simple.Object
+		return node.statementMergeKey(body.Simple.Object, keys)
 
-		_, have := keys[key58]
-		if have {
-			return nil
+	case *pb.StatementBody_Compound:
+		stmts := body.Compound.Body
+		for _, stmt := range stmts {
+			err := node.statementMergeKey(stmt.Object, keys)
+			if err != nil {
+				return err
+			}
 		}
+		return nil
 
-		mhash, err := multihash.FromB58String(key58)
-		if err != nil {
-			return err
+	case *pb.StatementBody_Envelope:
+		stmts := body.Envelope.Body
+		for _, stmt := range stmts {
+			err := node.statementMergeKeys(stmt, keys)
+			if err != nil {
+				return err
+			}
 		}
-
-		key := Key(mhash)
-		have, err = node.ds.Has(key)
-		if err != nil {
-			return err
-		}
-
-		if !have {
-			keys[key58] = key
-		}
-
 		return nil
 
 	default:
 		return BadStatementBody
 	}
+}
+
+func (node *Node) statementMergeKey(key58 string, keys map[string]Key) error {
+	_, have := keys[key58]
+	if have {
+		return nil
+	}
+
+	mhash, err := multihash.FromB58String(key58)
+	if err != nil {
+		return err
+	}
+
+	key := Key(mhash)
+	have, err = node.ds.Has(key)
+	if err != nil {
+		return err
+	}
+
+	if !have {
+		keys[key58] = key
+	}
+
+	return nil
 }
