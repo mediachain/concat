@@ -1,0 +1,32 @@
+language: go
+go:
+  - 1.7
+sudo: required
+dist: trusty
+
+install:
+  - go get -u github.com/whyrusleeping/gx
+  - go get -u github.com/whyrusleeping/gx-go
+  - gx install
+  - gx-go rewrite && env CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed" go get -tags=embed ./...
+  - ./install.sh
+
+script: gx-go rewrite && go test ./mc/...
+
+# don't cache our source dir
+before_cache:
+  - rm -rf $GOPATH/src/github.com/mediachain/concat
+
+# cache go dependencies (espeically /pkg with gorocksdb)
+cache:
+  directories:
+    - $GOPATH/src
+    - $GOPATH/pkg
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
