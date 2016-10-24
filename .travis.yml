@@ -12,11 +12,8 @@ before_install:
   - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync -a "$HOME/gocache/" "$GOPATH/"; fi
 
 install:
-  - go get -u github.com/whyrusleeping/gx
-  - go get -u github.com/whyrusleeping/gx-go
-  - gx install
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed"; fi
-  - gx-go rewrite && go get -tags=embed ./...
+  - ./setup.sh
   - ./install.sh
   - ./package.sh
 
