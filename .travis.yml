@@ -6,7 +6,7 @@ dist: trusty
 
 # copy previously cached deps into GOPATH
 before_install:
-  - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync "$HOME/gocache/" "$GOPATH/"; fi
+  - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync -a "$HOME/gocache/" "$GOPATH/"; fi
 
 install:
   - go get -u github.com/whyrusleeping/gx
@@ -21,8 +21,8 @@ script: gx-go rewrite && go test ./mc/...
 # copy expensive go dependencies to $HOME/gocache dir, where travis will cache them
 before_cache:
   - mkdir -p $HOME/gocache/src $HOME/gocache/pkg
-  - rsync $GOPATH/src/ $HOME/gocache/src/
-  - rsync $GOPATH/pkg/ $HOME/gocache/pkg/
+  - rsync -a $GOPATH/src/ $HOME/gocache/src/
+  - rsync -a $GOPATH/pkg/ $HOME/gocache/pkg/
   - rm -rf $HOME/gocache/src/github.com/mediachain/concat
 
 # cache go dependencies (espeically /pkg with gorocksdb)
