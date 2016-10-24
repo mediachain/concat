@@ -70,7 +70,7 @@ $ mcclient status
 offline
 ```
 
-At this point you can you should designate a directory for looking up peers:
+At this point you should designate a directory for looking up peers:
 ```
 $ mcclient config dir /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
 set directory to /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
