@@ -4,24 +4,31 @@ go:
 sudo: required
 dist: trusty
 
+# copy previously cached deps into GOPATH
+before_install:
+  - if [ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]; then rsync "$HOME/gocache/" "$GOPATH/"; fi
+
 install:
   - go get -u github.com/whyrusleeping/gx
   - go get -u github.com/whyrusleeping/gx-go
   - gx install
   - gx-go rewrite && env CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed" go get -tags=embed ./...
   - ./install.sh
+  - ./package.sh
 
 script: gx-go rewrite && go test ./mc/...
 
-# don't cache our source dir
+# copy expensive go dependencies to $HOME/gocache dir, where travis will cache them
 before_cache:
-  - rm -rf $GOPATH/src/github.com/mediachain/concat
+  - mkdir -p $HOME/gocache/src $HOME/gocache/pkg
+  - rsync $GOPATH/src/ $HOME/gocache/src/
+  - rsync $GOPATH/pkg/ $HOME/gocache/pkg/
+  - rm -rf $HOME/gocache/src/github.com/mediachain/concat
 
 # cache go dependencies (espeically /pkg with gorocksdb)
 cache:
   directories:
-    - $GOPATH/src
-    - $GOPATH/pkg
+    - $HOME/gocache
 
 addons:
   apt:
@@ -30,3 +37,16 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
+
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: Rna+kIBeoIrW9HXhf2k9OFbXXHniVemE0m4VAHJUqCJhUmItdOMOPosNridzFZIH3Ophmm5oittg/Sb8nxVk6XRoZ4ZhCj5phbAv08+fm9ld5xGCu5OhGnVKsqL3uOgApOxIZusY/bR2UFDFgi8R/ZoYDC8cmqZXetP8Ig4Twb33t9p2ehzhCa4LHD4XeYu0NrlvqICQsM6pPkkVBHa3V6hzwaee75TZnRWcQTQZ2vU90QZyIuvLL5+E9R9aqOUy3LzghTQ08fqFNkX15BerctkCYkLzeyKzRKl0KJ61lOILsisRNaI9LxToR83gLem4WEBNseoRbbOJ5g8U7qsfsiMDzxERXXsEoJswfuof/wKGO92faZNoMrXbdTZbCD1L55fG3AvdTrmqhE0QfG26PjjNB6jvJ7KAU1LcNsJPRUbD/vwOau8W03nJt/BsZayF4mQi685YS+DRPsEbyiTzDHZd5el57k6d97B1fowlzLcvTkAm8uKvKifEmgG0gp4FPeeO2mjo72zLWnVMfzBGbFoWnvAIomt/4003fP/dQcxiEw5OWR3qk2O83cSUAaAdAcHALFqTQUT3WQoX9VT/JMwRbPs3DcDDbPe3tdKFEEmfabOq5M7L7JrShTiXvfxu5fh73shPbJVWCodzYZWEo7zNPfd+ZrJxZFk+BLVrmgc=
+  file_glob: true
+  file: 'dist/*.tgz'
+  on:
+    repo: mediachain/concat
+    tags: true
+    # only upload a release if we're on a commit whose tag starts with 'v'
+    condition: $(git describe --tags) == v*
