@@ -6,7 +6,7 @@ dist: trusty
 
 # copy previously cached deps into GOPATH
 before_install:
-  - if [ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]; then rsync "$HOME/gocache/" "$GOPATH/"; fi
+  - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync "$HOME/gocache/" "$GOPATH/"; fi
 
 install:
   - go get -u github.com/whyrusleeping/gx
