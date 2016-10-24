@@ -3,6 +3,9 @@ go:
   - 1.7
 sudo: required
 dist: trusty
+os:
+  - linux
+  - osx
 
 # copy previously cached deps into GOPATH
 before_install:
@@ -12,7 +15,8 @@ install:
   - go get -u github.com/whyrusleeping/gx
   - go get -u github.com/whyrusleeping/gx-go
   - gx install
-  - gx-go rewrite && env CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed" go get -tags=embed ./...
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed"; fi
+  - gx-go rewrite && go get -tags=embed ./...
   - ./install.sh
   - ./package.sh
 
