@@ -43,7 +43,7 @@ $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 $ sudo apt-get update
 $ sudo apt-get install libstdc++6
 ```
-You can then download the and unpack `mcnode` Linux binary from [Precompiled Binaries](#precompiled-binaries).
+You can then download the and unpack the `mcnode` Linux binary from [Precompiled Binaries](#precompiled-binaries).
 
 ## Usage
 
