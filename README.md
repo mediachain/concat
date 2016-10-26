@@ -29,13 +29,13 @@ $ ./setup.sh && ./install.sh
 
 Warning: `setup.sh` is quite slow; among the dependencies is gorocksdb, which takes several minutes to compile.
 
-### Running on Windows [EXPERIMENTAL]
-Windows support is highly experimental. rocksdb dependencies do not build correctly under mingw-w64 (even with `-std=gnu++11`), please submit a PR if you manage to build against the windows port. 
+### Running on Windows
 
-To proceed you must have **Windows 10 Anniversary Update build 14393 or later**
+We haven't succeeded building on Windows yet, as rocksdb dependencies do not build correctly under mingw-w64; see [Issue 65](https://github.com/mediachain/concat/issues/65).
 
+You can however use the Linux binaries with the Linux Subsystem for Windows on Windows 10:
+* You need the Windows 10 Anniversary Update, build 14393 or later.
 * Follow the [instructions to install the Linux Subsystem](https://msdn.microsoft.com/en-us/commandline/wsl/install_guide)
-* [Obtain binaries](#precompiled-binaries)
 * Run `bash` from `cmd.exe` and agree to the ubuntu subsystem install
 * Upgrade your libc:
 ```bash
@@ -43,6 +43,7 @@ $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 $ sudo apt-get update
 $ sudo apt-get install libstdc++6
 ```
+You can then download the and unpack `mcnode` Linux binary from [Precompiled Binaries](#precompiled-binaries).
 
 ## Usage
 
