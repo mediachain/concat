@@ -844,14 +844,30 @@ loop:
 }
 
 func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) error {
+	mergeSimple := func(s *pb.SimpleStatement) error {
+		err := node.statementMergeKey(s.Object, keys)
+		if err != nil {
+			return err
+		}
+
+		for _, dep := range s.Deps {
+			err = node.statementMergeKey(dep, keys)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	switch body := stmt.Body.Body.(type) {
 	case *pb.StatementBody_Simple:
-		return node.statementMergeKey(body.Simple.Object, keys)
+		return mergeSimple(body.Simple)
 
 	case *pb.StatementBody_Compound:
-		stmts := body.Compound.Body
-		for _, stmt := range stmts {
-			err := node.statementMergeKey(stmt.Object, keys)
+		ss := body.Compound.Body
+		for _, s := range ss {
+			err := mergeSimple(s)
 			if err != nil {
 				return err
 			}
