@@ -745,7 +745,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 				count += 1
 			}
 
-			err = node.statementMergeKeys(val, keys)
+			err = node.mergeStatementKeys(val, keys)
 			if err != nil {
 				return count, ocount, err
 			}
@@ -843,15 +843,15 @@ loop:
 	return count, nil
 }
 
-func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) error {
+func (node *Node) mergeStatementKeys(stmt *pb.Statement, keys map[string]Key) error {
 	mergeSimple := func(s *pb.SimpleStatement) error {
-		err := node.statementMergeKey(s.Object, keys)
+		err := node.mergeObjectKey(s.Object, keys)
 		if err != nil {
 			return err
 		}
 
 		for _, dep := range s.Deps {
-			err = node.statementMergeKey(dep, keys)
+			err = node.mergeObjectKey(dep, keys)
 			if err != nil {
 				return err
 			}
@@ -877,7 +877,7 @@ func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) er
 	case *pb.StatementBody_Envelope:
 		stmts := body.Envelope.Body
 		for _, stmt := range stmts {
-			err := node.statementMergeKeys(stmt, keys)
+			err := node.mergeStatementKeys(stmt, keys)
 			if err != nil {
 				return err
 			}
@@ -889,7 +889,7 @@ func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) er
 	}
 }
 
-func (node *Node) statementMergeKey(key58 string, keys map[string]Key) error {
+func (node *Node) mergeObjectKey(key58 string, keys map[string]Key) error {
 	_, have := keys[key58]
 	if have {
 		return nil
