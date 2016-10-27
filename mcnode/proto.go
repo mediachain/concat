@@ -727,7 +727,8 @@ loop:
 				break loop
 			}
 
-			verify, err := node.verifyStatementCacheKeys(val, pkcache)
+			var verify bool
+			verify, err = node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
 				break loop
 			}
@@ -763,7 +764,8 @@ loop:
 			stmts = append(stmts, val)
 
 			if len(stmts) >= batch {
-				xcount, err := node.db.MergeBatch(stmts)
+				var xcount int
+				xcount, err = node.db.MergeBatch(stmts)
 				count += xcount
 				if err != nil {
 					break loop
@@ -796,8 +798,8 @@ loop:
 	}
 
 	if len(stmts) > 0 && err == nil {
-		xcount, xerr := node.db.MergeBatch(stmts)
-		err = xerr
+		var xcount int
+		xcount, err = node.db.MergeBatch(stmts)
 		count += xcount
 	}
 
@@ -834,7 +836,8 @@ func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
 			defer s.Close()
 		}
 
-		xcount, err := node.doMergeDataImpl(s, keys)
+		var xcount int
+		xcount, err = node.doMergeDataImpl(s, keys)
 		count += xcount
 		if err != nil {
 			break
