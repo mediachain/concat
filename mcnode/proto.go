@@ -15,6 +15,7 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
 	"log"
+	"runtime"
 	"time"
 )
 
@@ -705,41 +706,40 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	// publisher key cache
 	pkcache := make(map[string]p2p_crypto.PubKey)
 
-	// stream for fetching metadata
-	// Note: the metadata are merged synchronously in batches
-	//       this is fine for small merges, but likely inefficient at large
-	//       a more efficient implementation is possible where the
-	//       metadata are fetched pipelined in parallel with background goroutine(s)
-	//       but the cost is significant synchronization and error handling complexity.
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
-	if err != nil {
-		return 0, 0, err
+	// background data merges
+	workers := runtime.NumCPU()
+	workch := make(chan map[string]Key, workers)
+	resch := make(chan MergeResult, workers)
+	for x := 0; x < workers; x++ {
+		go node.doMergeDataAsync(ctx, pid, workch, resch)
 	}
-	defer s.Close()
 
-	const batch = 8192
+	const batch = 1024
 	keys := make(map[string]Key)
 
+loop:
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
 			if !node.checkStatement(val) {
-				return count, ocount, BadStatement
+				err = BadStatement
+				break loop
 			}
 
 			verify, err := node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
-				return count, ocount, err
+				break loop
 			}
 
 			// a verification failure taints the result set; abort the merge
 			if !verify {
-				return count, ocount, BadStatement
+				err = BadStatement
+				break loop
 			}
 
 			ins, err := node.db.Merge(val)
 			if err != nil {
-				return count, ocount, err
+				break loop
 			}
 			if ins {
 				count += 1
@@ -747,37 +747,94 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 
 			err = node.mergeStatementKeys(val, keys)
 			if err != nil {
-				return count, ocount, err
+				break loop
 			}
 
 			if len(keys) >= batch {
-				bcount, err := node.doMergeData(s, keys)
-				ocount += bcount
-				if err != nil {
-					return count, ocount, err
+				select {
+				case workch <- keys:
+					keys = make(map[string]Key)
+
+				case res := <-resch:
+					ocount += res.count
+					err = res.err
+					workers -= 1
+					break loop
+
+				case <-ctx.Done():
+					err = ctx.Err()
+					break loop
 				}
 			}
 
 		case StreamError:
-			return count, ocount, val
+			err = val
+			break loop
 
 		default:
-			return count, ocount, BadResult
+			err = BadResult
+			break loop
 		}
 	}
 
-	if len(keys) > 0 {
-		bcount, err := node.doMergeData(s, keys)
-		ocount += bcount
-		if err != nil {
-			return count, ocount, err
+	if len(keys) > 0 && err == nil {
+		select {
+		case workch <- keys:
+
+		case res := <-resch:
+			ocount += res.count
+			err = res.err
+			workers -= 1
+
+		case <-ctx.Done():
+			err = ctx.Err()
 		}
 	}
 
-	return count, ocount, nil
+	close(workch)
+	for x := 0; x < workers; x++ {
+		res := <-resch
+		ocount += res.count
+		if err == nil && res.err != nil {
+			err = res.err
+		}
+	}
+
+	return count, ocount, err
 }
 
-func (node *Node) doMergeData(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
+type MergeResult struct {
+	count int
+	err   error
+}
+
+func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
+	in <-chan map[string]Key,
+	out chan<- MergeResult) {
+	var s p2p_net.Stream
+	var err error
+	var count int
+
+	for keys := range in {
+		if s == nil {
+			s, err = node.host.NewStream(ctx, pid, "/mediachain/node/data")
+			if err != nil {
+				break
+			}
+			defer s.Close()
+		}
+
+		xcount, err := node.doMergeDataImpl(s, keys)
+		count += xcount
+		if err != nil {
+			break
+		}
+	}
+
+	out <- MergeResult{count, err}
+}
+
+func (node *Node) doMergeDataImpl(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
 	keys58 := make([]string, 0, len(keys))
 	for key58, _ := range keys {
 		keys58 = append(keys58, key58)
