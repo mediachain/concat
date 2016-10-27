@@ -49,6 +49,7 @@ type StatementDB interface {
 	QueryStream(context.Context, *mcq.Query) (<-chan interface{}, error)
 	QueryOne(*mcq.Query) (interface{}, error)
 	Merge(*pb.Statement) (bool, error)
+	MergeBatch([]*pb.Statement) (int, error)
 	Delete(*mcq.Query) (int, error)
 	Close() error
 }

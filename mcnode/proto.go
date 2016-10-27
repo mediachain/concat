@@ -715,6 +715,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	}
 
 	const batch = 1024
+	stmts := make([]*pb.Statement, 0, batch)
 	keys := make(map[string]Key)
 
 loop:
@@ -735,14 +736,6 @@ loop:
 			if !verify {
 				err = BadStatement
 				break loop
-			}
-
-			ins, err := node.db.Merge(val)
-			if err != nil {
-				break loop
-			}
-			if ins {
-				count += 1
 			}
 
 			err = node.mergeStatementKeys(val, keys)
@@ -767,6 +760,17 @@ loop:
 				}
 			}
 
+			stmts = append(stmts, val)
+
+			if len(stmts) >= batch {
+				xcount, err := node.db.MergeBatch(stmts)
+				count += xcount
+				if err != nil {
+					break loop
+				}
+				stmts = stmts[:0]
+			}
+
 		case StreamError:
 			err = val
 			break loop
@@ -789,6 +793,12 @@ loop:
 		case <-ctx.Done():
 			err = ctx.Err()
 		}
+	}
+
+	if len(stmts) > 0 && err == nil {
+		xcount, xerr := node.db.MergeBatch(stmts)
+		err = xerr
+		count += xcount
 	}
 
 	close(workch)
