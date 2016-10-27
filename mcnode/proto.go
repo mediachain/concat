@@ -820,6 +820,11 @@ type MergeResult struct {
 	err   error
 }
 
+// Note: it is possible to refetch the same object if it appears in multiple batches.
+// This is complicated to dedupe, as it would require keeping a synchronous map
+// tracking in flight fetches (and consulting it when merging object keys)
+// On the other hand, in the standard usage this should only happen for
+// schema objects, resulting in minimal overhead.
 func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
 	in <-chan map[string]Key,
 	out chan<- MergeResult) {
