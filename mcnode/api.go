@@ -460,7 +460,7 @@ loop:
 	}
 }
 
-// Get /data/merge/{peerId}
+// POST /data/merge/{peerId}
 // Merges raw data objects from peerId
 func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
