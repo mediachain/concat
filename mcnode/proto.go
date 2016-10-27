@@ -708,7 +708,7 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 
 	// background data merges
 	workers := runtime.NumCPU()
-	workch := make(chan map[string]Key, workers)
+	workch := make(chan map[string]Key, 64*workers) // ~ 3MB/worker
 	resch := make(chan MergeResult, workers)
 	for x := 0; x < workers; x++ {
 		go node.doMergeDataAsync(ctx, pid, workch, resch)
