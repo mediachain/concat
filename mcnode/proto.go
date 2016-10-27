@@ -913,6 +913,21 @@ loop:
 	return count, nil
 }
 
+func (node *Node) doRawMerge(ctx context.Context, pid p2p_peer.ID, keys map[string]Key) (int, error) {
+	err := node.doConnect(ctx, pid)
+	if err != nil {
+		return 0, err
+	}
+
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
+	if err != nil {
+		return 0, err
+	}
+	defer s.Close()
+
+	return node.doMergeDataImpl(s, keys)
+}
+
 func (node *Node) mergeStatementKeys(stmt *pb.Statement, keys map[string]Key) error {
 	mergeSimple := func(s *pb.SimpleStatement) error {
 		err := node.mergeObjectKey(s.Object, keys)
