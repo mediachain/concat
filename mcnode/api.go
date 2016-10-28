@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -158,6 +159,71 @@ loop:
 		default:
 			stmts = append(stmts, sbody)
 		}
+	}
+
+	if len(stmts) == 0 {
+		return
+	}
+
+	sids, err := node.doPublishBatch(ns, stmts)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, sid := range sids {
+		fmt.Fprintln(w, sid)
+	}
+}
+
+// POST /publish/{namespace}/{combine}
+// DATA: A stream of json-encoded pb.SimpleStatements using CompoundStatement grouping
+// Publishes a batch of statements to the specified namespace.
+// Returns the statement ids as a newline delimited stream.
+func (node *Node) httpPublishCompound(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	ns := vars["namespace"]
+	if !nsrx.Match([]byte(ns)) {
+		apiError(w, http.StatusBadRequest, BadNamespace)
+		return
+	}
+
+	comb := vars["combine"]
+	clen, err := strconv.Atoi(comb)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	dec := json.NewDecoder(r.Body)
+	stmts := make([]interface{}, 0, 1000/clen)
+	body := make([]*pb.SimpleStatement, 0, clen)
+
+loop:
+	for {
+		for x := 0; x < clen; x++ {
+			sbody := new(pb.SimpleStatement)
+			err = dec.Decode(sbody)
+			switch {
+			case err == io.EOF:
+				break loop
+			case err != nil:
+				apiError(w, http.StatusBadRequest, err)
+				return
+			default:
+				body = append(body, sbody)
+			}
+		}
+
+		stmt := &pb.CompoundStatement{body}
+		stmts = append(stmts, stmt)
+		body = make([]*pb.SimpleStatement, 0, clen)
+	}
+
+	if len(body) > 0 {
+		stmt := &pb.CompoundStatement{body}
+		stmts = append(stmts, stmt)
 	}
 
 	if len(stmts) == 0 {

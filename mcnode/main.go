@@ -74,6 +74,7 @@ func main() {
 	router.HandleFunc("/id/{peerId}", node.httpRemoteId)
 	router.HandleFunc("/ping/{peerId}", node.httpPing)
 	router.HandleFunc("/publish/{namespace}", node.httpPublish)
+	router.HandleFunc("/publish/{namespace}/{combine}", node.httpPublishCompound)
 	router.HandleFunc("/stmt/{statementId}", node.httpStatement)
 	router.HandleFunc("/query", node.httpQuery)
 	router.HandleFunc("/query/{peerId}", node.httpRemoteQuery)
