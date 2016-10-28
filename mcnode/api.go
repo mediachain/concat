@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -457,6 +458,41 @@ loop:
 	for _, key := range keys {
 		fmt.Fprintln(w, multihash.Multihash(key).B58String())
 	}
+}
+
+// POST /data/merge/{peerId}
+// Merges raw data objects from peerId
+func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	keys := make(map[string]Key)
+
+	scanner := bufio.NewScanner(r.Body)
+	for scanner.Scan() {
+		err = node.mergeObjectKey(scanner.Text(), keys)
+		if err != nil {
+			apiError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	count, err := node.doRawMerge(r.Context(), pid, keys)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		if count > 0 {
+			fmt.Fprintf(w, "Partial merge: %d objects merged\n", count)
+		}
+		return
+	}
+
+	fmt.Fprintln(w, count)
 }
 
 // GET /status

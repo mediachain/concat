@@ -23,6 +23,7 @@ message SimpleStatement {
   string object = 1;
   repeated string refs = 2;
   repeated string tags = 3;
+  repeated string deps = 4;
 }
 
 message CompoundStatement {

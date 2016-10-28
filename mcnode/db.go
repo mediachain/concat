@@ -437,3 +437,55 @@ func (sdb *SQLiteDB) Merge(stmt *pb.Statement) (bool, error) {
 	}
 	return true, nil
 }
+
+func (sdb *SQLiteDB) MergeBatch(stmts []*pb.Statement) (count int, err error) {
+	tx, err := sdb.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	insertData := tx.Stmt(sdb.insertStmtData)
+	insertEnvelope := tx.Stmt(sdb.insertStmtEnvelope)
+	insertRefs := tx.Stmt(sdb.insertStmtRefs)
+
+	for _, stmt := range stmts {
+		bytes, err := ggproto.Marshal(stmt)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+
+		_, err = insertData.Exec(stmt.Id, bytes)
+		if err != nil {
+			xerr, ok := err.(sqlite3.Error)
+			if ok && xerr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
+				continue
+			}
+			tx.Rollback()
+			return 0, err
+		}
+
+		_, err = insertEnvelope.Exec(stmt.Id, stmt.Namespace, stmt.Publisher, mcq.StatementSource(stmt), stmt.Timestamp)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+
+		for _, wki := range mcq.StatementRefs(stmt) {
+			_, err = insertRefs.Exec(stmt.Id, wki)
+			if err != nil {
+				tx.Rollback()
+				return 0, err
+			}
+		}
+
+		count += 1
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

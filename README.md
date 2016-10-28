@@ -364,17 +364,18 @@ The full grammar for MCQL is defined as a PEG in [query.peg](mc/query/query.peg)
 ### REST API
 A REST API is provided for controlling the node. This is an administrative interface and should NOT be accessible to the wider network.
 
-* `GET /id` -- node info for this peer
+* `GET /id` -- node info for the local node
 * `GET /id/{peerId}` -- node info for peer given by peerId
 * `GET /ping/{peerId}` -- ping!
 * `POST /publish/{namespace}` -- publish a batch of statements to the specified namespace 
 * `GET /stmt/{statementId}` -- retrieve statement by statementId
-* `POST /query` -- issue MCQL SELECT query on this peer
+* `POST /query` -- issue MCQL SELECT query on the local node
 * `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
-* `POST /merge/{peerId}` -- query a remote peer and merge the resulting statements into this one
+* `POST /merge/{peerId}` -- query a peer and merge the resulting statements and metadata
 * `POST /delete` -- delete statements matching this MCQL DELETE query
 * `POST /data/put` -- add a batch of data objects to datastore
 * `GET /data/get/{objectId}` -- get an object from the datastore
+* `POST /data/merge/{peerId}` -- merge raw data objects from peer
 * `GET /status` -- get node network state
 * `POST /status/{state}` -- control network state (online/offline/public)
 * `GET/POST /config/dir` -- retrieve/set the configured directory

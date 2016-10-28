@@ -15,6 +15,7 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
 	"log"
+	"runtime"
 	"time"
 )
 
@@ -705,82 +706,169 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 	// publisher key cache
 	pkcache := make(map[string]p2p_crypto.PubKey)
 
-	// stream for fetching metadata
-	// Note: the metadata are merged synchronously in batches
-	//       this is fine for small merges, but likely inefficient at large
-	//       a more efficient implementation is possible where the
-	//       metadata are fetched pipelined in parallel with background goroutine(s)
-	//       but the cost is significant synchronization and error handling complexity.
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
-	if err != nil {
-		return 0, 0, err
+	// background data merges
+	workers := runtime.NumCPU()
+	workch := make(chan map[string]Key, 64*workers) // ~ 3MB/worker
+	resch := make(chan MergeResult, workers)
+	for x := 0; x < workers; x++ {
+		go node.doMergeDataAsync(ctx, pid, workch, resch)
 	}
-	defer s.Close()
 
-	const batch = 8192
+	const batch = 1024
+	stmts := make([]*pb.Statement, 0, batch)
 	keys := make(map[string]Key)
 
+loop:
 	for val := range ch {
 		switch val := val.(type) {
 		case *pb.Statement:
 			if !node.checkStatement(val) {
-				return count, ocount, BadStatement
+				err = BadStatement
+				break loop
 			}
 
-			verify, err := node.verifyStatementCacheKeys(val, pkcache)
+			var verify bool
+			verify, err = node.verifyStatementCacheKeys(val, pkcache)
 			if err != nil {
-				return count, ocount, err
+				break loop
 			}
 
 			// a verification failure taints the result set; abort the merge
 			if !verify {
-				return count, ocount, BadStatement
+				err = BadStatement
+				break loop
 			}
 
-			ins, err := node.db.Merge(val)
+			err = node.mergeStatementKeys(val, keys)
 			if err != nil {
-				return count, ocount, err
-			}
-			if ins {
-				count += 1
-			}
-
-			err = node.statementMergeKeys(val, keys)
-			if err != nil {
-				return count, ocount, err
+				break loop
 			}
 
 			if len(keys) >= batch {
-				bcount, err := node.doMergeData(s, keys)
-				ocount += bcount
-				if err != nil {
-					return count, ocount, err
+				select {
+				case workch <- keys:
+					keys = make(map[string]Key)
+
+				case res := <-resch:
+					ocount += res.count
+					err = res.err
+					workers -= 1
+					break loop
+
+				case <-ctx.Done():
+					err = ctx.Err()
+					break loop
 				}
 			}
 
+			stmts = append(stmts, val)
+
+			if len(stmts) >= batch {
+				var xcount int
+				xcount, err = node.db.MergeBatch(stmts)
+				count += xcount
+				if err != nil {
+					break loop
+				}
+				stmts = stmts[:0]
+			}
+
 		case StreamError:
-			return count, ocount, val
+			err = val
+			break loop
 
 		default:
-			return count, ocount, BadResult
+			err = BadResult
+			break loop
 		}
 	}
 
-	if len(keys) > 0 {
-		bcount, err := node.doMergeData(s, keys)
-		ocount += bcount
-		if err != nil {
-			return count, ocount, err
+	if len(keys) > 0 && err == nil {
+		select {
+		case workch <- keys:
+
+		case res := <-resch:
+			ocount += res.count
+			err = res.err
+			workers -= 1
+
+		case <-ctx.Done():
+			err = ctx.Err()
 		}
 	}
 
-	return count, ocount, nil
+	if len(stmts) > 0 && err == nil {
+		var xcount int
+		xcount, err = node.db.MergeBatch(stmts)
+		count += xcount
+	}
+
+	close(workch)
+	for x := 0; x < workers; x++ {
+		res := <-resch
+		ocount += res.count
+		if err == nil && res.err != nil {
+			err = res.err
+		}
+	}
+
+	return count, ocount, err
 }
 
-func (node *Node) doMergeData(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
+type MergeResult struct {
+	count int
+	err   error
+}
+
+// Note: it is possible to refetch the same object if it appears in multiple batches.
+// This is complicated to dedupe, as it would require keeping a synchronous map
+// tracking in flight fetches (and consulting it when merging object keys)
+// On the other hand, in the standard usage this should only happen for
+// schema objects, and would result in at most NumCPU dupe fetches.
+// So the overhead should be minimal and not worth the complexity/slowdown from
+// tracking in-flight requests
+func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
+	in <-chan map[string]Key,
+	out chan<- MergeResult) {
+	var s p2p_net.Stream
+	var err error
+	var count int
+
+	for keys := range in {
+		if s == nil {
+			s, err = node.host.NewStream(ctx, pid, "/mediachain/node/data")
+			if err != nil {
+				break
+			}
+			defer s.Close()
+		}
+
+		var xcount int
+		xcount, err = node.doMergeDataImpl(s, keys)
+		count += xcount
+		if err != nil {
+			break
+		}
+	}
+
+	out <- MergeResult{count, err}
+}
+
+func (node *Node) doMergeDataImpl(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
 	keys58 := make([]string, 0, len(keys))
-	for key58, _ := range keys {
+	for key58, key := range keys {
+		have, err := node.ds.Has(key)
+		if err != nil {
+			return 0, err
+		}
+		if have {
+			continue
+		}
 		keys58 = append(keys58, key58)
+	}
+
+	if len(keys58) == 0 {
+		return 0, nil
 	}
 
 	var req pb.DataRequest
@@ -797,7 +885,7 @@ func (node *Node) doMergeData(s p2p_net.Stream, keys map[string]Key) (count int,
 
 loop:
 	for {
-		err := r.ReadMsg(&res)
+		err = r.ReadMsg(&res)
 
 		switch res := res.Result.(type) {
 		case *pb.DataResult_Data:
@@ -836,22 +924,53 @@ loop:
 		res.Reset()
 	}
 
-	if len(keys) > 0 { // we didn't get all the data we asked for, signal error
+	if count < len(keys58) { // we didn't get all the data we asked for, signal error
 		return count, MissingData
 	}
 
 	return count, nil
 }
 
-func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) error {
+func (node *Node) doRawMerge(ctx context.Context, pid p2p_peer.ID, keys map[string]Key) (int, error) {
+	err := node.doConnect(ctx, pid)
+	if err != nil {
+		return 0, err
+	}
+
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
+	if err != nil {
+		return 0, err
+	}
+	defer s.Close()
+
+	return node.doMergeDataImpl(s, keys)
+}
+
+func (node *Node) mergeStatementKeys(stmt *pb.Statement, keys map[string]Key) error {
+	mergeSimple := func(s *pb.SimpleStatement) error {
+		err := node.mergeObjectKey(s.Object, keys)
+		if err != nil {
+			return err
+		}
+
+		for _, dep := range s.Deps {
+			err = node.mergeObjectKey(dep, keys)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	switch body := stmt.Body.Body.(type) {
 	case *pb.StatementBody_Simple:
-		return node.statementMergeKey(body.Simple.Object, keys)
+		return mergeSimple(body.Simple)
 
 	case *pb.StatementBody_Compound:
-		stmts := body.Compound.Body
-		for _, stmt := range stmts {
-			err := node.statementMergeKey(stmt.Object, keys)
+		ss := body.Compound.Body
+		for _, s := range ss {
+			err := mergeSimple(s)
 			if err != nil {
 				return err
 			}
@@ -861,7 +980,7 @@ func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) er
 	case *pb.StatementBody_Envelope:
 		stmts := body.Envelope.Body
 		for _, stmt := range stmts {
-			err := node.statementMergeKeys(stmt, keys)
+			err := node.mergeStatementKeys(stmt, keys)
 			if err != nil {
 				return err
 			}
@@ -873,7 +992,7 @@ func (node *Node) statementMergeKeys(stmt *pb.Statement, keys map[string]Key) er
 	}
 }
 
-func (node *Node) statementMergeKey(key58 string, keys map[string]Key) error {
+func (node *Node) mergeObjectKey(key58 string, keys map[string]Key) error {
 	_, have := keys[key58]
 	if have {
 		return nil
@@ -884,15 +1003,6 @@ func (node *Node) statementMergeKey(key58 string, keys map[string]Key) error {
 		return err
 	}
 
-	key := Key(mhash)
-	have, err = node.ds.Has(key)
-	if err != nil {
-		return err
-	}
-
-	if !have {
-		keys[key58] = key
-	}
-
+	keys[key58] = Key(mhash)
 	return nil
 }
