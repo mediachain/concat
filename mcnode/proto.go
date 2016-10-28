@@ -824,7 +824,9 @@ type MergeResult struct {
 // This is complicated to dedupe, as it would require keeping a synchronous map
 // tracking in flight fetches (and consulting it when merging object keys)
 // On the other hand, in the standard usage this should only happen for
-// schema objects, resulting in minimal overhead.
+// schema objects, and would result in at most NumCPU dupe fetches.
+// So the overhead should be minimal and not worth the complexity/slowdown from
+// tracking in-flight requests
 func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
 	in <-chan map[string]Key,
 	out chan<- MergeResult) {
@@ -854,8 +856,19 @@ func (node *Node) doMergeDataAsync(ctx context.Context, pid p2p_peer.ID,
 
 func (node *Node) doMergeDataImpl(s p2p_net.Stream, keys map[string]Key) (count int, err error) {
 	keys58 := make([]string, 0, len(keys))
-	for key58, _ := range keys {
+	for key58, key := range keys {
+		have, err := node.ds.Has(key)
+		if err != nil {
+			return 0, err
+		}
+		if have {
+			continue
+		}
 		keys58 = append(keys58, key58)
+	}
+
+	if len(keys58) == 0 {
+		return 0, nil
 	}
 
 	var req pb.DataRequest
@@ -872,7 +885,7 @@ func (node *Node) doMergeDataImpl(s p2p_net.Stream, keys map[string]Key) (count 
 
 loop:
 	for {
-		err := r.ReadMsg(&res)
+		err = r.ReadMsg(&res)
 
 		switch res := res.Result.(type) {
 		case *pb.DataResult_Data:
@@ -911,7 +924,7 @@ loop:
 		res.Reset()
 	}
 
-	if len(keys) > 0 { // we didn't get all the data we asked for, signal error
+	if count < len(keys58) { // we didn't get all the data we asked for, signal error
 		return count, MissingData
 	}
 
@@ -990,15 +1003,6 @@ func (node *Node) mergeObjectKey(key58 string, keys map[string]Key) error {
 		return err
 	}
 
-	key := Key(mhash)
-	have, err = node.ds.Has(key)
-	if err != nil {
-		return err
-	}
-
-	if !have {
-		keys[key58] = key
-	}
-
+	keys[key58] = Key(mhash)
 	return nil
 }
