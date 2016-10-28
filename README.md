@@ -368,6 +368,7 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /id/{peerId}` -- node info for peer given by peerId
 * `GET /ping/{peerId}` -- ping!
 * `POST /publish/{namespace}` -- publish a batch of statements to the specified namespace 
+* `POST /publish/{namespace}/{combine}` -- publish a batch of statements with CompoundStatement grouping 
 * `GET /stmt/{statementId}` -- retrieve statement by statementId
 * `POST /query` -- issue MCQL SELECT query on the local node
 * `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
