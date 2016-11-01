@@ -885,7 +885,10 @@ func (node *Node) doMergeDataImpl(s p2p_net.Stream, keys map[string]Key) (count 
 
 loop:
 	for {
-		err = r.ReadMsg(&res)
+		err := r.ReadMsg(&res)
+		if err != nil {
+			return count, err
+		}
 
 		switch res := res.Result.(type) {
 		case *pb.DataResult_Data:
