@@ -78,7 +78,7 @@ func (node *Node) _goOnline() error {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	host, err := mc.NewHost(ctx, node.PeerIdentity, node.laddr, opts...)
+	host, err := mc.NewHost(ctx, node.PeerIdentity, nil, opts...)
 	if err != nil {
 		cancel()
 		return err
@@ -88,6 +88,13 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
+
+	err = host.Network().Listen(node.laddr)
+	if err != nil {
+		cancel()
+		host.Close()
+		return err
+	}
 
 	node.host = host
 	node.netCtx = ctx
