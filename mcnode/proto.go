@@ -112,6 +112,11 @@ func (node *Node) goPublic() error {
 		if err != nil {
 			return err
 		}
+
+		if node.natCfg.Opt == mc.NATConfigAuto {
+			// wait a bit for NAT port mapping to take effect
+			time.Sleep(2 * time.Second)
+		}
 		fallthrough
 
 	case StatusOnline:
