@@ -71,14 +71,19 @@ func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
 // re-export this option to avoid basic host interface leakage
 const NATPortMap = p2p_bhost.NATPortMap
 
-func NewHost(id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p2p_host.Host, error) {
+func NewHost(ctx context.Context, id PeerIdentity, laddr multiaddr.Multiaddr, opts ...interface{}) (p2p_host.Host, error) {
 	pstore := p2p_pstore.NewPeerstore()
 	pstore.AddPrivKey(id.ID, id.PrivKey)
 	pstore.AddPubKey(id.ID, id.PrivKey.GetPublic())
 
+	var addrs []multiaddr.Multiaddr
+	if laddr != nil {
+		addrs = []multiaddr.Multiaddr{laddr}
+	}
+
 	netw, err := p2p_swarm.NewNetwork(
 		context.Background(),
-		[]multiaddr.Multiaddr{laddr},
+		addrs,
 		id.ID,
 		pstore,
 		p2p_metrics.NewBandwidthCounter())

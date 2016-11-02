@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	ggio "github.com/gogo/protobuf/io"
@@ -197,7 +198,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	host, err := mc.NewHost(id, addr)
+	host, err := mc.NewHost(context.Background(), id, addr)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -77,8 +77,10 @@ func (node *Node) _goOnline() error {
 		opts = []interface{}{mc.NATPortMap}
 	}
 
-	host, err := mc.NewHost(node.PeerIdentity, node.laddr, opts...)
+	ctx, cancel := context.WithCancel(context.Background())
+	host, err := mc.NewHost(ctx, node.PeerIdentity, node.laddr, opts...)
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -86,9 +88,8 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
-	node.host = host
 
-	ctx, cancel := context.WithCancel(context.Background())
+	node.host = host
 	node.netCtx = ctx
 	node.netCancel = cancel
 
