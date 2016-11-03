@@ -215,71 +215,62 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (count int, err error) {
 	sdb.wlock.Lock()
 	defer sdb.wlock.Unlock()
 
-	// Delete collects the target ids and deletes in batches, to avoid
-	// excessive buffer memory when deleting large sets.
-	// It cannot use the natural streaming query solution to delete in a single
-	// tx because it deadlocks when connection pooling is disabled.
-	// Partial deletes are possible because of an error in some batch,
-	// which will result in both count > 0 and the error being returned.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// FIXME: this is no longer necessary with write locking.
+	ch, err := sdb.QueryStream(ctx, q)
+	if err != nil {
+		return 0, err
+	}
 
-	const batch = 65536 // up to 16MB worth of ids
-	q = q.WithLimit(batch)
+	tx, err := sdb.db.Begin()
+	if err != nil {
+		return 0, err
+	}
 
-loop:
-	for {
-		xcount := 0
+	delData := tx.Stmt(sdb.deleteStmtData)
+	delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
+	delRefs := tx.Stmt(sdb.deleteStmtRefs)
 
-		res, err := sdb.Query(q)
-		if err != nil || len(res) == 0 {
-			break
-		}
-
-		tx, err := sdb.db.Begin()
-		if err != nil {
-			break
-		}
-
-		delData := tx.Stmt(sdb.deleteStmtData)
-		delEnvelope := tx.Stmt(sdb.deleteStmtEnvelope)
-		delRefs := tx.Stmt(sdb.deleteStmtRefs)
-
-		for _, id := range res {
+	for val := range ch {
+		switch id := val.(type) {
+		case string:
 			_, err = delData.Exec(id)
 			if err != nil {
 				tx.Rollback()
-				break loop
+				return 0, err
 			}
 
 			_, err = delEnvelope.Exec(id)
 			if err != nil {
 				tx.Rollback()
-				break loop
+				return 0, err
 			}
 
 			_, err = delRefs.Exec(id)
 			if err != nil {
 				tx.Rollback()
-				break loop
+				return 0, err
 			}
 
-			xcount += 1
-		}
+			count += 1
 
-		err = tx.Commit()
-		if err != nil {
-			break
-		}
+		case StreamError:
+			tx.Rollback()
+			return 0, id
 
-		count += xcount
-
-		if xcount < batch {
-			break
+		default:
+			tx.Rollback()
+			return 0, BadResult
 		}
 	}
 
-	return count, err
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (sdb *SQLDB) Close() error {
