@@ -9,6 +9,7 @@ import (
 	pb "github.com/mediachain/concat/proto"
 	"os"
 	"path"
+	"sync"
 )
 
 type SQLDB struct {
@@ -20,9 +21,13 @@ type SQLDB struct {
 	deleteStmtData     *sql.Stmt
 	deleteStmtEnvelope *sql.Stmt
 	deleteStmtRefs     *sql.Stmt
+	wlock              sync.Mutex
 }
 
 func (sdb *SQLDB) Put(stmt *pb.Statement) error {
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
 	bytes, err := ggproto.Marshal(stmt)
 	if err != nil {
 		return err
@@ -60,6 +65,9 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 }
 
 func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
 	tx, err := sdb.db.Begin()
 	if err != nil {
 		return err
@@ -204,12 +212,17 @@ func (sdb *SQLDB) Delete(q *mcq.Query) (count int, err error) {
 		return 0, BadQuery
 	}
 
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
 	// Delete collects the target ids and deletes in batches, to avoid
 	// excessive buffer memory when deleting large sets.
 	// It cannot use the natural streaming query solution to delete in a single
 	// tx because it deadlocks when connection pooling is disabled.
 	// Partial deletes are possible because of an error in some batch,
 	// which will result in both count > 0 and the error being returned.
+
+	// FIXME: this is no longer necessary with write locking.
 
 	const batch = 65536 // up to 16MB worth of ids
 	q = q.WithLimit(batch)
@@ -400,8 +413,6 @@ func (sdb *SQLiteDB) Open(home string) error {
 		}
 	}
 
-	sdb.configPool()
-
 	return sdb.prepareStatements()
 }
 
@@ -420,12 +431,6 @@ func (sdb *SQLiteDB) tuneDB() error {
 	return err
 }
 
-func (sdb *SQLiteDB) configPool() {
-	// disable connection pooling as lock contention totally kills
-	// concurrent write performance
-	sdb.db.SetMaxOpenConns(1)
-}
-
 func (sdb *SQLiteDB) Merge(stmt *pb.Statement) (bool, error) {
 	err := sdb.Put(stmt)
 	if err != nil {
@@ -439,6 +444,9 @@ func (sdb *SQLiteDB) Merge(stmt *pb.Statement) (bool, error) {
 }
 
 func (sdb *SQLiteDB) MergeBatch(stmts []*pb.Statement) (count int, err error) {
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
 	tx, err := sdb.db.Begin()
 	if err != nil {
 		return 0, err
