@@ -5,8 +5,7 @@
 - Support compound statement publication [[Issue #62]](https://github.com/mediachain/concat/issues/62)
 - Implement user write locking in statement db, allow concurrent reads with long running queries [[PR #73]](https://github.com/mediachain/concat/pull/73)
 - Add delay in the offline->public transition when NAT config is auto, allow port mapping to complete before directory registration [[PR #72]](https://github.com/mediachain/concat/pull/72)
+- Automate binary builds for releases [[Issue 56]](https://github.com/mediachain/concat/issues/56)
 
 ## 24/10/2016: concat-v1.0
 - First release; baseline feature completeness.
-
-
