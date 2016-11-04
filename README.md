@@ -88,8 +88,8 @@ offline
 
 At this point you should designate a directory for looking up peers:
 ```
-$ mcclient config dir /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
-set directory to /ip4/54.173.71.205/tcp/9000/Qmb561BUvwc2pfMQ5NHb1uuwVE1hHWerySVMSUJLhnzNLN
+$ mcclient config dir /ip4/52.7.126.237/tcp/9000/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6
+set directory to /ip4/52.7.126.237/tcp/9000/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6
 ```
 
 And your node is ready to go online:
