@@ -536,8 +536,10 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 		return NodeOffline
 	}
 
-	addrs := node.host.Peerstore().Addrs(pid)
-	if len(addrs) > 0 {
+	switch node.host.Network().Connectedness(pid) {
+	case p2p_net.Connected:
+		return nil
+	case p2p_net.CanConnect:
 		return node.host.Connect(node.netCtx, p2p_pstore.PeerInfo{pid, nil})
 	}
 
