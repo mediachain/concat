@@ -29,22 +29,34 @@ func ParseAddress(str string) (multiaddr.Multiaddr, error) {
 
 var BadHandle = errors.New("Bad handle")
 
-// handle: multiaddr/id
+// handle: multiaddr/p2p/id
 func FormatHandle(pi p2p_pstore.PeerInfo) string {
 	if len(pi.Addrs) > 0 {
-		return fmt.Sprintf("%s/%s", pi.Addrs[0].String(), pi.ID.Pretty())
+		return fmt.Sprintf("%s/p2p/%s", pi.Addrs[0].String(), pi.ID.Pretty())
 	} else {
 		return pi.ID.Pretty()
 	}
 }
 
+// parses multiaddr[/p2p]/id (backwards compatible)
 func ParseHandle(str string) (empty p2p_pstore.PeerInfo, err error) {
+	var id, addr string
+
 	ix := strings.LastIndex(str, "/")
 	if ix < 0 {
 		return ParseHandleId(str)
 	}
+	id = str[ix+1:]
 
-	addr, id := str[:ix], str[ix+1:]
+	iy := strings.LastIndex(str[:ix], "/")
+	switch {
+	case iy < 0:
+		addr = str[:ix]
+	case str[iy+1:ix] == "p2p":
+		addr = str[:iy]
+	default:
+		addr = str[:ix]
+	}
 
 	maddr, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
