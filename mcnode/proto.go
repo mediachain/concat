@@ -416,6 +416,7 @@ loop:
 		val.Reset()
 	}
 
+	close(wch)
 	if !mdone {
 		mres = <-rch
 	}
