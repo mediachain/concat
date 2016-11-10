@@ -711,6 +711,10 @@ func (node *Node) doMerge(ctx context.Context, pid p2p_peer.ID, q string) (count
 		return 0, 0, err
 	}
 
+	return node.doMergeStream(ctx, pid, ch)
+}
+
+func (node *Node) doMergeStream(ctx context.Context, pid p2p_peer.ID, ch <-chan interface{}) (count int, ocount int, err error) {
 	// publisher key cache
 	pkcache := make(map[string]p2p_crypto.PubKey)
 
