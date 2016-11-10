@@ -425,6 +425,9 @@ loop:
 
 	end.Statements = int64(mres.scount)
 	end.Objects = int64(mres.ocount)
+	if err == nil && mres.err != nil {
+		err = mres.err
+	}
 	if err != nil {
 		end.Error = err.Error()
 		log.Printf("node/push: mege error: %s", end.Error)
