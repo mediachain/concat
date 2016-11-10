@@ -88,6 +88,7 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
+	host.SetStreamHandler("/mediachain/node/push", node.pushHandler)
 
 	node.host = host
 	node.netCtx = ctx
@@ -339,6 +340,102 @@ func (node *Node) dataHandler(s p2p_net.Stream) {
 
 		req.Reset()
 	}
+}
+
+func (node *Node) pushHandler(s p2p_net.Stream) {
+	defer s.Close()
+	pid := s.Conn().RemotePeer()
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("node/push: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	var err error
+	var req pb.PushRequest
+	var res pb.PushResponse
+	var val pb.PushValue
+	var end pb.PushEnd
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	err = r.ReadMsg(&req)
+	if err != nil {
+		return
+	}
+
+	if !node.authorizePush(pid, req.Namespaces) {
+		log.Printf("Rejected push from %s; not authorized", pid.Pretty())
+		res.Body = &pb.PushResponse_Reject{&pb.PushReject{"Not authorized"}}
+		w.WriteMsg(&res)
+		return
+	}
+
+	res.Body = &pb.PushResponse_Accept{&pb.PushAccept{}}
+	err = w.WriteMsg(&res)
+	if err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithCancel(node.netCtx)
+	defer cancel()
+
+	wch := make(chan interface{})
+	rch := make(chan PushMergeResult, 1)
+	var mres PushMergeResult
+	var mdone bool
+
+	go func() {
+		scount, ocount, err := node.doMergeStream(ctx, pid, wch)
+		rch <- PushMergeResult{scount, ocount, err}
+	}()
+
+loop:
+	for {
+		err = r.ReadMsg(&val)
+		if err != nil {
+			break loop
+		}
+
+		switch val := val.Value.(type) {
+		case *pb.PushValue_Stmt:
+			// TODO filter statements by namespace (only merge namespaces specified in request)
+			select {
+			case wch <- val.Stmt:
+			case mres = <-rch:
+				mdone = true
+				break loop
+			}
+
+		case *pb.PushValue_End:
+			break loop
+
+		default:
+			err = BadPush
+			break loop
+		}
+
+		val.Reset()
+	}
+
+	if !mdone {
+		mres = <-rch
+	}
+
+	log.Printf("node/push: merged %d statements and %d objects from %s", mres.scount, mres.ocount, pid.Pretty())
+
+	end.Statements = int64(mres.scount)
+	end.Objects = int64(mres.ocount)
+	if err != nil {
+		end.Error = err.Error()
+		log.Printf("node/push: mege error: %s", end.Error)
+	}
+
+	w.WriteMsg(&end)
+}
+
+type PushMergeResult struct {
+	scount int
+	ocount int
+	err    error
 }
 
 func (node *Node) registerPeer(ctx context.Context) {

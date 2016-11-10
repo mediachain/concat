@@ -8,6 +8,7 @@ import (
 	ggproto "github.com/gogo/protobuf/proto"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_host "github.com/libp2p/go-libp2p-host"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -85,6 +86,7 @@ var (
 	MissingData      = errors.New("Missing statement metadata")
 	UnexpectedData   = errors.New("Unexpected data object")
 	BadData          = errors.New("Bad data object; hash mismatch")
+	BadPush          = errors.New("Bad push value; unexpected object")
 )
 
 const (
@@ -322,4 +324,9 @@ func (node *Node) doShutdown() {
 	}
 	node.ds.Close()
 	os.Exit(0)
+}
+
+func (node *Node) authorizePush(pid p2p_peer.ID, ns []string) bool {
+	// XXX Implement me!
+	return false
 }
