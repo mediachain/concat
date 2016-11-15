@@ -1188,7 +1188,7 @@ func (node *Node) doPush(ctx context.Context, pid p2p_peer.ID, q *mcq.Query) (in
 		var end pb.PushEnd
 		err := r.ReadMsg(&end)
 		if err != nil {
-			rch <- PushMergeResult{0, 0, err}
+			rch <- PushMergeResult{-1, -1, err}
 			return
 		}
 
@@ -1227,7 +1227,7 @@ loop:
 			}
 
 		case res := <-rch:
-			log.Printf("node/push: unexpected push end: %s", res.err)
+			log.Printf("node/push: premature push end: %s", res.err)
 			return res.scount, res.ocount, res.err
 
 		case <-ctx.Done():
