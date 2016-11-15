@@ -32,6 +32,10 @@ func (q *Query) IsSimpleSelect(sel string) bool {
 	return false
 }
 
+func (q *Query) WithSimpleSelect(sel string) *Query {
+	return &Query{q.Op, q.namespace, SimpleSelector(sel), q.criteria, q.order, q.limit}
+}
+
 type QuerySelector interface {
 	selectorType() string
 }

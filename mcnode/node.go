@@ -87,6 +87,7 @@ var (
 	UnexpectedData   = errors.New("Unexpected data object")
 	BadData          = errors.New("Bad data object; hash mismatch")
 	BadPush          = errors.New("Bad push value; unexpected object")
+	BadResponse      = errors.New("Bad response; unexpected object")
 )
 
 const (
@@ -96,6 +97,12 @@ const (
 )
 
 var statusString = []string{"offline", "online", "public"}
+
+type PushError string
+
+func (s PushError) Error() string {
+	return string(s)
+}
 
 type StreamError struct {
 	Err string `json:"error"`

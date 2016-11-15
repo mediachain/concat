@@ -363,7 +363,7 @@ func (node *Node) pushHandler(s p2p_net.Stream) {
 	}
 
 	if !node.authorizePush(pid, req.Namespaces) {
-		log.Printf("Rejected push from %s; not authorized", pid.Pretty())
+		log.Printf("node/push: rejected push from %s; not authorized", pid.Pretty())
 		res.Body = &pb.PushResponse_Reject{&pb.PushReject{"Not authorized"}}
 		w.WriteMsg(&res)
 		return
@@ -1121,4 +1121,125 @@ func (node *Node) mergeObjectKey(key58 string, keys map[string]Key) error {
 
 	keys[key58] = Key(mhash)
 	return nil
+}
+
+func (node *Node) doPush(ctx context.Context, pid p2p_peer.ID, q *mcq.Query) (int, int, error) {
+	nsq := q.WithSimpleSelect("namespace")
+	nsr, err := node.db.Query(nsq)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if len(nsr) == 0 {
+		return 0, 0, err
+	}
+
+	nss := make([]string, len(nsr))
+	for x, ns := range nsr {
+		nss[x] = ns.(string)
+	}
+
+	err = node.doConnect(ctx, pid)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/push")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer s.Close()
+
+	var req pb.PushRequest
+	var res pb.PushResponse
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	req.Namespaces = nss
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	switch body := res.Body.(type) {
+	case *pb.PushResponse_Accept:
+		break
+	case *pb.PushResponse_Reject:
+		return 0, 0, PushError(body.Reject.Error)
+	default:
+		return 0, 0, BadResponse
+	}
+
+	qch, err := node.db.QueryStream(ctx, q)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	rch := make(chan PushMergeResult, 1)
+
+	go func() {
+		var end pb.PushEnd
+		err := r.ReadMsg(&end)
+		if err != nil {
+			rch <- PushMergeResult{0, 0, err}
+			return
+		}
+
+		var res PushMergeResult
+		res.scount = int(end.Statements)
+		res.ocount = int(end.Objects)
+		if end.Error != "" {
+			res.err = PushError(end.Error)
+		}
+		rch <- res
+	}()
+
+	var val pb.PushValue
+
+	writeValue := func(stmt *pb.Statement) error {
+		val.Value = &pb.PushValue_Stmt{stmt}
+		return w.WriteMsg(&val)
+	}
+
+	writeEnd := func() error {
+		val.Value = &pb.PushValue_End{&pb.StreamEnd{}}
+		return w.WriteMsg(&val)
+	}
+
+loop:
+	for {
+		select {
+		case stmt, ok := <-qch:
+			if !ok {
+				break loop
+			}
+
+			err = writeValue(stmt.(*pb.Statement))
+			if err != nil {
+				return -1, -1, err
+			}
+
+		case res := <-rch:
+			log.Printf("node/push: unexpected push end: %s", res.err)
+			return res.scount, res.ocount, res.err
+
+		case <-ctx.Done():
+			break loop
+		}
+	}
+
+	err = writeEnd()
+	if err != nil {
+		return -1, -1, err
+	}
+
+	pres := <-rch
+	return pres.scount, pres.ocount, pres.err
 }
