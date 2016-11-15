@@ -360,7 +360,7 @@ func (node *Node) httpRemoteQuery(w http.ResponseWriter, r *http.Request) {
 // POST /merge/{peerId}
 // DATA: MCQL SELECT query
 // Queries a remote peer and merges the resulting statements into the local
-// db; returns the number of statements merged
+// db; returns the number of statements and objects merged
 func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	peerId := vars["peerId"]
@@ -401,6 +401,63 @@ func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 		}
 		if ocount > 0 {
 			fmt.Fprintf(w, "Partial merge: %d objects merged\n", ocount)
+		}
+
+		return
+	}
+
+	fmt.Fprintln(w, count)
+	fmt.Fprintln(w, ocount)
+}
+
+// POST /push/{peerId}
+// DATA: MCQL SELECT query
+// Pushes statements matching the query to peerId for merge; must be
+// authorized for push by the peer
+// returns the number of statements and objects merged
+func (node *Node) httpPush(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/push: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q := string(body)
+
+	qq, err := mcq.ParseQuery(q)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !qq.IsSimpleSelect("*") {
+		apiError(w, http.StatusBadRequest, BadQuery)
+		return
+	}
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	count, ocount, err := node.doPush(ctx, pid, qq)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		if count > 0 {
+			fmt.Fprintf(w, "Partial push: %d statements merged\n", count)
+		}
+		if ocount > 0 {
+			fmt.Fprintf(w, "Partial push: %d objects merged\n", ocount)
+		}
+		if count < 0 {
+			fmt.Fprintf(w, "Incomplete push: some statements may have been merged\n")
 		}
 
 		return

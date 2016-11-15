@@ -79,6 +79,7 @@ func main() {
 	router.HandleFunc("/query", node.httpQuery)
 	router.HandleFunc("/query/{peerId}", node.httpRemoteQuery)
 	router.HandleFunc("/merge/{peerId}", node.httpMerge)
+	router.HandleFunc("/push/{peerId}", node.httpPush)
 	router.HandleFunc("/delete", node.httpDelete)
 	router.HandleFunc("/data/put", node.httpPutData)
 	router.HandleFunc("/data/get/{objectId}", node.httpGetData)
