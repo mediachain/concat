@@ -388,6 +388,11 @@ func (node *Node) pushHandler(s p2p_net.Stream) {
 		rch <- PushMergeResult{scount, ocount, err}
 	}()
 
+	nsfilter := make(map[string]bool)
+	for _, ns := range req.Namespaces {
+		nsfilter[ns] = true
+	}
+
 loop:
 	for {
 		err = r.ReadMsg(&val)
@@ -397,7 +402,16 @@ loop:
 
 		switch val := val.Value.(type) {
 		case *pb.PushValue_Stmt:
-			// TODO filter statements by namespace (only merge namespaces specified in request)
+			if val.Stmt == nil {
+				err = BadPush
+				break loop
+			}
+
+			if !nsfilter[val.Stmt.Namespace] {
+				err = BadPush
+				break loop
+			}
+
 			select {
 			case wch <- val.Stmt:
 			case mres = <-rch:
@@ -430,7 +444,7 @@ loop:
 	}
 	if err != nil {
 		end.Error = err.Error()
-		log.Printf("node/push: mege error: %s", end.Error)
+		log.Printf("node/push: merge error: %s", end.Error)
 	}
 
 	w.WriteMsg(&end)
