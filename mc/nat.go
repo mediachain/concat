@@ -119,7 +119,7 @@ func NATConfigFromString(str string) (cfg NATConfig, err error) {
 }
 
 func GetPublicIP() (string, error) {
-	res, err := http.Get("http://ifconfig.me/ip")
+	res, err := http.Get("http://ifconfig.co/ip")
 	if err != nil {
 		return "", err
 	}
