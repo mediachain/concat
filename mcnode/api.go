@@ -776,6 +776,28 @@ func (node *Node) httpConfigInfoSet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+// GET /auth
+// retrieves all peer authorization rules in json
+func (node *Node) httpAuth(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// GET  /auth/{peerId}
+// POST /auth/{peerId}
+// gets/sets auth rules for peerId
+// rules are specified as a comma separated list of namespaces (or ns wildcards)
+func (node *Node) httpAuthPeer(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpAuthPeerGet, node.httpAuthPeerSet)
+}
+
+func (node *Node) httpAuthPeerGet(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (node *Node) httpAuthPeerSet(w http.ResponseWriter, r *http.Request) {
+
+}
+
 // POST /shutdown
 // shutdown the node
 func (node *Node) httpShutdown(w http.ResponseWriter, r *http.Request) {

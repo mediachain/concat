@@ -272,10 +272,10 @@ func (node *Node) openDS() error {
 
 // persistent configuration
 type NodeConfig struct {
-	Info string            `json:"info,omitempty"`
-	NAT  string            `json:"nat,omitempty"`
-	Dir  string            `json:"dir,omitempty"`
-	Auth map[string]string `json:"auth,omitempty"`
+	Info string                 `json:"info,omitempty"`
+	NAT  string                 `json:"nat,omitempty"`
+	Dir  string                 `json:"dir,omitempty"`
+	Auth map[string]interface{} `json:"auth,omitempty"`
 }
 
 func (node *Node) saveConfig() error {
@@ -285,7 +285,7 @@ func (node *Node) saveConfig() error {
 	if node.dir != nil {
 		cfg.Dir = mc.FormatHandle(*node.dir)
 	}
-	cfg.Auth = node.auth.save()
+	cfg.Auth = node.auth.toJSON()
 
 	bytes, err := json.Marshal(cfg)
 	if err != nil {
@@ -329,7 +329,7 @@ func (node *Node) loadConfig() error {
 		node.dir = &pinfo
 	}
 
-	err = node.auth.load(cfg.Auth)
+	err = node.auth.fromJSON(cfg.Auth)
 	return err
 }
 
@@ -343,11 +343,11 @@ func (node *Node) doShutdown() {
 	os.Exit(0)
 }
 
-func (auth *PeerAuth) load(map[string]string) error {
+func (auth *PeerAuth) fromJSON(map[string]interface{}) error {
 	return nil
 }
 
-func (auth *PeerAuth) save() map[string]string {
+func (auth *PeerAuth) toJSON() map[string]interface{} {
 	return nil
 }
 

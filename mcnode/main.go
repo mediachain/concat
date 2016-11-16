@@ -89,6 +89,8 @@ func main() {
 	router.HandleFunc("/config/dir", node.httpConfigDir)
 	router.HandleFunc("/config/nat", node.httpConfigNAT)
 	router.HandleFunc("/config/info", node.httpConfigInfo)
+	router.HandleFunc("/auth", node.httpAuth)
+	router.HandleFunc("/auth/{peerId}", node.httpAuthPeer)
 	router.HandleFunc("/dir/list", node.httpDirList)
 	router.HandleFunc("/net/addr", node.httpNetAddr)
 	router.HandleFunc("/shutdown", node.httpShutdown)
