@@ -779,7 +779,12 @@ func (node *Node) httpConfigInfoSet(w http.ResponseWriter, r *http.Request) {
 // GET /auth
 // retrieves all peer authorization rules in json
 func (node *Node) httpAuth(w http.ResponseWriter, r *http.Request) {
+	rules := node.auth.toJSON()
 
+	err := json.NewEncoder(w).Encode(rules)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
 }
 
 // GET  /auth/{peerId}
@@ -791,11 +796,52 @@ func (node *Node) httpAuthPeer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpAuthPeerGet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
 
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	rules := node.auth.getRules(pid)
+	if len(rules) > 0 {
+		fmt.Fprintln(w, strings.Join(rules, ","))
+	}
 }
 
 func (node *Node) httpAuthPeerSet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
 
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/auth: Error reading request body: %s", err.Error())
+		return
+	}
+
+	rbody := strings.TrimSpace(string(body))
+	if rbody == "" {
+		node.auth.clearRules(pid)
+	} else {
+		rules := strings.Split(rbody, ",")
+		node.auth.setRules(pid, rules)
+	}
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
 }
 
 // POST /shutdown

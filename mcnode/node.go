@@ -391,3 +391,21 @@ func (auth *PeerAuth) authorizeAllow(rules []string, ns string) bool {
 
 	return false
 }
+
+func (auth *PeerAuth) getRules(pid p2p_peer.ID) []string {
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+	return auth.peers[pid]
+}
+
+func (auth *PeerAuth) setRules(pid p2p_peer.ID, rules []string) {
+	auth.mx.Lock()
+	auth.peers[pid] = rules
+	auth.mx.Unlock()
+}
+
+func (auth *PeerAuth) clearRules(pid p2p_peer.ID) {
+	auth.mx.Lock()
+	delete(auth.peers, pid)
+	auth.mx.Unlock()
+}
