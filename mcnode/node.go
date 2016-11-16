@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,6 +38,7 @@ type Node struct {
 	home      string
 	db        StatementDB
 	ds        Datastore
+	auth      PeerAuth
 	mx        sync.Mutex
 	counter   int
 }
@@ -64,6 +66,11 @@ type Datastore interface {
 	Get(Key) ([]byte, error)
 	Delete(Key) error
 	Close()
+}
+
+type PeerAuth struct {
+	peers map[p2p_peer.ID][]string
+	mx    sync.Mutex
 }
 
 type NodeInfo struct {
@@ -265,9 +272,10 @@ func (node *Node) openDS() error {
 
 // persistent configuration
 type NodeConfig struct {
-	Info string `json:"info,omitempty"`
-	NAT  string `json:"nat,omitempty"`
-	Dir  string `json:"dir,omitempty"`
+	Info string            `json:"info,omitempty"`
+	NAT  string            `json:"nat,omitempty"`
+	Dir  string            `json:"dir,omitempty"`
+	Auth map[string]string `json:"auth,omitempty"`
 }
 
 func (node *Node) saveConfig() error {
@@ -277,6 +285,7 @@ func (node *Node) saveConfig() error {
 	if node.dir != nil {
 		cfg.Dir = mc.FormatHandle(*node.dir)
 	}
+	cfg.Auth = node.auth.save()
 
 	bytes, err := json.Marshal(cfg)
 	if err != nil {
@@ -320,7 +329,8 @@ func (node *Node) loadConfig() error {
 		node.dir = &pinfo
 	}
 
-	return nil
+	err = node.auth.load(cfg.Auth)
+	return err
 }
 
 func (node *Node) doShutdown() {
@@ -333,7 +343,51 @@ func (node *Node) doShutdown() {
 	os.Exit(0)
 }
 
-func (node *Node) authorizePush(pid p2p_peer.ID, ns []string) bool {
-	// XXX Implement me!
+func (auth *PeerAuth) load(map[string]string) error {
+	return nil
+}
+
+func (auth *PeerAuth) save() map[string]string {
+	return nil
+}
+
+func (auth *PeerAuth) authorize(pid p2p_peer.ID, nss []string) bool {
+	if len(nss) == 0 {
+		return false
+	}
+
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	rules := auth.peers[pid]
+	if len(rules) == 0 {
+		return false
+	}
+
+	for _, ns := range nss {
+		if !auth.authorizeAllow(rules, ns) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (auth *PeerAuth) authorizeAllow(rules []string, ns string) bool {
+	for _, rule := range rules {
+		switch {
+		case rule == "*":
+			return true
+
+		case strings.HasSuffix(rule, ".*"):
+			if strings.HasPrefix(ns, rule[:len(rule)-2]) {
+				return true
+			}
+
+		case rule == ns:
+			return true
+		}
+	}
+
 	return false
 }

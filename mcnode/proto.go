@@ -362,7 +362,7 @@ func (node *Node) pushHandler(s p2p_net.Stream) {
 		return
 	}
 
-	if !node.authorizePush(pid, req.Namespaces) {
+	if !node.auth.authorize(pid, req.Namespaces) {
 		log.Printf("node/push: rejected push from %s; not authorized", pid.Pretty())
 		res.Body = &pb.PushResponse_Reject{&pb.PushReject{"Not authorized"}}
 		w.WriteMsg(&res)
