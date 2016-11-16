@@ -95,6 +95,7 @@ var (
 	BadData          = errors.New("Bad data object; hash mismatch")
 	BadPush          = errors.New("Bad push value; unexpected object")
 	BadResponse      = errors.New("Bad response; unexpected object")
+	BadRuleset       = errors.New("Bad auth ruleset; unexpected object")
 )
 
 const (
@@ -343,12 +344,38 @@ func (node *Node) doShutdown() {
 	os.Exit(0)
 }
 
-func (auth *PeerAuth) fromJSON(map[string]interface{}) error {
+func (auth *PeerAuth) fromJSON(rmap map[string]interface{}) error {
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	auth.peers = make(map[p2p_peer.ID][]string)
+	for id58, xrules := range rmap {
+		pid, err := p2p_peer.IDB58Decode(id58)
+		if err != nil {
+			return err
+		}
+
+		rules, ok := xrules.([]string)
+		if !ok {
+			return BadRuleset
+		}
+
+		auth.peers[pid] = rules
+	}
+
 	return nil
 }
 
 func (auth *PeerAuth) toJSON() map[string]interface{} {
-	return nil
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	rmap := make(map[string]interface{})
+	for pid, rules := range auth.peers {
+		rmap[pid.Pretty()] = rules
+	}
+
+	return rmap
 }
 
 func (auth *PeerAuth) authorize(pid p2p_peer.ID, nss []string) bool {
