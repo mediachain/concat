@@ -355,9 +355,19 @@ func (auth *PeerAuth) fromJSON(rmap map[string]interface{}) error {
 			return err
 		}
 
-		rules, ok := xrules.([]string)
+		xxrules, ok := xrules.([]interface{})
 		if !ok {
 			return BadRuleset
+		}
+
+		rules := make([]string, len(xxrules))
+		for x, xxrule := range xxrules {
+			rule, ok := xxrule.(string)
+			if !ok {
+				return BadRuleset
+			}
+
+			rules[x] = rule
 		}
 
 		auth.peers[pid] = rules
