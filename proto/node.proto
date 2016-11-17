@@ -79,3 +79,33 @@ message DataObject {
   string key = 1;
   bytes data = 2;
 }
+
+// /mediachain/node/push
+message PushRequest {
+  repeated string namespaces = 1;
+}
+
+message PushResponse {
+  oneof body {
+    PushAccept accept = 1;
+    PushReject reject = 2;
+  }
+}
+
+message PushAccept {}
+message PushReject {
+  string error = 1;
+}
+
+message PushValue {
+  oneof value {
+    Statement stmt = 1;
+    StreamEnd end = 2;
+  }
+}
+
+message PushEnd {
+  int64 statements = 1;
+  int64 objects = 2;
+  string error = 3;
+}

@@ -8,6 +8,7 @@ import (
 	ggproto "github.com/gogo/protobuf/proto"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_host "github.com/libp2p/go-libp2p-host"
+	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -18,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 )
@@ -36,6 +38,7 @@ type Node struct {
 	home      string
 	db        StatementDB
 	ds        Datastore
+	auth      PeerAuth
 	mx        sync.Mutex
 	counter   int
 }
@@ -65,6 +68,11 @@ type Datastore interface {
 	Close()
 }
 
+type PeerAuth struct {
+	peers map[p2p_peer.ID][]string
+	mx    sync.Mutex
+}
+
 type NodeInfo struct {
 	Peer      string `json:"peer"`
 	Publisher string `json:"publisher"`
@@ -85,6 +93,9 @@ var (
 	MissingData      = errors.New("Missing statement metadata")
 	UnexpectedData   = errors.New("Unexpected data object")
 	BadData          = errors.New("Bad data object; hash mismatch")
+	BadPush          = errors.New("Bad push value; unexpected object")
+	BadResponse      = errors.New("Bad response; unexpected object")
+	BadRuleset       = errors.New("Bad auth ruleset; unexpected object")
 )
 
 const (
@@ -94,6 +105,12 @@ const (
 )
 
 var statusString = []string{"offline", "online", "public"}
+
+type PushError string
+
+func (s PushError) Error() string {
+	return string(s)
+}
 
 type StreamError struct {
 	Err string `json:"error"`
@@ -256,9 +273,10 @@ func (node *Node) openDS() error {
 
 // persistent configuration
 type NodeConfig struct {
-	Info string `json:"info,omitempty"`
-	NAT  string `json:"nat,omitempty"`
-	Dir  string `json:"dir,omitempty"`
+	Info string                 `json:"info,omitempty"`
+	NAT  string                 `json:"nat,omitempty"`
+	Dir  string                 `json:"dir,omitempty"`
+	Auth map[string]interface{} `json:"auth,omitempty"`
 }
 
 func (node *Node) saveConfig() error {
@@ -268,6 +286,7 @@ func (node *Node) saveConfig() error {
 	if node.dir != nil {
 		cfg.Dir = mc.FormatHandle(*node.dir)
 	}
+	cfg.Auth = node.auth.toJSON()
 
 	bytes, err := json.Marshal(cfg)
 	if err != nil {
@@ -311,7 +330,8 @@ func (node *Node) loadConfig() error {
 		node.dir = &pinfo
 	}
 
-	return nil
+	err = node.auth.fromJSON(cfg.Auth)
+	return err
 }
 
 func (node *Node) doShutdown() {
@@ -322,4 +342,107 @@ func (node *Node) doShutdown() {
 	}
 	node.ds.Close()
 	os.Exit(0)
+}
+
+func (auth *PeerAuth) fromJSON(rmap map[string]interface{}) error {
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	auth.peers = make(map[p2p_peer.ID][]string)
+	for id58, xrules := range rmap {
+		pid, err := p2p_peer.IDB58Decode(id58)
+		if err != nil {
+			return err
+		}
+
+		xxrules, ok := xrules.([]interface{})
+		if !ok {
+			return BadRuleset
+		}
+
+		rules := make([]string, len(xxrules))
+		for x, xxrule := range xxrules {
+			rule, ok := xxrule.(string)
+			if !ok {
+				return BadRuleset
+			}
+
+			rules[x] = rule
+		}
+
+		auth.peers[pid] = rules
+	}
+
+	return nil
+}
+
+func (auth *PeerAuth) toJSON() map[string]interface{} {
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	rmap := make(map[string]interface{})
+	for pid, rules := range auth.peers {
+		rmap[pid.Pretty()] = rules
+	}
+
+	return rmap
+}
+
+func (auth *PeerAuth) authorize(pid p2p_peer.ID, nss []string) bool {
+	if len(nss) == 0 {
+		return false
+	}
+
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+
+	rules := auth.peers[pid]
+	if len(rules) == 0 {
+		return false
+	}
+
+	for _, ns := range nss {
+		if !auth.authorizeAllow(rules, ns) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (auth *PeerAuth) authorizeAllow(rules []string, ns string) bool {
+	for _, rule := range rules {
+		switch {
+		case rule == "*":
+			return true
+
+		case strings.HasSuffix(rule, ".*"):
+			if strings.HasPrefix(ns, rule[:len(rule)-2]) {
+				return true
+			}
+
+		case rule == ns:
+			return true
+		}
+	}
+
+	return false
+}
+
+func (auth *PeerAuth) getRules(pid p2p_peer.ID) []string {
+	auth.mx.Lock()
+	defer auth.mx.Unlock()
+	return auth.peers[pid]
+}
+
+func (auth *PeerAuth) setRules(pid p2p_peer.ID, rules []string) {
+	auth.mx.Lock()
+	auth.peers[pid] = rules
+	auth.mx.Unlock()
+}
+
+func (auth *PeerAuth) clearRules(pid p2p_peer.ID) {
+	auth.mx.Lock()
+	delete(auth.peers, pid)
+	auth.mx.Unlock()
 }

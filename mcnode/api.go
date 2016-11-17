@@ -360,7 +360,7 @@ func (node *Node) httpRemoteQuery(w http.ResponseWriter, r *http.Request) {
 // POST /merge/{peerId}
 // DATA: MCQL SELECT query
 // Queries a remote peer and merges the resulting statements into the local
-// db; returns the number of statements merged
+// db; returns the number of statements and objects merged
 func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	peerId := vars["peerId"]
@@ -401,6 +401,63 @@ func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 		}
 		if ocount > 0 {
 			fmt.Fprintf(w, "Partial merge: %d objects merged\n", ocount)
+		}
+
+		return
+	}
+
+	fmt.Fprintln(w, count)
+	fmt.Fprintln(w, ocount)
+}
+
+// POST /push/{peerId}
+// DATA: MCQL SELECT query
+// Pushes statements matching the query to peerId for merge; must be
+// authorized for push by the peer
+// returns the number of statements and objects merged
+func (node *Node) httpPush(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/push: Error reading request body: %s", err.Error())
+		return
+	}
+
+	q := string(body)
+
+	qq, err := mcq.ParseQuery(q)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !qq.IsSimpleSelect("*") {
+		apiError(w, http.StatusBadRequest, BadQuery)
+		return
+	}
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	count, ocount, err := node.doPush(ctx, pid, qq)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		if count > 0 {
+			fmt.Fprintf(w, "Partial push: %d statements merged\n", count)
+		}
+		if ocount > 0 {
+			fmt.Fprintf(w, "Partial push: %d objects merged\n", ocount)
+		}
+		if count < 0 {
+			fmt.Fprintf(w, "Incomplete push: some statements may have been merged\n")
 		}
 
 		return
@@ -709,6 +766,74 @@ func (node *Node) httpConfigInfoSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.info = strings.TrimSpace(string(body))
+
+	err = node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// GET /auth
+// retrieves all peer authorization rules in json
+func (node *Node) httpAuth(w http.ResponseWriter, r *http.Request) {
+	rules := node.auth.toJSON()
+
+	err := json.NewEncoder(w).Encode(rules)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
+// GET  /auth/{peerId}
+// POST /auth/{peerId}
+// gets/sets auth rules for peerId
+// rules are specified as a comma separated list of namespaces (or ns wildcards)
+func (node *Node) httpAuthPeer(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpAuthPeerGet, node.httpAuthPeerSet)
+}
+
+func (node *Node) httpAuthPeerGet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	rules := node.auth.getRules(pid)
+	if len(rules) > 0 {
+		fmt.Fprintln(w, strings.Join(rules, ","))
+	}
+}
+
+func (node *Node) httpAuthPeerSet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("http/auth: Error reading request body: %s", err.Error())
+		return
+	}
+
+	rbody := strings.TrimSpace(string(body))
+	if rbody == "" {
+		node.auth.clearRules(pid)
+	} else {
+		rules := strings.Split(rbody, ",")
+		node.auth.setRules(pid, rules)
+	}
 
 	err = node.saveConfig()
 	if err != nil {
