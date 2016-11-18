@@ -373,12 +373,15 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /query` -- issue MCQL SELECT query on the local node
 * `POST /query/{peerId}` -- issue MCQL SELECT query on a remote peer
 * `POST /merge/{peerId}` -- query a peer and merge the resulting statements and metadata
+* `POST /push/{peerId}` -- issue a local query and push the resulting statements to a remote peer.
 * `POST /delete` -- delete statements matching this MCQL DELETE query
 * `POST /data/put` -- add a batch of data objects to datastore
 * `GET /data/get/{objectId}` -- get an object from the datastore
 * `POST /data/merge/{peerId}` -- merge raw data objects from peer
 * `GET /status` -- get node network state
 * `POST /status/{state}` -- control network state (online/offline/public)
+* `GET /auth` -- retrieve all push authorization rules
+* `GET/POST /auth/{peerId}` -- retrieve/grant/revoke push authorization to a peer
 * `GET/POST /config/dir` -- retrieve/set the configured directory
 * `GET/POST /config/nat` -- retrieve/set NAT setting
 * `GET/POST /config/info` -- retrieve/set info string
