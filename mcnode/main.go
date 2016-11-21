@@ -84,6 +84,7 @@ func main() {
 	router.HandleFunc("/data/put", node.httpPutData)
 	router.HandleFunc("/data/get/{objectId}", node.httpGetData)
 	router.HandleFunc("/data/merge/{peerId}", node.httpMergeData)
+	router.HandleFunc("/data/gc", node.httpGCData)
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
 	router.HandleFunc("/config/dir", node.httpConfigDir)

@@ -618,6 +618,15 @@ func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, count)
 }
 
+// POST /data/gc
+// garbage collect orphan data objects that are not referenced by any statement
+func (node *Node) httpGCData(w http.ResponseWriter, r *http.Request) {
+	// XXX this just dumps the ds keys to test iterators
+	for key := range node.ds.IterKeys(r.Context()) {
+		fmt.Fprintln(w, multihash.Multihash(key).B58String())
+	}
+}
+
 // GET /status
 // Returns the node network state
 func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {

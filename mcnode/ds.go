@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	mc "github.com/mediachain/concat/mc"
 	rocksdb "github.com/tecbot/gorocksdb"
 	"log"
@@ -103,6 +104,29 @@ func (ds *RocksDS) Get(key Key) ([]byte, error) {
 
 func (ds *RocksDS) Delete(key Key) error {
 	return ds.db.Delete(ds.wo, key[2:])
+}
+
+func (ds *RocksDS) IterKeys(ctx context.Context) <-chan Key {
+	ch := make(chan Key)
+	go func() {
+		defer close(ch)
+
+		it := ds.db.NewIterator(ds.ro)
+		defer it.Close()
+
+	loop:
+		for it.SeekToFirst(); it.Valid(); it.Next() {
+			kslice := it.Key()
+			key := mc.HashFromBytes(kslice.Data())
+			kslice.Free()
+			select {
+			case ch <- Key(key):
+			case <-ctx.Done():
+				break loop
+			}
+		}
+	}()
+	return ch
 }
 
 func (ds *RocksDS) Close() {
