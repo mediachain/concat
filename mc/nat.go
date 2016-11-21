@@ -6,6 +6,7 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -118,17 +119,45 @@ func NATConfigFromString(str string) (cfg NATConfig, err error) {
 	}
 }
 
+var ifconfigSvc = []string{
+	"http://ifconfig.mediachain.io/ip",
+	"http://ifconfig.co/ip"}
+
+var IfconfigError = errors.New("ifconfig service error")
+
 func GetPublicIP() (string, error) {
-	res, err := http.Get("http://ifconfig.co/ip")
+	for _, url := range ifconfigSvc {
+		ip, err := doGetPublicIP(url)
+		if err != nil {
+			log.Printf("Error getting IP from %s: %s", url, err.Error())
+			continue
+		}
+		return ip, nil
+	}
+
+	return "", IfconfigError
+}
+
+func doGetPublicIP(url string) (string, error) {
+	res, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		return "", IfconfigError
+	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(string(body)), nil
+	ipstr := strings.TrimSpace(string(body))
+	if net.ParseIP(ipstr) == nil {
+		return "", IfconfigError
+	}
+
+	return ipstr, nil
 }
