@@ -621,7 +621,10 @@ func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 // POST /data/gc
 // garbage collect orphan data objects that are not referenced by any statement
 func (node *Node) httpGCData(w http.ResponseWriter, r *http.Request) {
-	// XXX this just dumps the ds keys to test iterators
+
+}
+
+func (node *Node) httpDataKeys(w http.ResponseWriter, r *http.Request) {
 	for key := range node.ds.IterKeys(r.Context()) {
 		fmt.Fprintln(w, multihash.Multihash(key).B58String())
 	}
