@@ -621,7 +621,31 @@ func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 // POST /data/gc
 // garbage collect orphan data objects that are not referenced by any statement
 func (node *Node) httpGCData(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
+	count, err := node.doGC(ctx)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		if count > 0 {
+			fmt.Fprintf(w, "Partial GC: %d objects deleted\n", count)
+		}
+		return
+	}
+
+	fmt.Fprintln(w, count)
+}
+
+// POST /data/compact
+// compact the datastore; useful for immediately reclaiming space following a gc
+func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
+	err := node.doCompact()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
 }
 
 func (node *Node) httpDataKeys(w http.ResponseWriter, r *http.Request) {
