@@ -129,6 +129,10 @@ func (ds *RocksDS) IterKeys(ctx context.Context) <-chan Key {
 	return ch
 }
 
+func (ds *RocksDS) Compact() {
+	ds.db.CompactRange(rocksdb.Range{})
+}
+
 func (ds *RocksDS) Close() {
 	ds.db.Close()
 }
