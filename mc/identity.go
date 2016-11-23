@@ -66,7 +66,7 @@ func generatePeerIdentity(kpath string) (empty PeerIdentity, err error) {
 		return
 	}
 
-	log.Printf("Node ID: %s", id.Pretty())
+	log.Printf("Peer ID: %s", id.Pretty())
 	return PeerIdentity{ID: id, PrivKey: privk}, nil
 }
 
@@ -82,7 +82,7 @@ func loadPeerIdentity(kpath string) (empty PeerIdentity, err error) {
 		return
 	}
 
-	log.Printf("Node ID: %s", id.Pretty())
+	log.Printf("Peer ID: %s", id.Pretty())
 	return PeerIdentity{id, privk}, nil
 }
 
