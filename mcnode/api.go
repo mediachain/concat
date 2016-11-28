@@ -648,6 +648,18 @@ func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+// POST /data/sync
+// sync the datastore; useful for immediately reclaiming space following a merge
+func (node *Node) httpSyncData(w http.ResponseWriter, r *http.Request) {
+	err := node.ds.Sync()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
 func (node *Node) httpDataKeys(w http.ResponseWriter, r *http.Request) {
 	keys, err := node.ds.IterKeys(r.Context())
 	if err != nil {

@@ -87,6 +87,7 @@ func main() {
 	router.HandleFunc("/data/keys", node.httpDataKeys)
 	router.HandleFunc("/data/gc", node.httpGCData)
 	router.HandleFunc("/data/compact", node.httpCompactData)
+	router.HandleFunc("/data/sync", node.httpSyncData)
 	router.HandleFunc("/status", node.httpStatus)
 	router.HandleFunc("/status/{state}", node.httpStatusSet)
 	router.HandleFunc("/config/dir", node.httpConfigDir)
