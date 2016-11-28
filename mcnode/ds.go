@@ -112,10 +112,10 @@ func (ds *RocksDS) Sync() error {
 	return ds.db.Flush(ds.fo)
 }
 
-func (ds *RocksDS) IterKeys(ctx context.Context) <-chan Key {
+func (ds *RocksDS) IterKeys(ctx context.Context) (<-chan Key, error) {
 	err := ds.Sync()
 	if err != nil {
-		log.Printf("Errof flushing rocksdb: %s", err.Error())
+		return nil, err
 	}
 
 	ch := make(chan Key)
@@ -137,7 +137,7 @@ func (ds *RocksDS) IterKeys(ctx context.Context) <-chan Key {
 			}
 		}
 	}()
-	return ch
+	return ch, nil
 }
 
 func (ds *RocksDS) Compact() {

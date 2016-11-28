@@ -649,7 +649,13 @@ func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpDataKeys(w http.ResponseWriter, r *http.Request) {
-	for key := range node.ds.IterKeys(r.Context()) {
+	keys, err := node.ds.IterKeys(r.Context())
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for key := range keys {
 		fmt.Fprintln(w, multihash.Multihash(key).B58String())
 	}
 }

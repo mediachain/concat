@@ -183,7 +183,12 @@ func (gc *GCDB) mergeKeys(keys map[string]bool) error {
 }
 
 func (gc *GCDB) GC(ctx context.Context, ds Datastore) (count int, err error) {
-	for key := range ds.IterKeys(ctx) {
+	keys, err := ds.IterKeys(ctx)
+	if err != nil {
+		return
+	}
+
+	for key := range keys {
 		var valid bool
 		valid, err = gc.validKey(key)
 		if err != nil {

@@ -65,7 +65,7 @@ type Datastore interface {
 	Has(Key) (bool, error)
 	Get(Key) ([]byte, error)
 	Delete(Key) error
-	IterKeys(ctx context.Context) <-chan Key
+	IterKeys(ctx context.Context) (<-chan Key, error)
 	Sync() error
 	Compact()
 	Close()
