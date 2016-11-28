@@ -201,6 +201,10 @@ func (gc *GCDB) GC(ctx context.Context, ds Datastore) (count int, err error) {
 		count += 1
 	}
 
+	if count > 0 {
+		ds.Sync()
+	}
+
 	return
 }
 

@@ -15,6 +15,7 @@ type RocksDS struct {
 	db *rocksdb.DB
 	ro *rocksdb.ReadOptions
 	wo *rocksdb.WriteOptions
+	fo *rocksdb.FlushOptions
 }
 
 func (ds *RocksDS) Open(home string) error {
@@ -57,6 +58,7 @@ func (ds *RocksDS) Open(home string) error {
 	ds.db = db
 	ds.ro = rocksdb.NewDefaultReadOptions()
 	ds.wo = rocksdb.NewDefaultWriteOptions()
+	ds.fo = rocksdb.NewDefaultFlushOptions()
 
 	return nil
 }
@@ -106,7 +108,16 @@ func (ds *RocksDS) Delete(key Key) error {
 	return ds.db.Delete(ds.wo, key[2:])
 }
 
+func (ds *RocksDS) Sync() error {
+	return ds.db.Flush(ds.fo)
+}
+
 func (ds *RocksDS) IterKeys(ctx context.Context) <-chan Key {
+	err := ds.Sync()
+	if err != nil {
+		log.Printf("Errof flushing rocksdb: %s", err.Error())
+	}
+
 	ch := make(chan Key)
 	go func() {
 		defer close(ch)
