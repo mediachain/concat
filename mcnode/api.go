@@ -637,7 +637,7 @@ func (node *Node) httpGCData(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /data/compact
-// compact the datastore; useful for immediately reclaiming space following a gc
+// compact the datastore
 func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
 	err := node.doCompact()
 	if err != nil {
@@ -649,7 +649,7 @@ func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /data/sync
-// sync the datastore; useful for immediately reclaiming space following a merge
+// flushes the datastore; useful for immediately reclaiming space used by the WAL
 func (node *Node) httpSyncData(w http.ResponseWriter, r *http.Request) {
 	err := node.ds.Sync()
 	if err != nil {
