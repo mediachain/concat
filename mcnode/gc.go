@@ -7,6 +7,7 @@ import (
 	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
+	multihash "github.com/multiformats/go-multihash"
 )
 
 var (
@@ -45,6 +46,7 @@ func (node *Node) doCompact() error {
 type GCDB struct {
 	db        *sql.DB
 	insertKey *sql.Stmt
+	countKeys *sql.Stmt
 }
 
 func (gc *GCDB) Open(home string) error {
@@ -155,7 +157,37 @@ func (gc *GCDB) mergeKeys(keys map[string]bool) error {
 	return tx.Commit()
 }
 
-func (gc *GCDB) GC(ctx context.Context, ds Datastore) (int, error) {
-	// XXX Implement me!
-	return 0, nil
+func (gc *GCDB) GC(ctx context.Context, ds Datastore) (count int, err error) {
+	for key := range ds.IterKeys(ctx) {
+		var valid bool
+		valid, err = gc.validKey(key)
+		if err != nil {
+			return
+		}
+
+		if valid {
+			continue
+		}
+
+		err = ds.Delete(key)
+		if err != nil {
+			return
+		}
+		count += 1
+	}
+
+	return
+}
+
+func (gc *GCDB) validKey(key Key) (bool, error) {
+	key58 := multihash.Multihash(key).B58String()
+	row := gc.countKeys.QueryRow(key58)
+
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
