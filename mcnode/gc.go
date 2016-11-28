@@ -50,7 +50,7 @@ type GCDB struct {
 }
 
 func (gc *GCDB) Open(home string) error {
-	// TODO on-disk index for large deletions
+	// TODO on-disk index for large datasets
 	const dbpath = ":memory:"
 	db, err := sql.Open("sqlite3", dbpath)
 	if err != nil {
