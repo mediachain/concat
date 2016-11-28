@@ -50,12 +50,37 @@ type GCDB struct {
 }
 
 func (gc *GCDB) Open(home string) error {
-	// XXX Implement me!
+	// TODO on-disk index for large deletions
+	const dbpath = ":memory:"
+	db, err := sql.Open("sqlite3", dbpath)
+	if err != nil {
+		return err
+	}
+	gc.db = db
+
+	_, err = db.Exec("CREATE TABLE Refs (key VARCHAR(64) PRIMARY KEY)")
+	if err != nil {
+		return err
+	}
+
+	insertKey, err := db.Prepare("INSERT INTO Refs VALUES (?)")
+	if err != nil {
+		return err
+	}
+	gc.insertKey = insertKey
+
+	countKeys, err := db.Prepare("SELECT COUNT(1) FROM Refs WHERE key = ?")
+	if err != nil {
+		return err
+	}
+	gc.countKeys = countKeys
+
 	return nil
 }
 
-func (gc *GCDB) Close() {
-	// XXX Implement me!
+func (gc *GCDB) Close() error {
+	// TODO clear on-disk index
+	return gc.db.Close()
 }
 
 func (gc *GCDB) Merge(ctx context.Context, db StatementDB) error {
