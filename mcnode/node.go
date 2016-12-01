@@ -99,6 +99,10 @@ var (
 	BadPush          = errors.New("Bad push value; unexpected object")
 	BadResponse      = errors.New("Bad response; unexpected object")
 	BadRuleset       = errors.New("Bad auth ruleset; unexpected object")
+	NodeOffline      = errors.New("Node is offline")
+	NoDirectory      = errors.New("No directory server")
+	UnknownPeer      = errors.New("Unknown peer")
+	IllegalState     = errors.New("Illegal node state")
 )
 
 const (
