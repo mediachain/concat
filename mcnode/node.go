@@ -33,6 +33,7 @@ type Node struct {
 	host      p2p_host.Host
 	netCtx    context.Context
 	netCancel context.CancelFunc
+	dht       DHT
 	dir       *p2p_pstore.PeerInfo
 	natCfg    mc.NATConfig
 	home      string
@@ -69,6 +70,12 @@ type Datastore interface {
 	Sync() error
 	Compact()
 	Close()
+}
+
+type DHT interface {
+	Bootstrap() error
+	Lookup(ctx context.Context, pid p2p_peer.ID) (p2p_pstore.PeerInfo, error)
+	Close() error
 }
 
 type PeerAuth struct {
