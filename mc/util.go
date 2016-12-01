@@ -23,6 +23,14 @@ func Hash(data []byte) multihash.Multihash {
 	return mh
 }
 
+func HashFromBytes(hash []byte) multihash.Multihash {
+	mhash := make([]byte, len(hash)+2)
+	mhash[0] = multihash.SHA2_256
+	mhash[1] = 32
+	copy(mhash[2:], hash)
+	return mhash
+}
+
 func ParseAddress(str string) (multiaddr.Multiaddr, error) {
 	return multiaddr.NewMultiaddr(str)
 }

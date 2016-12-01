@@ -618,6 +618,60 @@ func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, count)
 }
 
+// POST /data/gc
+// garbage collect orphan data objects that are not referenced by any statement
+func (node *Node) httpGCData(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	count, err := node.doGC(ctx)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		if count > 0 {
+			fmt.Fprintf(w, "Partial GC: %d objects deleted\n", count)
+		}
+		return
+	}
+
+	fmt.Fprintln(w, count)
+}
+
+// POST /data/compact
+// compact the datastore
+func (node *Node) httpCompactData(w http.ResponseWriter, r *http.Request) {
+	err := node.doCompact()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// POST /data/sync
+// flushes the datastore; useful for immediately reclaiming space used by the WAL
+func (node *Node) httpSyncData(w http.ResponseWriter, r *http.Request) {
+	err := node.ds.Sync()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+func (node *Node) httpDataKeys(w http.ResponseWriter, r *http.Request) {
+	keys, err := node.ds.IterKeys(r.Context())
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for key := range keys {
+		fmt.Fprintln(w, multihash.Multihash(key).B58String())
+	}
+}
+
 // GET /status
 // Returns the node network state
 func (node *Node) httpStatus(w http.ResponseWriter, r *http.Request) {
