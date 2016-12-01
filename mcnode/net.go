@@ -23,10 +23,19 @@ func (node *Node) goOffline() error {
 		fallthrough
 	case StatusOnline:
 		node.netCancel()
-		err := node.host.Close()
+
+		err := node.dht.Close()
+		if err != nil {
+			log.Printf("Error closing DHT: %s", err.Error())
+		}
+		node.dht = nil
+
+		err = node.host.Close()
 		if err != nil {
 			log.Printf("Error closing host: %s", err.Error())
 		}
+		node.host = nil
+
 		node.status = StatusOffline
 		node.natCfg.Clear()
 		log.Println("Node is offline")
@@ -77,9 +86,23 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
 	host.SetStreamHandler("/mediachain/node/push", node.pushHandler)
 
+	dht, err := NewDHT(ctx, host)
+	if err != nil {
+		cancel()
+		host.Close()
+		return err
+	}
+
+	err = dht.Bootstrap()
+	if err != nil {
+		// that's non-fatal, it will just fail to lookup
+		log.Printf("Error boostrapping DHT: %s", err.Error())
+	}
+
 	node.host = host
 	node.netCtx = ctx
 	node.netCancel = cancel
+	node.dht = dht
 
 	return nil
 }
