@@ -35,10 +35,6 @@ func (node *Node) doGC(ctx context.Context) (int, error) {
 }
 
 func (node *Node) doCompact() error {
-	if node.status != StatusOffline {
-		return NodeMustBeOffline
-	}
-
 	node.ds.Compact()
 	return nil
 }
