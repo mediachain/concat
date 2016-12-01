@@ -296,7 +296,29 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 	return node.host.Connect(node.netCtx, pinfo)
 }
 
-func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
+func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
+	if node.status == StatusOffline {
+		return pinfo, NodeOffline
+	}
+
+	if node.dir == nil {
+		goto lookup_dht
+	}
+
+	pinfo, err = node.doDirLookup(ctx, pid)
+	if err == nil {
+		return
+	}
+
+	if err != UnknownPeer {
+		log.Printf("Directory lookup error: %s", err.Error())
+	}
+
+lookup_dht:
+	return node.dht.Lookup(ctx, pid)
+}
+
+func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
 	if node.status == StatusOffline {
 		return empty, NodeOffline
 	}
