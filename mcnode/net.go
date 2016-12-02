@@ -276,11 +276,13 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 		return NodeOffline
 	}
 
-	switch node.host.Network().Connectedness(pid) {
-	case p2p_net.Connected:
+	if node.host.Network().Connectedness(pid) == p2p_net.Connected {
 		return nil
-	case p2p_net.CanConnect:
-		return node.host.Connect(node.netCtx, p2p_pstore.PeerInfo{pid, nil})
+	}
+
+	addrs := node.host.Peerstore().Addrs(pid)
+	if len(addrs) > 0 {
+		return node.host.Connect(ctx, p2p_pstore.PeerInfo{pid, addrs})
 	}
 
 	pinfo, err := node.doLookup(ctx, pid)
@@ -292,6 +294,15 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 }
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
+	pinfo, err = node.doLookupImpl(ctx, pid)
+	if err == nil {
+		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.AddressTTL)
+	}
+
+	return
+}
+
+func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
 	if node.status == StatusOffline {
 		return pinfo, NodeOffline
 	}
