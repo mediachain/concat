@@ -33,7 +33,7 @@ const (
 )
 
 func NewDHT(ctx context.Context, host p2p_host.Host) DHT {
-	ds := ipfs_ds.NewLogDatastore(&IPFSDatastore{tab: ipfs_ds.NewMapDatastore()}, "DHT")
+	ds := ipfs_ds.NewLogDatastore(&IPFSDatastore{tab: ipfs_ds.NewMapDatastore()}, "DHT datastore")
 	dht := p2p_dht.NewDHTClient(ctx, host, ds)
 	return &DHTImpl{host: host, dht: dht, ds: ds}
 }
@@ -188,7 +188,6 @@ func (ds *IPFSDatastore) Delete(key ipfs_ds.Key) error {
 	return ds.tab.Delete(key)
 }
 
-// these two are not used by DHT code as far as I can tell
 func (ds *IPFSDatastore) Query(q ipfs_dsq.Query) (ipfs_dsq.Results, error) {
 	ds.mx.Lock()
 	defer ds.mx.Unlock()
