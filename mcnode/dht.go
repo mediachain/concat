@@ -12,9 +12,9 @@ type DHTImpl struct {
 	dht *p2p_dht.IpfsDHT
 }
 
-func NewDHT(ctx context.Context, host p2p_host.Host) (DHT, error) {
+func NewDHT(ctx context.Context, host p2p_host.Host) DHT {
 	// XXX Implement me
-	return &DHTImpl{}, nil
+	return &DHTImpl{}
 }
 
 func (dht *DHTImpl) Bootstrap() error {

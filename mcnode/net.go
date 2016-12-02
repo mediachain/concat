@@ -86,12 +86,7 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
 	host.SetStreamHandler("/mediachain/node/push", node.pushHandler)
 
-	dht, err := NewDHT(ctx, host)
-	if err != nil {
-		cancel()
-		host.Close()
-		return err
-	}
+	dht := NewDHT(ctx, host)
 
 	err = dht.Bootstrap()
 	if err != nil {
