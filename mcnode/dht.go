@@ -8,6 +8,7 @@ import (
 	p2p_dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
+	p2p_rt "github.com/libp2p/go-libp2p-routing"
 	"sync"
 )
 
@@ -27,9 +28,12 @@ func (dht *DHTImpl) Bootstrap() error {
 	return nil
 }
 
-func (dht *DHTImpl) Lookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	// XXX Implement me
-	return empty, UnknownPeer
+func (dht *DHTImpl) Lookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
+	pinfo, err = dht.dht.FindPeer(ctx, pid)
+	if err == p2p_rt.ErrNotFound {
+		err = UnknownPeer
+	}
+	return
 }
 
 func (dht *DHTImpl) Close() error {
