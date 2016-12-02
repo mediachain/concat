@@ -75,6 +75,31 @@ func (node *Node) httpNetAddr(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /net/lookup/{peerId}
+// Looks up a peer in the network
+func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		apiError(w, http.StatusNotFound, err)
+		return
+	}
+
+	for _, addr := range pinfo.Addrs {
+		fmt.Fprintln(w, addr.String())
+	}
+}
+
 // GET /ping/{peerId}
 // Lookup a peer in the directory and ping it with the /mediachain/node/ping protocol.
 // The node must be online and a directory must have been configured.
