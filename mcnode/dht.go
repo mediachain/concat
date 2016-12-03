@@ -86,7 +86,12 @@ func (dht *DHTImpl) bootstrapConnect(ctx context.Context, count int) {
 
 func (dht *DHTImpl) Lookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
 	pinfo, err = dht.dht.FindPeer(ctx, pid)
-	if err == p2p_rt.ErrNotFound {
+	switch err {
+	case nil:
+		// filter unroutable addrs (eg localhost)
+		pinfo.Addrs = mc.FilterAddrs(pinfo.Addrs, mc.IsRoutableAddr)
+
+	case p2p_rt.ErrNotFound:
 		err = UnknownPeer
 	}
 	return
