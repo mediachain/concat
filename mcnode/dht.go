@@ -33,7 +33,7 @@ const (
 )
 
 func NewDHT(ctx context.Context, host p2p_host.Host) DHT {
-	ds := ipfs_ds.NewLogDatastore(&IPFSDatastore{tab: ipfs_ds.NewMapDatastore()}, "DHT datastore")
+	ds := &IPFSDatastore{tab: ipfs_ds.NewMapDatastore()}
 	dht := p2p_dht.NewDHTClient(ctx, host, ds)
 	return &DHTImpl{host: host, dht: dht, ds: ds}
 }
