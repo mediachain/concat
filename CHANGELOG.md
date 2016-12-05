@@ -1,3 +1,7 @@
+## 5/12/2016: concat-v1.3
+- Datastore garbage collection [[PR #88]](https://github.com/mediachain/concat/pull/88)
+- IPFS DHT integration [[PR #90]](https://github.com/mediachain/concat/pull/90)
+
 ## 21/11/2016: concat-v1.2
 - Push publishing for authorized peers [[PR #82]](https://github.com/mediachain/concat/pull/82)
 - More robust public IP address detection [[PR #84]](https://github.com/mediachain/concat/pull/84)

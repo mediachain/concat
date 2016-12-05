@@ -378,6 +378,10 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /data/put` -- add a batch of data objects to datastore
 * `GET /data/get/{objectId}` -- get an object from the datastore
 * `POST /data/merge/{peerId}` -- merge raw data objects from peer
+* `POST /data/gc` -- garbage collect the datastore; deletes objects unreferenced by any statement
+* `POST /data/compact` -- compact the datastore
+* `POST /data/sync` -- sync the datastore and flush the WAL
+* `GET /data/keys` -- dump all object keys in the datastore
 * `GET /status` -- get node network state
 * `POST /status/{state}` -- control network state (online/offline/public)
 * `GET /auth` -- retrieve all push authorization rules
@@ -387,6 +391,7 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET/POST /config/info` -- retrieve/set info string
 * `GET /dir/list` -- list known peers
 * `GET /net/addr` -- list known addresses
+* `GET /net/lookup/{peerId}` -- lookup a peer address in the network
 * `POST /shutdown` -- shutdown the node
 
 ### P2P API

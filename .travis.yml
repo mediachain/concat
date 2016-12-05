@@ -7,6 +7,12 @@ os:
   - linux
   - osx
 
+# OSX queues can be frustratingly long.
+matrix:
+  allow_failures:
+    - os: osx
+  fast_finish: true
+
 # copy previously cached deps into GOPATH
 before_install:
   - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync -a "$HOME/gocache/" "$GOPATH/"; fi
