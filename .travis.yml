@@ -11,6 +11,7 @@ os:
 matrix:
   allow_failures:
     - os: osx
+  fast_finish: true
 
 # copy previously cached deps into GOPATH
 before_install:
