@@ -33,6 +33,7 @@ type Node struct {
 	host      p2p_host.Host
 	netCtx    context.Context
 	netCancel context.CancelFunc
+	dht       DHT
 	dir       *p2p_pstore.PeerInfo
 	natCfg    mc.NATConfig
 	home      string
@@ -71,6 +72,12 @@ type Datastore interface {
 	Close()
 }
 
+type DHT interface {
+	Bootstrap() error
+	Lookup(ctx context.Context, pid p2p_peer.ID) (p2p_pstore.PeerInfo, error)
+	Close() error
+}
+
 type PeerAuth struct {
 	peers map[p2p_peer.ID][]string
 	mx    sync.Mutex
@@ -99,6 +106,10 @@ var (
 	BadPush          = errors.New("Bad push value; unexpected object")
 	BadResponse      = errors.New("Bad response; unexpected object")
 	BadRuleset       = errors.New("Bad auth ruleset; unexpected object")
+	NodeOffline      = errors.New("Node is offline")
+	NoDirectory      = errors.New("No directory server")
+	UnknownPeer      = errors.New("Unknown peer")
+	IllegalState     = errors.New("Illegal node state")
 )
 
 const (

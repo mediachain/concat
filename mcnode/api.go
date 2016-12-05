@@ -26,6 +26,15 @@ func apiError(w http.ResponseWriter, status int, err error) {
 	fmt.Fprintf(w, "Error: %s\n", err.Error())
 }
 
+func apiNetError(w http.ResponseWriter, err error) {
+	switch err {
+	case UnknownPeer:
+		apiError(w, http.StatusNotFound, err)
+	default:
+		apiError(w, http.StatusInternalServerError, err)
+	}
+}
+
 // Local node REST API implementation
 
 // GET /id
@@ -56,7 +65,7 @@ func (node *Node) httpRemoteId(w http.ResponseWriter, r *http.Request) {
 
 	ninfo, err := node.doRemoteId(ctx, pid)
 	if err != nil {
-		apiError(w, http.StatusNotFound, err)
+		apiNetError(w, err)
 		return
 	}
 
@@ -71,6 +80,31 @@ func (node *Node) httpRemoteId(w http.ResponseWriter, r *http.Request) {
 func (node *Node) httpNetAddr(w http.ResponseWriter, r *http.Request) {
 	addrs := node.netAddrs()
 	for _, addr := range addrs {
+		fmt.Fprintln(w, addr.String())
+	}
+}
+
+// GET /net/lookup/{peerId}
+// Looks up a peer in the network
+func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	pinfo, err := node.doLookup(ctx, pid)
+	if err != nil {
+		apiNetError(w, err)
+		return
+	}
+
+	for _, addr := range pinfo.Addrs {
 		fmt.Fprintln(w, addr.String())
 	}
 }
@@ -92,7 +126,7 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 
 	err = node.doPing(ctx, pid)
 	if err != nil {
-		apiError(w, http.StatusNotFound, err)
+		apiNetError(w, err)
 		return
 	}
 
@@ -343,7 +377,7 @@ func (node *Node) httpRemoteQuery(w http.ResponseWriter, r *http.Request) {
 
 	ch, err := node.doRemoteQuery(ctx, pid, q)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
+		apiNetError(w, err)
 		return
 	}
 
@@ -395,7 +429,7 @@ func (node *Node) httpMerge(w http.ResponseWriter, r *http.Request) {
 
 	count, ocount, err := node.doMerge(ctx, pid, q)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
+		apiNetError(w, err)
 		if count > 0 {
 			fmt.Fprintf(w, "Partial merge: %d statements merged\n", count)
 		}
@@ -449,7 +483,7 @@ func (node *Node) httpPush(w http.ResponseWriter, r *http.Request) {
 
 	count, ocount, err := node.doPush(ctx, pid, qq)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
+		apiNetError(w, err)
 		if count > 0 {
 			fmt.Fprintf(w, "Partial push: %d statements merged\n", count)
 		}
@@ -608,7 +642,7 @@ func (node *Node) httpMergeData(w http.ResponseWriter, r *http.Request) {
 
 	count, err := node.doRawMerge(r.Context(), pid, keys)
 	if err != nil {
-		apiError(w, http.StatusInternalServerError, err)
+		apiNetError(w, err)
 		if count > 0 {
 			fmt.Fprintf(w, "Partial merge: %d objects merged\n", count)
 		}

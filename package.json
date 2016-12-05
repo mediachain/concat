@@ -9,9 +9,14 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmcRa2qn6iCmap9bjp8jAwkvYAq13AUfxdY3rrYiaJbLum",
+      "hash": "QmbzCT1CwxVZ2ednptC9RavuJe7Bv8DDi2Ne89qUrA37XM",
       "name": "go-libp2p",
-      "version": "4.0.1"
+      "version": "4.3.0"
+    },
+    {
+      "hash": "QmNQPjpcXrwwwgDErKzKUm2xxhXCB3cuFgTHsrcCJ5uGbu",
+      "name": "go-libp2p-kad-dht",
+      "version": "2.4.8"
     },
     {
       "author": "whyrusleeping",
