@@ -451,6 +451,9 @@ func (auth *PeerAuth) getRules(pid p2p_peer.ID) []string {
 
 func (auth *PeerAuth) setRules(pid p2p_peer.ID, rules []string) {
 	auth.mx.Lock()
+	if auth.peers == nil {
+		auth.peers = make(map[p2p_peer.ID][]string)
+	}
 	auth.peers[pid] = rules
 	auth.mx.Unlock()
 }
