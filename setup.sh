@@ -15,6 +15,6 @@ echo "Installing unvendored deps"
 go get github.com/gorilla/mux github.com/mattn/go-sqlite3 github.com/mitchellh/go-homedir || die
 
 echo "Installing gorocksdb; this can take a while!"
-go get -tags=embed github.com/tecbot/gorocksdb || die
+go get -tags=embed github.com/mediachain/gorocksdb || die
 
 echo "DONE"

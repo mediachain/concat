@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	mc "github.com/mediachain/concat/mc"
-	rocksdb "github.com/tecbot/gorocksdb"
+	rocksdb "github.com/mediachain/gorocksdb"
 	"log"
 	"os"
 	"path"
