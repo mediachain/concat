@@ -1,3 +1,6 @@
+## 6/12/2016: concat-v1.3.1
+- Bug fix: crash when setting auth rules [[Issue #93]](https://github.com/mediachain/concat/issues/93)
+
 ## 5/12/2016: concat-v1.3
 - Datastore garbage collection [[PR #88]](https://github.com/mediachain/concat/pull/88)
 - IPFS DHT integration [[PR #90]](https://github.com/mediachain/concat/pull/90)
