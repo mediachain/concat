@@ -270,6 +270,21 @@ func (node *Node) natAddr() multiaddr.Multiaddr {
 	return addr
 }
 
+func (node *Node) netConns() []p2p_pstore.PeerInfo {
+	if node.status == StatusOffline {
+		return nil
+	}
+
+	conns := node.host.Network().Conns()
+	peers := make([]p2p_pstore.PeerInfo, len(conns))
+	for x, conn := range conns {
+		peers[x].ID = conn.RemotePeer()
+		peers[x].Addrs = []multiaddr.Multiaddr{conn.RemoteMultiaddr()}
+	}
+
+	return peers
+}
+
 // Connectivity
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 	if node.status == StatusOffline {
