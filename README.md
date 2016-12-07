@@ -7,6 +7,8 @@ Please see [RFC 4](https://github.com/mediachain/mediachain/blob/master/rfc/medi
 
 The two main programs in concat are **mcnode**, which is the implementation of a fully featured Mediachain node, and **mcdir**, which implements a directory server for facilitating node discovery and connectivity.
 
+For system-wide Mediachain documentation see https://mediachain.github.io/mediachain-docs.
+
 ## Installation
 ### Precompiled Binaries
 
