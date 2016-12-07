@@ -311,7 +311,7 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
 	pinfo, err = node.doLookupImpl(ctx, pid)
 	if err == nil {
-		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.AddressTTL)
+		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
 	}
 
 	return
