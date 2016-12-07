@@ -270,6 +270,30 @@ func (node *Node) natAddr() multiaddr.Multiaddr {
 	return addr
 }
 
+func (node *Node) netPeerAddrs(pid p2p_peer.ID) []multiaddr.Multiaddr {
+	if node.status == StatusOffline {
+		return nil
+	}
+
+	pinfo := node.host.Peerstore().PeerInfo(pid)
+	return pinfo.Addrs
+}
+
+func (node *Node) netConns() []p2p_pstore.PeerInfo {
+	if node.status == StatusOffline {
+		return nil
+	}
+
+	conns := node.host.Network().Conns()
+	peers := make([]p2p_pstore.PeerInfo, len(conns))
+	for x, conn := range conns {
+		peers[x].ID = conn.RemotePeer()
+		peers[x].Addrs = []multiaddr.Multiaddr{conn.RemoteMultiaddr()}
+	}
+
+	return peers
+}
+
 // Connectivity
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 	if node.status == StatusOffline {
@@ -296,7 +320,7 @@ func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
 	pinfo, err = node.doLookupImpl(ctx, pid)
 	if err == nil {
-		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.AddressTTL)
+		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
 	}
 
 	return

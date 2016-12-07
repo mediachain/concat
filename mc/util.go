@@ -42,11 +42,17 @@ func FormatHandle(pi p2p_pstore.PeerInfo) string {
 	if len(pi.Addrs) > 0 {
 		return fmt.Sprintf("%s/p2p/%s", pi.Addrs[0].String(), pi.ID.Pretty())
 	} else {
-		return pi.ID.Pretty()
+		return fmt.Sprintf("/p2p/%s", pi.ID.Pretty())
 	}
 }
 
-// parses multiaddr[/p2p]/id (backwards compatible)
+// parses handles into multiaddrs
+// Canonical forms:
+//  /multiaddr/p2p/id
+//  /p2p/id
+// Also accepts for backwards compatibility:
+//  /multiaddr/id
+//  id
 func ParseHandle(str string) (empty p2p_pstore.PeerInfo, err error) {
 	var id, addr string
 
@@ -66,12 +72,16 @@ func ParseHandle(str string) (empty p2p_pstore.PeerInfo, err error) {
 		addr = str[:ix]
 	}
 
-	maddr, err := multiaddr.NewMultiaddr(addr)
+	pid, err := p2p_peer.IDB58Decode(id)
 	if err != nil {
 		return empty, err
 	}
 
-	pid, err := p2p_peer.IDB58Decode(id)
+	if addr == "" {
+		return p2p_pstore.PeerInfo{ID: pid}, nil
+	}
+
+	maddr, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
 		return empty, err
 	}

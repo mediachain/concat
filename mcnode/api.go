@@ -84,6 +84,32 @@ func (node *Node) httpNetAddr(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /net/addr/{peerId}
+// Returns all peer addrs in the local cache
+func (node *Node) httpNetPeerAddr(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	addrs := node.netPeerAddrs(pid)
+	for _, addr := range addrs {
+		fmt.Fprintln(w, addr.String())
+	}
+}
+
+// GET /net/conns
+// Returns all active peer connections
+func (node *Node) httpNetConns(w http.ResponseWriter, r *http.Request) {
+	peers := node.netConns()
+	for _, peer := range peers {
+		fmt.Fprintln(w, mc.FormatHandle(peer))
+	}
+}
+
 // GET /net/lookup/{peerId}
 // Looks up a peer in the network
 func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
