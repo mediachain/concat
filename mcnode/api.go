@@ -566,7 +566,7 @@ type DataObject struct {
 	Data []byte `json:"data"`
 }
 
-// Get /data/get/{objectId}
+// GET /data/get/{objectId}
 // Retrieves a data object from the datastore
 func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -592,6 +592,34 @@ func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(dao)
 	if err != nil {
 		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
+// GET /data/get/
+// Retrieves a batch of data objects from the datastore
+func (node *Node) httpGetDataBatch(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
+	scanner := bufio.NewScanner(r.Body)
+	for scanner.Scan() {
+		key58 := scanner.Text()
+
+		key, err := multihash.FromB58String(key58)
+		if err != nil {
+			enc.Encode(StreamError{err.Error()})
+			return
+		}
+
+		data, err := node.ds.Get(Key(key))
+		if err != nil {
+			enc.Encode(StreamError{err.Error()})
+			return
+		}
+
+		err = enc.Encode(DataObject{data})
+		if err != nil {
+			log.Printf("Error writing response body: %s", err.Error())
+			return
+		}
 	}
 }
 
