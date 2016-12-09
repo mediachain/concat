@@ -595,7 +595,7 @@ func (node *Node) httpGetData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /data/get/
+// POST /data/get
 // Retrieves a batch of data objects from the datastore
 func (node *Node) httpGetDataBatch(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
