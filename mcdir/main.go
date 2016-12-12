@@ -14,6 +14,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -130,7 +131,7 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 			break
 		}
 
-		res.Peers = dir.listPeers()
+		res.Peers = dir.listPeers(req.Namespace)
 
 		err = w.WriteMsg(&res)
 		if err != nil {
@@ -163,11 +164,56 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 	return rec.peer, ok
 }
 
-func (dir *Directory) listPeers() []string {
+func (dir *Directory) listPeers(ns string) []string {
+	switch {
+	case ns == "":
+		fallthrough
+	case ns == "*":
+		return dir.listPeersFilter(func(PeerRecord) bool {
+			return true
+		})
+
+	case strings.HasSuffix(ns, ".*"):
+		pre := ns[:len(ns)-2]
+		return dir.listPeersFilter(func(rec PeerRecord) bool {
+			if rec.publisher == nil {
+				return false
+			}
+
+			for _, xns := range rec.publisher.Namespaces {
+				if strings.HasPrefix(xns, pre) {
+					return true
+				}
+			}
+
+			return false
+		})
+
+	default:
+		return dir.listPeersFilter(func(rec PeerRecord) bool {
+			if rec.publisher == nil {
+				return false
+			}
+
+			for _, xns := range rec.publisher.Namespaces {
+				if ns == xns {
+					return true
+				}
+			}
+
+			return false
+		})
+
+	}
+}
+
+func (dir *Directory) listPeersFilter(filter func(PeerRecord) bool) []string {
 	dir.mx.Lock()
 	lst := make([]string, 0, len(dir.peers))
-	for pid, _ := range dir.peers {
-		lst = append(lst, pid.Pretty())
+	for pid, rec := range dir.peers {
+		if filter(rec) {
+			lst = append(lst, pid.Pretty())
+		}
 	}
 	dir.mx.Unlock()
 	return lst
