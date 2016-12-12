@@ -20,8 +20,13 @@ import (
 type Directory struct {
 	mc.PeerIdentity
 	host  p2p_host.Host
-	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
+	peers map[p2p_peer.ID]PeerRecord
 	mx    sync.Mutex
+}
+
+type PeerRecord struct {
+	peer      p2p_pstore.PeerInfo
+	publisher *pb.PublisherInfo
 }
 
 func (dir *Directory) registerHandler(s p2p_net.Stream) {
@@ -56,7 +61,7 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 			break
 		}
 
-		dir.registerPeer(pinfo)
+		dir.registerPeer(PeerRecord{pinfo, req.Publisher})
 
 		req.Reset()
 	}
@@ -136,10 +141,10 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 	}
 }
 
-func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
-	log.Printf("directory: register %s", info.ID.Pretty())
+func (dir *Directory) registerPeer(rec PeerRecord) {
+	log.Printf("directory: register %s", rec.peer.ID.Pretty())
 	dir.mx.Lock()
-	dir.peers[info.ID] = info
+	dir.peers[rec.peer.ID] = rec
 	dir.mx.Unlock()
 }
 
@@ -151,10 +156,11 @@ func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
 }
 
 func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
+	log.Printf("directory: lookup %s", pid.Pretty())
 	dir.mx.Lock()
-	pinfo, ok := dir.peers[pid]
+	rec, ok := dir.peers[pid]
 	dir.mx.Unlock()
-	return pinfo, ok
+	return rec.peer, ok
 }
 
 func (dir *Directory) listPeers() []string {
@@ -203,7 +209,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]PeerRecord)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
