@@ -7,6 +7,7 @@ import (
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
+	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"log"
@@ -172,6 +173,7 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 
 	var pinfo = p2p_pstore.PeerInfo{ID: node.ID}
 	var pbpi pb.PeerInfo
+	var pbpub = pb.PublisherInfo{Id: node.publisher.ID58}
 
 	w := ggio.NewDelimitedWriter(s)
 	for {
@@ -180,7 +182,11 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 		if len(addrs) > 0 {
 			pinfo.Addrs = addrs
 			mc.PBFromPeerInfo(&pbpi, pinfo)
-			msg := pb.RegisterPeer{Info: &pbpi}
+
+			ns := node.publicNamespaces()
+			pbpub.Namespaces = ns
+
+			msg := pb.RegisterPeer{&pbpi, &pbpub}
 
 			err = w.WriteMsg(&msg)
 			if err != nil {
@@ -199,6 +205,31 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 			continue
 		}
 	}
+}
+
+func (node *Node) publicNamespaces() []string {
+	res, err := node.db.Query(nsQuery)
+	if err != nil {
+		log.Printf("Namespace query error: %s", err.Error())
+		return nil
+	}
+
+	pns := make([]string, len(res))
+	for x, ns := range res {
+		pns[x] = ns.(string)
+	}
+
+	return pns
+}
+
+var nsQuery *mcq.Query
+
+func init() {
+	q, err := mcq.ParseQuery("SELECT namespace FROM *")
+	if err != nil {
+		log.Fatal(err)
+	}
+	nsQuery = q
 }
 
 // The notion of public address is relative to the network location of the directory
