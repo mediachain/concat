@@ -180,7 +180,7 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 		if len(addrs) > 0 {
 			pinfo.Addrs = addrs
 			mc.PBFromPeerInfo(&pbpi, pinfo)
-			msg := pb.RegisterPeer{&pbpi}
+			msg := pb.RegisterPeer{Info: &pbpi}
 
 			err = w.WriteMsg(&msg)
 			if err != nil {
