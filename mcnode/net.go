@@ -6,7 +6,9 @@ import (
 	p2p_net "github.com/libp2p/go-libp2p-net"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
+	p2p_proto "github.com/libp2p/go-libp2p-protocol"
 	mc "github.com/mediachain/concat/mc"
+	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"log"
@@ -157,21 +159,16 @@ func (node *Node) registerPeer(ctx context.Context) {
 }
 
 func (node *Node) registerPeerImpl(ctx context.Context) error {
-	err := node.host.Connect(node.netCtx, *node.dir)
+	s, err := node.doDirConnect(node.netCtx, "/mediachain/dir/register")
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
-		return err
-	}
-
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/register")
-	if err != nil {
-		log.Printf("Failed to open directory stream: %s", err.Error())
 		return err
 	}
 	defer s.Close()
 
 	var pinfo = p2p_pstore.PeerInfo{ID: node.ID}
 	var pbpi pb.PeerInfo
+	var pbpub = pb.PublisherInfo{Id: node.publisher.ID58}
 
 	w := ggio.NewDelimitedWriter(s)
 	for {
@@ -180,7 +177,11 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 		if len(addrs) > 0 {
 			pinfo.Addrs = addrs
 			mc.PBFromPeerInfo(&pbpi, pinfo)
-			msg := pb.RegisterPeer{&pbpi}
+
+			ns := node.publicNamespaces()
+			pbpub.Namespaces = ns
+
+			msg := pb.RegisterPeer{&pbpi, &pbpub}
 
 			err = w.WriteMsg(&msg)
 			if err != nil {
@@ -199,6 +200,31 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 			continue
 		}
 	}
+}
+
+func (node *Node) publicNamespaces() []string {
+	res, err := node.db.Query(nsQuery)
+	if err != nil {
+		log.Printf("Namespace query error: %s", err.Error())
+		return nil
+	}
+
+	pns := make([]string, len(res))
+	for x, ns := range res {
+		pns[x] = ns.(string)
+	}
+
+	return pns
+}
+
+var nsQuery *mcq.Query
+
+func init() {
+	q, err := mcq.ParseQuery("SELECT namespace FROM *")
+	if err != nil {
+		log.Fatal(err)
+	}
+	nsQuery = q
 }
 
 // The notion of public address is relative to the network location of the directory
@@ -295,7 +321,16 @@ func (node *Node) netConns() []p2p_pstore.PeerInfo {
 }
 
 // Connectivity
-func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
+func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto p2p_proto.ID) (p2p_net.Stream, error) {
+	err := node.doConnectPeer(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	return node.host.NewStream(ctx, pid, proto)
+}
+
+func (node *Node) doConnectPeer(ctx context.Context, pid p2p_peer.ID) error {
 	if node.status == StatusOffline {
 		return NodeOffline
 	}
@@ -348,21 +383,9 @@ lookup_dht:
 	return node.dht.Lookup(ctx, pid)
 }
 
+// Directory client
 func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	if node.status == StatusOffline {
-		return empty, NodeOffline
-	}
-
-	if node.dir == nil {
-		return empty, NoDirectory
-	}
-
-	node.host.Connect(node.netCtx, *node.dir)
-	if err != nil {
-		return empty, err
-	}
-
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/lookup")
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/lookup")
 	if err != nil {
 		return empty, err
 	}
@@ -394,7 +417,61 @@ func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_p
 	return pinfo, nil
 }
 
-func (node *Node) doDirList(ctx context.Context) ([]string, error) {
+func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/list")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ListPeersRequest
+	var res pb.ListPeersResponse
+
+	req.Namespace = ns
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Peers, nil
+}
+
+func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/listns")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ListNamespacesRequest
+	var res pb.ListNamespacesResponse
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Namespaces, nil
+}
+
+func (node *Node) doDirConnect(ctx context.Context, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	if node.status == StatusOffline {
 		return nil, NodeOffline
 	}
@@ -408,27 +485,5 @@ func (node *Node) doDirList(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/list")
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	w := ggio.NewDelimitedWriter(s)
-	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
-
-	var req pb.ListPeersRequest
-	var res pb.ListPeersResponse
-
-	err = w.WriteMsg(&req)
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.ReadMsg(&res)
-	if err != nil {
-		return nil, err
-	}
-
-	return res.Peers, nil
+	return node.host.NewStream(ctx, node.dir.ID, proto)
 }

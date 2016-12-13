@@ -340,12 +340,7 @@ type PushMergeResult struct {
 }
 
 func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeInfo, err error) {
-	err = node.doConnect(ctx, pid)
-	if err != nil {
-		return empty, err
-	}
-
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/id")
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/id")
 	if err != nil {
 		return empty, err
 	}
@@ -371,12 +366,7 @@ func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeIn
 }
 
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
-	err := node.doConnect(ctx, pid)
-	if err != nil {
-		return err
-	}
-
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/ping")
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/ping")
 	if err != nil {
 		return err
 	}
@@ -397,12 +387,7 @@ func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
 }
 
 func (node *Node) doRemoteQuery(ctx context.Context, pid p2p_peer.ID, q string) (<-chan interface{}, error) {
-	err := node.doConnect(ctx, pid)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/query")
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/query")
 	if err != nil {
 		return nil, err
 	}
@@ -707,12 +692,7 @@ loop:
 }
 
 func (node *Node) doRawMerge(ctx context.Context, pid p2p_peer.ID, keys map[string]Key) (int, error) {
-	err := node.doConnect(ctx, pid)
-	if err != nil {
-		return 0, err
-	}
-
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/data")
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/data")
 	if err != nil {
 		return 0, err
 	}
@@ -798,12 +778,7 @@ func (node *Node) doPush(ctx context.Context, pid p2p_peer.ID, q *mcq.Query) (in
 		nss[x] = ns.(string)
 	}
 
-	err = node.doConnect(ctx, pid)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	s, err := node.host.NewStream(ctx, pid, "/mediachain/node/push")
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/push")
 	if err != nil {
 		return 0, 0, err
 	}

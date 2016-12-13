@@ -14,14 +14,20 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
 type Directory struct {
 	mc.PeerIdentity
 	host  p2p_host.Host
-	peers map[p2p_peer.ID]p2p_pstore.PeerInfo
+	peers map[p2p_peer.ID]PeerRecord
 	mx    sync.Mutex
+}
+
+type PeerRecord struct {
+	peer      p2p_pstore.PeerInfo
+	publisher *pb.PublisherInfo
 }
 
 func (dir *Directory) registerHandler(s p2p_net.Stream) {
@@ -56,7 +62,7 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 			break
 		}
 
-		dir.registerPeer(pinfo)
+		dir.registerPeer(PeerRecord{pinfo, req.Publisher})
 
 		req.Reset()
 	}
@@ -125,7 +131,7 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 			break
 		}
 
-		res.Peers = dir.listPeers()
+		res.Peers = dir.listPeers(req.Namespace)
 
 		err = w.WriteMsg(&res)
 		if err != nil {
@@ -136,10 +142,40 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 	}
 }
 
-func (dir *Directory) registerPeer(info p2p_pstore.PeerInfo) {
-	log.Printf("directory: register %s", info.ID.Pretty())
+func (dir *Directory) listnsHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	pid := s.Conn().RemotePeer()
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("directory/listns: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	var req pb.ListNamespacesRequest
+	var res pb.ListNamespacesResponse
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			break
+		}
+
+		res.Namespaces = dir.listNamespaces()
+
+		err = w.WriteMsg(&res)
+		if err != nil {
+			break
+		}
+
+		res.Reset()
+	}
+}
+
+func (dir *Directory) registerPeer(rec PeerRecord) {
+	log.Printf("directory: register %s", rec.peer.ID.Pretty())
 	dir.mx.Lock()
-	dir.peers[info.ID] = info
+	dir.peers[rec.peer.ID] = rec
 	dir.mx.Unlock()
 }
 
@@ -151,20 +187,91 @@ func (dir *Directory) unregisterPeer(pid p2p_peer.ID) {
 }
 
 func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
+	log.Printf("directory: lookup %s", pid.Pretty())
 	dir.mx.Lock()
-	pinfo, ok := dir.peers[pid]
+	rec, ok := dir.peers[pid]
 	dir.mx.Unlock()
-	return pinfo, ok
+	return rec.peer, ok
 }
 
-func (dir *Directory) listPeers() []string {
+func (dir *Directory) listPeers(ns string) []string {
+	log.Printf("directory: list %s", ns)
+
+	switch {
+	case ns == "":
+		fallthrough
+	case ns == "*":
+		return dir.listPeersFilter(func(PeerRecord) bool {
+			return true
+		})
+
+	case strings.HasSuffix(ns, ".*"):
+		pre := ns[:len(ns)-2]
+		return dir.listPeersFilter(func(rec PeerRecord) bool {
+			if rec.publisher == nil {
+				return false
+			}
+
+			for _, xns := range rec.publisher.Namespaces {
+				if strings.HasPrefix(xns, pre) {
+					return true
+				}
+			}
+
+			return false
+		})
+
+	default:
+		return dir.listPeersFilter(func(rec PeerRecord) bool {
+			if rec.publisher == nil {
+				return false
+			}
+
+			for _, xns := range rec.publisher.Namespaces {
+				if ns == xns {
+					return true
+				}
+			}
+
+			return false
+		})
+
+	}
+}
+
+func (dir *Directory) listPeersFilter(filter func(PeerRecord) bool) []string {
 	dir.mx.Lock()
 	lst := make([]string, 0, len(dir.peers))
-	for pid, _ := range dir.peers {
-		lst = append(lst, pid.Pretty())
+	for pid, rec := range dir.peers {
+		if filter(rec) {
+			lst = append(lst, pid.Pretty())
+		}
 	}
 	dir.mx.Unlock()
 	return lst
+}
+
+func (dir *Directory) listNamespaces() []string {
+	log.Printf("directory: listns")
+
+	nsset := make(map[string]bool)
+
+	dir.mx.Lock()
+	for _, rec := range dir.peers {
+		if rec.publisher != nil {
+			for _, ns := range rec.publisher.Namespaces {
+				nsset[ns] = true
+			}
+		}
+	}
+	dir.mx.Unlock()
+
+	nslst := make([]string, 0, len(nsset))
+	for ns, _ := range nsset {
+		nslst = append(nslst, ns)
+	}
+
+	return nslst
 }
 
 func main() {
@@ -203,14 +310,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]p2p_pstore.PeerInfo)}
+	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]PeerRecord)}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
+	host.SetStreamHandler("/mediachain/dir/listns", dir.listnsHandler)
 
 	for _, addr := range host.Addrs() {
 		if !mc.IsLinkLocalAddr(addr) {
-			log.Printf("I am %s/%s", addr, id.Pretty())
+			log.Printf("I am %s/p2p/%s", addr, id.Pretty())
 		}
 	}
 	select {}

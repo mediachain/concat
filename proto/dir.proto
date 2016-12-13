@@ -2,13 +2,19 @@ syntax = "proto3";
 package proto;
 
 message PeerInfo {
-  string id = 1;            // peer id
-  repeated bytes addr = 2;  // peer multiaddrs
+  string id = 1;                   // peer id
+  repeated bytes addr = 2;         // peer multiaddrs
+}
+
+message PublisherInfo {
+  string id = 1;                   // publisher id
+  repeated string namespaces = 2;  // namespaces in peer's store
 }
 
 // /mediachain/dir/register
 message RegisterPeer {
   PeerInfo info = 1;
+  PublisherInfo publisher = 2;     // optional (v1.4)
 }
 
 // /mediachain/dir/lookup
@@ -17,13 +23,21 @@ message LookupPeerRequest {
 }
 
 message LookupPeerResponse {
-  PeerInfo peer = 1;       // abset if peer not found
+  PeerInfo peer = 1;               // absent if peer not found
 }
 
 // /mediachain/dir/list
 message ListPeersRequest {
+  string namespace = 1;            // optional (v1.4); peers in namespace
 }
 
 message ListPeersResponse {
   repeated string peers = 1;
+}
+
+// /mediachain/dir/listns
+message ListNamespacesRequest {}
+
+message ListNamespacesResponse {
+  repeated string namespaces = 1;
 }

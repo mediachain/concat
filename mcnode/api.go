@@ -160,12 +160,26 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /dir/list
-// List peers known to the directory
+// GET /dir/list/{namespace}
+// List peers known to the directory, with a namespace filter if provided
 func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
+	node.httpDirListImpl(w, r, false)
+}
+
+// GET /dir/list/{namespace}/all
+// List peers known to the directory, including self in the results
+func (node *Node) httpDirListAll(w http.ResponseWriter, r *http.Request) {
+	node.httpDirListImpl(w, r, true)
+}
+
+func (node *Node) httpDirListImpl(w http.ResponseWriter, r *http.Request, inclSelf bool) {
+	vars := mux.Vars(r)
+	ns := vars["namespace"]
+
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	peers, err := node.doDirList(ctx)
+	peers, err := node.doDirList(ctx, ns)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		return
@@ -174,9 +188,26 @@ func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
 	// filter self from result set
 	mypid := node.PeerIdentity.Pretty()
 	for _, peer := range peers {
-		if peer != mypid {
+		if peer != mypid || inclSelf {
 			fmt.Fprintln(w, peer)
 		}
+	}
+}
+
+// GET /dir/listns
+// List namespaces known to the directory
+func (node *Node) httpDirListNS(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	nss, err := node.doDirListNS(ctx)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, ns := range nss {
+		fmt.Fprintln(w, ns)
 	}
 }
 
