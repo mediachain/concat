@@ -6,6 +6,7 @@ import (
 	p2p_net "github.com/libp2p/go-libp2p-net"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
+	p2p_proto "github.com/libp2p/go-libp2p-protocol"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
@@ -158,15 +159,9 @@ func (node *Node) registerPeer(ctx context.Context) {
 }
 
 func (node *Node) registerPeerImpl(ctx context.Context) error {
-	err := node.host.Connect(node.netCtx, *node.dir)
+	s, err := node.doDirConnect(node.netCtx, "/mediachain/dir/register")
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
-		return err
-	}
-
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/register")
-	if err != nil {
-		log.Printf("Failed to open directory stream: %s", err.Error())
 		return err
 	}
 	defer s.Close()
@@ -380,20 +375,7 @@ lookup_dht:
 }
 
 func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	if node.status == StatusOffline {
-		return empty, NodeOffline
-	}
-
-	if node.dir == nil {
-		return empty, NoDirectory
-	}
-
-	node.host.Connect(node.netCtx, *node.dir)
-	if err != nil {
-		return empty, err
-	}
-
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/lookup")
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/lookup")
 	if err != nil {
 		return empty, err
 	}
@@ -426,20 +408,7 @@ func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_p
 }
 
 func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
-	if node.status == StatusOffline {
-		return nil, NodeOffline
-	}
-
-	if node.dir == nil {
-		return nil, NoDirectory
-	}
-
-	err := node.host.Connect(node.netCtx, *node.dir)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := node.host.NewStream(ctx, node.dir.ID, "/mediachain/dir/list")
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/list")
 	if err != nil {
 		return nil, err
 	}
@@ -464,4 +433,21 @@ func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
 	}
 
 	return res.Peers, nil
+}
+
+func (node *Node) doDirConnect(ctx context.Context, proto string) (p2p_net.Stream, error) {
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	if node.dir == nil {
+		return nil, NoDirectory
+	}
+
+	err := node.host.Connect(node.netCtx, *node.dir)
+	if err != nil {
+		return nil, err
+	}
+
+	return node.host.NewStream(ctx, node.dir.ID, p2p_proto.ID(proto))
 }
