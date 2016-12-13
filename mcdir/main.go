@@ -262,7 +262,7 @@ func main() {
 
 	for _, addr := range host.Addrs() {
 		if !mc.IsLinkLocalAddr(addr) {
-			log.Printf("I am %s/%s", addr, id.Pretty())
+			log.Printf("I am %s/p2p/%s", addr, id.Pretty())
 		}
 	}
 	select {}
