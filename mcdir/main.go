@@ -142,6 +142,36 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 	}
 }
 
+func (dir *Directory) listnsHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	pid := s.Conn().RemotePeer()
+	paddr := s.Conn().RemoteMultiaddr()
+	log.Printf("directory/listns: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	var req pb.ListNamespacesRequest
+	var res pb.ListNamespacesResponse
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			break
+		}
+
+		res.Namespaces = dir.listNamespaces()
+
+		err = w.WriteMsg(&res)
+		if err != nil {
+			break
+		}
+
+		res.Reset()
+	}
+}
+
 func (dir *Directory) registerPeer(rec PeerRecord) {
 	log.Printf("directory: register %s", rec.peer.ID.Pretty())
 	dir.mx.Lock()
@@ -221,6 +251,29 @@ func (dir *Directory) listPeersFilter(filter func(PeerRecord) bool) []string {
 	return lst
 }
 
+func (dir *Directory) listNamespaces() []string {
+	log.Printf("directory: listns")
+
+	nsset := make(map[string]bool)
+
+	dir.mx.Lock()
+	for _, rec := range dir.peers {
+		if rec.publisher != nil {
+			for _, ns := range rec.publisher.Namespaces {
+				nsset[ns] = true
+			}
+		}
+	}
+	dir.mx.Unlock()
+
+	nslst := make([]string, 0, len(nsset))
+	for ns, _ := range nsset {
+		nslst = append(nslst, ns)
+	}
+
+	return nslst
+}
+
 func main() {
 	port := flag.Int("l", 9000, "Listen port")
 	hdir := flag.String("d", "~/.mediachain/mcdir", "Directory home")
@@ -261,6 +314,7 @@ func main() {
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
+	host.SetStreamHandler("/mediachain/dir/listns", dir.listnsHandler)
 
 	for _, addr := range host.Addrs() {
 		if !mc.IsLinkLocalAddr(addr) {
