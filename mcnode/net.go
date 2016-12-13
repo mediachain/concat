@@ -321,13 +321,13 @@ func (node *Node) netConns() []p2p_pstore.PeerInfo {
 }
 
 // Connectivity
-func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto string) (p2p_net.Stream, error) {
+func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	err := node.doConnectPeer(ctx, pid)
 	if err != nil {
 		return nil, err
 	}
 
-	return node.host.NewStream(ctx, pid, p2p_proto.ID(proto))
+	return node.host.NewStream(ctx, pid, proto)
 }
 
 func (node *Node) doConnectPeer(ctx context.Context, pid p2p_peer.ID) error {
@@ -471,7 +471,7 @@ func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
 	return res.Namespaces, nil
 }
 
-func (node *Node) doDirConnect(ctx context.Context, proto string) (p2p_net.Stream, error) {
+func (node *Node) doDirConnect(ctx context.Context, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	if node.status == StatusOffline {
 		return nil, NodeOffline
 	}
@@ -485,5 +485,5 @@ func (node *Node) doDirConnect(ctx context.Context, proto string) (p2p_net.Strea
 		return nil, err
 	}
 
-	return node.host.NewStream(ctx, node.dir.ID, p2p_proto.ID(proto))
+	return node.host.NewStream(ctx, node.dir.ID, proto)
 }
