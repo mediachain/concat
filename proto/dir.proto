@@ -34,3 +34,10 @@ message ListPeersRequest {
 message ListPeersResponse {
   repeated string peers = 1;
 }
+
+// /mediachain/dir/listns
+message ListNamespacesRequest {}
+
+message ListNamespacesResponse {
+  repeated string namespaces = 1;
+}
