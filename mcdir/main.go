@@ -165,6 +165,8 @@ func (dir *Directory) lookupPeer(pid p2p_peer.ID) (p2p_pstore.PeerInfo, bool) {
 }
 
 func (dir *Directory) listPeers(ns string) []string {
+	log.Printf("directory: list %s", ns)
+
 	switch {
 	case ns == "":
 		fallthrough
