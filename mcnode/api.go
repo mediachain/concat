@@ -160,12 +160,16 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /dir/list
-// List peers known to the directory
+// GET /dir/list/{namespace}
+// List peers known to the directory, with a namespace filter if provided
 func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ns := vars["namespace"]
+
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	peers, err := node.doDirList(ctx)
+	peers, err := node.doDirList(ctx, ns)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		return

@@ -425,7 +425,7 @@ func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_p
 	return pinfo, nil
 }
 
-func (node *Node) doDirList(ctx context.Context) ([]string, error) {
+func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
 	if node.status == StatusOffline {
 		return nil, NodeOffline
 	}
@@ -450,6 +450,8 @@ func (node *Node) doDirList(ctx context.Context) ([]string, error) {
 
 	var req pb.ListPeersRequest
 	var res pb.ListPeersResponse
+
+	req.Namespace = ns
 
 	err = w.WriteMsg(&req)
 	if err != nil {
