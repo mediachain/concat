@@ -98,6 +98,7 @@ func main() {
 	router.HandleFunc("/auth/{peerId}", node.httpAuthPeer)
 	router.HandleFunc("/dir/list", node.httpDirList)
 	router.HandleFunc("/dir/list/{namespace}", node.httpDirList)
+	router.HandleFunc("/dir/listns", node.httpDirListNS)
 	router.HandleFunc("/net/addr", node.httpNetAddr)
 	router.HandleFunc("/net/addr/{peerId}", node.httpNetPeerAddr)
 	router.HandleFunc("/net/conns", node.httpNetConns)

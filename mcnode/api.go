@@ -184,6 +184,23 @@ func (node *Node) httpDirList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /dir/listns
+// List namespaces known to the directory
+func (node *Node) httpDirListNS(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	nss, err := node.doDirListNS(ctx)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, ns := range nss {
+		fmt.Fprintln(w, ns)
+	}
+}
+
 var nsrx *regexp.Regexp
 
 func init() {

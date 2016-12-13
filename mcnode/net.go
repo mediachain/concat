@@ -374,6 +374,7 @@ lookup_dht:
 	return node.dht.Lookup(ctx, pid)
 }
 
+// Directory client
 func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
 	s, err := node.doDirConnect(ctx, "/mediachain/dir/lookup")
 	if err != nil {
@@ -433,6 +434,32 @@ func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
 	}
 
 	return res.Peers, nil
+}
+
+func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
+	s, err := node.doDirConnect(ctx, "/mediachain/dir/listns")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ListNamespacesRequest
+	var res pb.ListNamespacesResponse
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Namespaces, nil
 }
 
 func (node *Node) doDirConnect(ctx context.Context, proto string) (p2p_net.Stream, error) {
