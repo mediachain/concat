@@ -321,7 +321,16 @@ func (node *Node) netConns() []p2p_pstore.PeerInfo {
 }
 
 // Connectivity
-func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID) error {
+func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto string) (p2p_net.Stream, error) {
+	err := node.doConnectPeer(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	return node.host.NewStream(ctx, pid, p2p_proto.ID(proto))
+}
+
+func (node *Node) doConnectPeer(ctx context.Context, pid p2p_peer.ID) error {
 	if node.status == StatusOffline {
 		return NodeOffline
 	}
