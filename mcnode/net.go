@@ -107,7 +107,7 @@ func (node *Node) _goOnline() error {
 // goPublic starts the network if it's not already up and registers with the
 // directory; fails with NoDirectory if that hasn't been configured.
 func (node *Node) goPublic() error {
-	if node.dir == nil {
+	if len(node.dir) == 0 {
 		return NoDirectory
 	}
 
@@ -128,7 +128,9 @@ func (node *Node) goPublic() error {
 		fallthrough
 
 	case StatusOnline:
-		go node.registerPeer(node.netCtx)
+		for _, dir := range node.dir {
+			go node.registerPeer(node.netCtx, dir)
+		}
 		node.status = StatusPublic
 
 		log.Println("Node is public")
@@ -139,9 +141,9 @@ func (node *Node) goPublic() error {
 	}
 }
 
-func (node *Node) registerPeer(ctx context.Context) {
+func (node *Node) registerPeer(ctx context.Context, dir p2p_pstore.PeerInfo) {
 	for {
-		err := node.registerPeerImpl(ctx)
+		err := node.registerPeerImpl(ctx, dir)
 		if err == nil {
 			return
 		}
@@ -158,8 +160,8 @@ func (node *Node) registerPeer(ctx context.Context) {
 	}
 }
 
-func (node *Node) registerPeerImpl(ctx context.Context) error {
-	s, err := node.doDirConnect(node.netCtx, "/mediachain/dir/register")
+func (node *Node) registerPeerImpl(ctx context.Context, dir p2p_pstore.PeerInfo) error {
+	s, err := node.doDirConnect(node.netCtx, dir, "/mediachain/dir/register")
 	if err != nil {
 		log.Printf("Failed to connect to directory: %s", err.Error())
 		return err
@@ -172,7 +174,7 @@ func (node *Node) registerPeerImpl(ctx context.Context) error {
 
 	w := ggio.NewDelimitedWriter(s)
 	for {
-		addrs := node.publicAddrs()
+		addrs := node.publicAddrs(dir)
 
 		if len(addrs) > 0 {
 			pinfo.Addrs = addrs
@@ -239,17 +241,17 @@ func init() {
 //   If the NAT config is manual, return the configured address
 //   If the NAT is auto or none, filter the addresses returned by the host,
 //      and return only public addresses
-func (node *Node) publicAddrs() []multiaddr.Multiaddr {
-	if node.status == StatusOffline || node.dir == nil {
+func (node *Node) publicAddrs(dir p2p_pstore.PeerInfo) []multiaddr.Multiaddr {
+	if node.status == StatusOffline {
 		return nil
 	}
 
-	dir := node.dir.Addrs[0]
+	diraddr := dir.Addrs[0]
 	switch {
-	case mc.IsLocalhostAddr(dir):
+	case mc.IsLocalhostAddr(diraddr):
 		return mc.FilterAddrs(node.host.Addrs(), mc.IsLocalhostAddr)
 
-	case mc.IsPrivateAddr(dir):
+	case mc.IsPrivateAddr(diraddr):
 		return mc.FilterAddrs(node.host.Addrs(), mc.IsRoutableAddr)
 
 	default:
@@ -385,7 +387,16 @@ lookup_dht:
 
 // Directory client
 func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	s, err := node.doDirConnect(ctx, "/mediachain/dir/lookup")
+	if len(node.dir) == 0 {
+		return empty, NoDirectory
+	}
+
+	// XXX temporary implementation: just use the first one
+	return node.doDirLookupImpl(ctx, node.dir[0], pid)
+}
+
+func (node *Node) doDirLookupImpl(ctx context.Context, dir p2p_pstore.PeerInfo, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
+	s, err := node.doDirConnect(ctx, dir, "/mediachain/dir/lookup")
 	if err != nil {
 		return empty, err
 	}
@@ -418,7 +429,16 @@ func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_p
 }
 
 func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
-	s, err := node.doDirConnect(ctx, "/mediachain/dir/list")
+	if len(node.dir) == 0 {
+		return nil, NoDirectory
+	}
+
+	// XXX temporary implementation: just use the first one
+	return node.doDirListImpl(ctx, node.dir[0], ns)
+}
+
+func (node *Node) doDirListImpl(ctx context.Context, dir p2p_pstore.PeerInfo, ns string) ([]string, error) {
+	s, err := node.doDirConnect(ctx, dir, "/mediachain/dir/list")
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +466,16 @@ func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
 }
 
 func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
-	s, err := node.doDirConnect(ctx, "/mediachain/dir/listns")
+	if len(node.dir) == 0 {
+		return nil, NoDirectory
+	}
+
+	// XXX temporary implementation: just use the first one
+	return node.doDirListNSImpl(ctx, node.dir[0])
+}
+
+func (node *Node) doDirListNSImpl(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error) {
+	s, err := node.doDirConnect(ctx, dir, "/mediachain/dir/listns")
 	if err != nil {
 		return nil, err
 	}
@@ -471,19 +500,15 @@ func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
 	return res.Namespaces, nil
 }
 
-func (node *Node) doDirConnect(ctx context.Context, proto p2p_proto.ID) (p2p_net.Stream, error) {
+func (node *Node) doDirConnect(ctx context.Context, dir p2p_pstore.PeerInfo, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	if node.status == StatusOffline {
 		return nil, NodeOffline
 	}
 
-	if node.dir == nil {
-		return nil, NoDirectory
-	}
-
-	err := node.host.Connect(node.netCtx, *node.dir)
+	err := node.host.Connect(node.netCtx, dir)
 	if err != nil {
 		return nil, err
 	}
 
-	return node.host.NewStream(ctx, node.dir.ID, proto)
+	return node.host.NewStream(ctx, dir.ID, proto)
 }

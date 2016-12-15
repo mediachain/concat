@@ -7,6 +7,7 @@ import (
 	"fmt"
 	mux "github.com/gorilla/mux"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
+	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
@@ -851,31 +852,26 @@ func (node *Node) httpConfigDir(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpConfigDirGet(w http.ResponseWriter, r *http.Request) {
-	if node.dir != nil {
-		fmt.Fprintln(w, mc.FormatHandle(*node.dir))
-	} else {
-		fmt.Fprintln(w, "nil")
+	for _, dir := range node.dir {
+		fmt.Fprintln(w, mc.FormatHandle(dir))
 	}
 }
 
 func (node *Node) httpConfigDirSet(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("http/config/dir: Error reading request body: %s", err.Error())
-		return
+	dirs := make([]p2p_pstore.PeerInfo, 0)
+	scanner := bufio.NewScanner(r.Body)
+	for scanner.Scan() {
+		pinfo, err := mc.ParseHandle(scanner.Text())
+		if err != nil {
+			apiError(w, http.StatusBadRequest, err)
+			return
+		}
+		dirs = append(dirs, pinfo)
 	}
 
-	handle := strings.TrimSpace(string(body))
-	pinfo, err := mc.ParseHandle(handle)
+	node.dir = dirs
 
-	if err != nil {
-		apiError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	node.dir = &pinfo
-
-	err = node.saveConfig()
+	err := node.saveConfig()
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
 		return

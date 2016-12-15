@@ -34,7 +34,7 @@ type Node struct {
 	netCtx    context.Context
 	netCancel context.CancelFunc
 	dht       DHT
-	dir       *p2p_pstore.PeerInfo
+	dir       []p2p_pstore.PeerInfo
 	natCfg    mc.NATConfig
 	home      string
 	db        StatementDB
@@ -289,7 +289,8 @@ func (node *Node) openDS() error {
 type NodeConfig struct {
 	Info string                 `json:"info,omitempty"`
 	NAT  string                 `json:"nat,omitempty"`
-	Dir  string                 `json:"dir,omitempty"`
+	Dir  string                 `json:"dir,omitempty"` // backwards compatibility
+	Dirs []string               `json:"dirs,omitempty"`
 	Auth map[string]interface{} `json:"auth,omitempty"`
 }
 
@@ -297,8 +298,12 @@ func (node *Node) saveConfig() error {
 	var cfg NodeConfig
 	cfg.Info = node.info
 	cfg.NAT = node.natCfg.String()
-	if node.dir != nil {
-		cfg.Dir = mc.FormatHandle(*node.dir)
+	if len(node.dir) > 0 {
+		dirs := make([]string, len(node.dir))
+		for x, dir := range node.dir {
+			dirs[x] = mc.FormatHandle(dir)
+		}
+		cfg.Dirs = dirs
 	}
 	cfg.Auth = node.auth.toJSON()
 
@@ -336,12 +341,24 @@ func (node *Node) loadConfig() error {
 	}
 	node.natCfg = natCfg
 
-	if cfg.Dir != "" {
+	switch {
+	case cfg.Dir != "":
 		pinfo, err := mc.ParseHandle(cfg.Dir)
 		if err != nil {
 			return err
 		}
-		node.dir = &pinfo
+		node.dir = []p2p_pstore.PeerInfo{pinfo}
+
+	case len(cfg.Dirs) > 0:
+		dirs := make([]p2p_pstore.PeerInfo, len(cfg.Dirs))
+		for x, dir := range cfg.Dirs {
+			pinfo, err := mc.ParseHandle(dir)
+			if err != nil {
+				return err
+			}
+			dirs[x] = pinfo
+		}
+		node.dir = dirs
 	}
 
 	err = node.auth.fromJSON(cfg.Auth)
