@@ -429,12 +429,86 @@ func (node *Node) doDirLookupImpl(ctx context.Context, dir p2p_pstore.PeerInfo, 
 }
 
 func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
-	if len(node.dir) == 0 {
+	return node.doDirCollect(ctx,
+		func(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error) {
+			return node.doDirListImpl(ctx, dir, ns)
+		})
+}
+
+func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
+	return node.doDirCollect(ctx, node.doDirListNSImpl)
+}
+
+func (node *Node) doDirCollect(ctx context.Context, proc func(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error)) ([]string, error) {
+	dirs := node.dir
+
+	switch len(dirs) {
+	case 0:
 		return nil, NoDirectory
+	case 1:
+		return proc(ctx, dirs[0])
 	}
 
-	// XXX temporary implementation: just use the first one
-	return node.doDirListImpl(ctx, node.dir[0], ns)
+	ch := make(chan interface{}, len(dirs))
+	for _, dir := range dirs {
+		go func(dir p2p_pstore.PeerInfo) {
+			res, err := proc(ctx, dir)
+			if err == nil {
+				ch <- res
+			} else {
+				ch <- err
+			}
+		}(dir)
+	}
+
+	var err error
+	errcount := 0
+	vals := make(map[string]bool)
+
+loop:
+	for x, xlen := 0, len(dirs); x < xlen; x++ {
+		select {
+		case res := <-ch:
+			switch res := res.(type) {
+			case nil: // empty list
+
+			case []string:
+				for _, val := range res {
+					vals[val] = true
+				}
+
+			case error:
+				log.Printf("Directory error: %s", res.Error())
+				errcount++
+
+			default:
+				log.Printf("doDirCollect: unexpected result type: %T", res)
+				errcount++
+			}
+
+		case <-ctx.Done():
+			err = ctx.Err()
+			break loop
+		}
+	}
+
+	if len(vals) == 0 {
+		// we didn't get any values, but is it an error?
+		if errcount < len(dirs) {
+			// not all directories failed, error only if ctx was done
+			return nil, err
+		} else {
+			// all directories failed, signal error
+			return nil, DirectoryError
+		}
+	}
+
+	res := make([]string, 0, len(vals))
+	for val, _ := range vals {
+		res = append(res, val)
+	}
+
+	return res, nil
 }
 
 func (node *Node) doDirListImpl(ctx context.Context, dir p2p_pstore.PeerInfo, ns string) ([]string, error) {
@@ -463,15 +537,6 @@ func (node *Node) doDirListImpl(ctx context.Context, dir p2p_pstore.PeerInfo, ns
 	}
 
 	return res.Peers, nil
-}
-
-func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
-	if len(node.dir) == 0 {
-		return nil, NoDirectory
-	}
-
-	// XXX temporary implementation: just use the first one
-	return node.doDirListNSImpl(ctx, node.dir[0])
 }
 
 func (node *Node) doDirListNSImpl(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error) {
