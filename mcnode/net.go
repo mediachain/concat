@@ -368,12 +368,17 @@ func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_
 		return pinfo, NodeOffline
 	}
 
-	if node.dir == nil {
+	var dirctx context.Context
+	var cancel context.CancelFunc
+
+	if len(node.dir) == 0 {
 		goto lookup_dht
 	}
 
-	// TODO: partial timeout for dir lookup (don't use all the available time)
-	pinfo, err = node.doDirLookup(ctx, pid)
+	dirctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	pinfo, err = node.doDirLookup(dirctx, pid)
 	if err == nil {
 		return
 	}
