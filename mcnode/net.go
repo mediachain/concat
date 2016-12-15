@@ -372,6 +372,7 @@ func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_
 		goto lookup_dht
 	}
 
+	// TODO: partial timeout for dir lookup (don't use all the available time)
 	pinfo, err = node.doDirLookup(ctx, pid)
 	if err == nil {
 		return
@@ -387,12 +388,67 @@ lookup_dht:
 
 // Directory client
 func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	if len(node.dir) == 0 {
+	dirs := node.dir
+
+	switch len(dirs) {
+	case 0:
 		return empty, NoDirectory
+	case 1:
+		return node.doDirLookupImpl(ctx, dirs[0], pid)
 	}
 
-	// XXX temporary implementation: just use the first one
-	return node.doDirLookupImpl(ctx, node.dir[0], pid)
+	// parallel lookup, first one to resolve wins
+	ch := make(chan interface{}, len(dirs))
+	for _, dir := range dirs {
+		go func(dir p2p_pstore.PeerInfo) {
+			pinfo, err := node.doDirLookupImpl(ctx, dir, pid)
+			if err == nil {
+				ch <- pinfo
+			} else {
+				ch <- err
+			}
+		}(dir)
+	}
+
+	errcount := 0
+loop:
+	for x, xlen := 0, len(dirs); x < xlen; x++ {
+		select {
+		case res := <-ch:
+			switch res := res.(type) {
+			case p2p_pstore.PeerInfo:
+				return res, nil
+
+			case error:
+				if res != UnknownPeer {
+					log.Printf("Directory error: %s", res.Error())
+					errcount++
+				}
+
+			default:
+				log.Printf("doDirLookup: unexpected result type: %T", res)
+				errcount++
+			}
+
+		case <-ctx.Done():
+			err = ctx.Err()
+			break loop
+		}
+	}
+
+	// we didn't resolve, but what kind of error is it?
+	if errcount < len(dirs) {
+		// not all directories failed, so unless the context was done,
+		// the peer is considered unknown
+		if err == nil {
+			err = UnknownPeer
+		}
+	} else {
+		// all directories failed, signal error
+		err = DirectoryError
+	}
+
+	return
 }
 
 func (node *Node) doDirLookupImpl(ctx context.Context, dir p2p_pstore.PeerInfo, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
