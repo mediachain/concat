@@ -177,7 +177,7 @@ func (node *Node) httpDirListImpl(w http.ResponseWriter, r *http.Request, inclSe
 	vars := mux.Vars(r)
 	ns := vars["namespace"]
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	peers, err := node.doDirList(ctx, ns)
@@ -198,7 +198,7 @@ func (node *Node) httpDirListImpl(w http.ResponseWriter, r *http.Request, inclSe
 // GET /dir/listns
 // List namespaces known to the directory
 func (node *Node) httpDirListNS(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	nss, err := node.doDirListNS(ctx)
