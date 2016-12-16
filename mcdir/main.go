@@ -33,9 +33,7 @@ type PeerRecord struct {
 func (dir *Directory) registerHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("directory/register: new stream from %s at %s", pid.Pretty(), paddr.String())
+	pid := mc.LogStreamHandler(s)
 
 	var req pb.RegisterPeer
 	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
@@ -73,9 +71,7 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("directory/lookup: new stream from %s at %s", pid.Pretty(), paddr.String())
+	pid := mc.LogStreamHandler(s)
 
 	var req pb.LookupPeerRequest
 	var res pb.LookupPeerResponse
@@ -115,9 +111,7 @@ func (dir *Directory) lookupHandler(s p2p_net.Stream) {
 func (dir *Directory) listHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("directory/list: new stream from %s at %s", pid.Pretty(), paddr.String())
+	mc.LogStreamHandler(s)
 
 	var req pb.ListPeersRequest
 	var res pb.ListPeersResponse
@@ -145,9 +139,7 @@ func (dir *Directory) listHandler(s p2p_net.Stream) {
 func (dir *Directory) listnsHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("directory/listns: new stream from %s at %s", pid.Pretty(), paddr.String())
+	mc.LogStreamHandler(s)
 
 	var req pb.ListNamespacesRequest
 	var res pb.ListNamespacesResponse

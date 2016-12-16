@@ -6,6 +6,7 @@ import (
 	"fmt"
 	p2p_host "github.com/libp2p/go-libp2p-host"
 	p2p_metrics "github.com/libp2p/go-libp2p-metrics"
+	p2p_net "github.com/libp2p/go-libp2p-net"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	p2p_swarm "github.com/libp2p/go-libp2p-swarm"
@@ -96,6 +97,15 @@ func ParseHandleId(str string) (empty p2p_pstore.PeerInfo, err error) {
 	}
 
 	return p2p_pstore.PeerInfo{ID: pid}, nil
+}
+
+// Logs an incoming stream and returns the remote peer ID
+func LogStreamHandler(s p2p_net.Stream) p2p_peer.ID {
+	proto := s.Protocol()
+	paddr := s.Conn().RemoteMultiaddr()
+	pid := s.Conn().RemotePeer()
+	log.Printf("New stream: %s from %s/p2p/%s", proto, paddr.String(), pid.Pretty())
+	return pid
 }
 
 // re-export this option to avoid basic host interface leakage

@@ -18,9 +18,7 @@ import (
 func (node *Node) pingHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("node/ping: new stream from %s at %s", pid.Pretty(), paddr.String())
+	pid := mc.LogStreamHandler(s)
 
 	var ping pb.Ping
 	var pong pb.Pong
@@ -45,9 +43,7 @@ func (node *Node) pingHandler(s p2p_net.Stream) {
 func (node *Node) idHandler(s p2p_net.Stream) {
 	defer s.Close()
 
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("node/id: new stream from %s at %s", pid.Pretty(), paddr.String())
+	mc.LogStreamHandler(s)
 
 	var req pb.NodeInfoRequest
 	var res pb.NodeInfo
@@ -68,9 +64,8 @@ func (node *Node) idHandler(s p2p_net.Stream) {
 
 func (node *Node) queryHandler(s p2p_net.Stream) {
 	defer s.Close()
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("node/query: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	pid := mc.LogStreamHandler(s)
 
 	ctx, cancel := context.WithCancel(node.netCtx)
 	defer cancel()
@@ -96,7 +91,7 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 		case map[string]interface{}:
 			cv, err := mc.CompoundValue(val)
 			if err != nil {
-				log.Printf("node/query: %s", err.Error())
+				log.Printf("node/query: error constructing value: %s", err.Error())
 				writeError(err)
 				return err
 			}
@@ -107,7 +102,7 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 		default:
 			sv, err := mc.SimpleValue(val)
 			if err != nil {
-				log.Printf("node/query: %s", err.Error())
+				log.Printf("node/query: error constructing value: %s", err.Error())
 				writeError(err)
 				return err
 			}
@@ -162,9 +157,8 @@ func (node *Node) queryHandler(s p2p_net.Stream) {
 
 func (node *Node) dataHandler(s p2p_net.Stream) {
 	defer s.Close()
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("node/data: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	pid := mc.LogStreamHandler(s)
 
 	var req pb.DataRequest
 	var res pb.DataResult
@@ -227,9 +221,8 @@ func (node *Node) dataHandler(s p2p_net.Stream) {
 
 func (node *Node) pushHandler(s p2p_net.Stream) {
 	defer s.Close()
-	pid := s.Conn().RemotePeer()
-	paddr := s.Conn().RemoteMultiaddr()
-	log.Printf("node/push: new stream from %s at %s", pid.Pretty(), paddr.String())
+
+	pid := mc.LogStreamHandler(s)
 
 	var err error
 	var req pb.PushRequest
