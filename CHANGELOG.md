@@ -1,3 +1,14 @@
+## 19/12/2016: concat-v1.4
+- Directory extensions for namespace listing [[PR #101]](https://github.com/mediachain/concat/pull/101)
+- Multiple directories [[PR #102]](https://github.com/mediachain/concat/pull/102)
+- Batch object retrieval api [[PR #100]](https://github.com/mediachain/concat/pull/100)
+- Misc fixes and debugging
+  - Fix build issues with gorocksdb [[PR #96]](https://github.com/mediachain/concat/pull/96)
+  - Net connection api, consistent handle formatting [[PR #97]](https://github.com/mediachain/concat/pull/97)
+  - Improved logging [[PR #103]](https://github.com/mediachain/concat/pull/103)
+  - Fix ticker lick in go-libp2p-kad-dht [[PR #104]](https://github.com/mediachain/concat/pull/104)
+  - Tune directory lookup timeouts for timely dht lookup fallback on directory failures [[PR #105]](https://github.com/mediachain/concat/pull/105)
+
 ## 6/12/2016: concat-v1.3.1
 - Bug fix: crash when setting auth rules [[Issue #93]](https://github.com/mediachain/concat/issues/93)
 
