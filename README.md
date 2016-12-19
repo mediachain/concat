@@ -88,10 +88,12 @@ $ mcclient status
 offline
 ```
 
-At this point you should designate a directory for looking up peers:
+At this point you should designate some directories for looking up peers:
 ```
-$ mcclient config dir /ip4/52.7.126.237/tcp/9000/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6
-set directory to /ip4/52.7.126.237/tcp/9000/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6
+$ mcclient config dir /ip4/52.7.126.237/tcp/9000/p2p/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6 /ip4/52.45.239.4/tcp/9000/p2p/QmWxJAK2ZXRmEi3ozWXi5jm9y4RmHhJdqJNv7sobFQEpK2
+Set 2 directory servers:
+/ip4/52.7.126.237/tcp/9000/p2p/QmSdJVceFki4rDbcSrW7JTJZgU9so25Ko7oKHE97mGmkU6
+/ip4/52.45.239.4/tcp/9000/p2p/QmWxJAK2ZXRmEi3ozWXi5jm9y4RmHhJdqJNv7sobFQEpK2
 ```
 
 And your node is ready to go online:
@@ -378,7 +380,8 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /push/{peerId}` -- issue a local query and push the resulting statements to a remote peer.
 * `POST /delete` -- delete statements matching this MCQL DELETE query
 * `POST /data/put` -- add a batch of data objects to datastore
-* `GET /data/get/{objectId}` -- get an object from the datastore
+* `POST /data/get` -- get a batch of objects from the datastore
+* `GET /data/get/{objectId}` -- get a single object from the datastore; 404 semantics
 * `POST /data/merge/{peerId}` -- merge raw data objects from peer
 * `POST /data/gc` -- garbage collect the datastore; deletes objects unreferenced by any statement
 * `POST /data/compact` -- compact the datastore
@@ -388,11 +391,15 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /status/{state}` -- control network state (online/offline/public)
 * `GET /auth` -- retrieve all push authorization rules
 * `GET/POST /auth/{peerId}` -- retrieve/grant/revoke push authorization to a peer
-* `GET/POST /config/dir` -- retrieve/set the configured directory
+* `GET/POST /config/dir` -- retrieve/set configured directories
 * `GET/POST /config/nat` -- retrieve/set NAT setting
 * `GET/POST /config/info` -- retrieve/set info string
-* `GET /dir/list` -- list known peers
-* `GET /net/addr` -- list known addresses
+* `GET /dir/list` -- list all peers registered with the directory
+* `GET /dir/list/{namespace}` -- list peers providing namespace in the directory
+* `GET /dir/listns` -- list namespaces in the directory
+* `GET /net/addr` -- list self addresses
+* `GET /net/addr/{peerId}` -- list known addresses for peer
+* `GET /net/conns` -- list active peer connections
 * `GET /net/lookup/{peerId}` -- lookup a peer address in the network
 * `POST /shutdown` -- shutdown the node
 
