@@ -375,7 +375,7 @@ func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_
 		goto lookup_dht
 	}
 
-	dirctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	dirctx, cancel = context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	pinfo, err = node.doDirLookup(dirctx, pid)
