@@ -53,7 +53,7 @@ func (sdb *SQLDB) Put(stmt *pb.Statement) error {
 	}
 
 	xstmt = tx.Stmt(sdb.insertStmtRefs)
-	for _, wki := range mcq.StatementRefs(stmt) {
+	for wki, _ := range mcq.StatementRefs(stmt) {
 		_, err = xstmt.Exec(stmt.Id, wki)
 		if err != nil {
 			tx.Rollback()
@@ -96,7 +96,7 @@ func (sdb *SQLDB) PutBatch(stmts []*pb.Statement) error {
 			return err
 		}
 
-		for _, wki := range mcq.StatementRefs(stmt) {
+		for wki, _ := range mcq.StatementRefs(stmt) {
 			_, err = insertRefs.Exec(stmt.Id, wki)
 			if err != nil {
 				tx.Rollback()
@@ -470,7 +470,7 @@ func (sdb *SQLiteDB) MergeBatch(stmts []*pb.Statement) (count int, err error) {
 			return 0, err
 		}
 
-		for _, wki := range mcq.StatementRefs(stmt) {
+		for wki, _ := range mcq.StatementRefs(stmt) {
 			_, err = insertRefs.Exec(stmt.Id, wki)
 			if err != nil {
 				tx.Rollback()

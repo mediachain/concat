@@ -4,10 +4,10 @@ import (
 	pb "github.com/mediachain/concat/proto"
 )
 
-func StatementRefs(stmt *pb.Statement) []string {
+func StatementRefs(stmt *pb.Statement) StatementRefSet {
 	refs := makeStatementRefSet()
 	refs.mergeStatement(stmt)
-	return refs.toList()
+	return refs
 }
 
 type StatementRefSet map[string]bool
@@ -47,7 +47,7 @@ func (refs StatementRefSet) mergeEnvelope(stmt *pb.EnvelopeStatement) {
 	}
 }
 
-func (refs StatementRefSet) toList() []string {
+func (refs StatementRefSet) List() []string {
 	lst := make([]string, len(refs))
 	x := 0
 	for wki, _ := range refs {
