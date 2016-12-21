@@ -1243,7 +1243,7 @@ func insertStmt(db *sql.DB, stmt *pb.Statement) error {
 	// source = publisher only for simple statements
 	_, err = db.Exec("INSERT INTO Envelope VALUES (NULL,?, ?, ?, ?, ?)", stmt.Id, stmt.Namespace, stmt.Publisher, stmt.Publisher, stmt.Timestamp)
 
-	for _, wki := range StatementRefs(stmt) {
+	for wki, _ := range StatementRefs(stmt) {
 		_, err = db.Exec("INSERT INTO Refs VALUES (?, ?)", stmt.Id, wki)
 		if err != nil {
 			return err

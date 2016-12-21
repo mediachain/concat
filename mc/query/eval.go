@@ -129,7 +129,7 @@ var rangeCriteriaFilterSelect = map[string]RangeCriteriaFilterSelect{
 	"counter":   counterCriteriaFilter}
 
 func wkiCriteriaFilter(stmt *pb.Statement) []string {
-	return StatementRefs(stmt)
+	return StatementRefs(stmt).List()
 }
 
 func indexCriteriaContains(keys []string, val string) bool {
