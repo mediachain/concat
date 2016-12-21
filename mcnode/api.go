@@ -122,10 +122,7 @@ func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second) // give the dht more time
-	defer cancel()
-
-	pinfo, err := node.doLookup(ctx, pid)
+	pinfo, err := node.doLookup(r.Context(), pid)
 	if err != nil {
 		apiNetError(w, err)
 		return
