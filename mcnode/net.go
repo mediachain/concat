@@ -363,50 +363,28 @@ func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_psto
 	return
 }
 
-func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
+func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
 	if node.status == StatusOffline {
-		return pinfo, NodeOffline
+		return empty, NodeOffline
 	}
 
-	var dirctx context.Context
-	var cancel context.CancelFunc
+	dirs := node.dir
+	workers := len(dirs) + 1
+	ch := make(chan interface{}, workers)
 
-	if len(node.dir) == 0 {
+	var dirctx, dhtctx context.Context
+	var dircancel, dhtcancel context.CancelFunc
+
+	if len(dirs) == 0 {
 		goto lookup_dht
 	}
 
-	dirctx, cancel = context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	dirctx, dircancel = context.WithTimeout(ctx, 5*time.Second)
+	defer dircancel()
 
-	pinfo, err = node.doDirLookup(dirctx, pid)
-	if err == nil {
-		return
-	}
-
-	if err != UnknownPeer {
-		log.Printf("Directory lookup error: %s", err.Error())
-	}
-
-lookup_dht:
-	return node.dht.Lookup(ctx, pid)
-}
-
-// Directory client
-func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	dirs := node.dir
-
-	switch len(dirs) {
-	case 0:
-		return empty, NoDirectory
-	case 1:
-		return node.doDirLookupImpl(ctx, dirs[0], pid)
-	}
-
-	// parallel lookup, first one to resolve wins
-	ch := make(chan interface{}, len(dirs))
 	for _, dir := range dirs {
 		go func(dir p2p_pstore.PeerInfo) {
-			pinfo, err := node.doDirLookupImpl(ctx, dir, pid)
+			pinfo, err := node.doDirLookupImpl(dirctx, dir, pid)
 			if err == nil {
 				ch <- pinfo
 			} else {
@@ -415,9 +393,22 @@ func (node *Node) doDirLookup(ctx context.Context, pid p2p_peer.ID) (empty p2p_p
 		}(dir)
 	}
 
+lookup_dht:
+	dhtctx, dhtcancel = context.WithTimeout(ctx, 30*time.Second)
+	defer dhtcancel()
+
+	go func() {
+		pinfo, err := node.dht.Lookup(dhtctx, pid)
+		if err == nil {
+			ch <- pinfo
+		} else {
+			ch <- err
+		}
+	}()
+
 	errcount := 0
 loop:
-	for x, xlen := 0, len(dirs); x < xlen; x++ {
+	for x := 0; x < workers; x++ {
 		select {
 		case res := <-ch:
 			switch res := res.(type) {
@@ -426,31 +417,27 @@ loop:
 
 			case error:
 				if res != UnknownPeer {
-					log.Printf("Directory error: %s", res.Error())
+					log.Printf("Peer lookup error: %s", res.Error())
 					errcount++
 				}
 
 			default:
-				log.Printf("doDirLookup: unexpected result type: %T", res)
+				log.Printf("doLookupImpl: unexpected result type: %T", res)
 				errcount++
 			}
 
 		case <-ctx.Done():
-			err = ctx.Err()
 			break loop
 		}
 	}
 
 	// we didn't resolve, but what kind of error is it?
-	if errcount < len(dirs) {
-		// not all directories failed, so unless the context was done,
-		// the peer is considered unknown
-		if err == nil {
-			err = UnknownPeer
-		}
+	if errcount < workers {
+		// not all workers failed, or our context expired; we didn't find the peer
+		err = UnknownPeer
 	} else {
-		// all directories failed, signal error
-		err = DirectoryError
+		// all workers failed, signal error
+		err = LookupError
 	}
 
 	return
