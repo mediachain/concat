@@ -61,7 +61,7 @@ func (node *Node) httpRemoteId(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	ninfo, err := node.doRemoteId(ctx, pid)
@@ -122,7 +122,7 @@ func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second) // give the dht more time
 	defer cancel()
 
 	pinfo, err := node.doLookup(ctx, pid)
@@ -148,7 +148,7 @@ func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	err = node.doPing(ctx, pid)
