@@ -5,23 +5,9 @@ import (
 )
 
 func StatementRefs(stmt *pb.Statement) []string {
-	switch body := stmt.Body.Body.(type) {
-	case *pb.StatementBody_Simple:
-		return body.Simple.Refs
-
-	case *pb.StatementBody_Compound:
-		refs := makeStatementRefSet()
-		refs.mergeCompound(body.Compound)
-		return refs.toList()
-
-	case *pb.StatementBody_Envelope:
-		refs := makeStatementRefSet()
-		refs.mergeEnvelope(body.Envelope)
-		return refs.toList()
-
-	default:
-		return nil
-	}
+	refs := makeStatementRefSet()
+	refs.mergeStatement(stmt)
+	return refs.toList()
 }
 
 type StatementRefSet map[string]bool
