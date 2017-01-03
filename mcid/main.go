@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	ggproto "github.com/gogo/protobuf/proto"
 	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	mc "github.com/mediachain/concat/mc"
+	pb "github.com/mediachain/concat/proto"
 	kp "gopkg.in/alecthomas/kingpin.v2"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -20,7 +23,7 @@ func main() {
 
 		signCmd      = kp.Command("sign", "sign a manifest")
 		signEntity   = signCmd.Arg("entity", "entity id").Required().String()
-		signManifest = signCmd.Arg("manifest", "manifest json file").Required().ExistingFile()
+		signManifest = signCmd.Arg("manifest", "manifest json file").Required().File()
 
 		verifyCmd      = kp.Command("verify", "verify a manifest")
 		verifyManifest = verifyCmd.Arg("manifest", "manifest json file").Required().ExistingFile()
@@ -59,8 +62,45 @@ func doId(home string) {
 	json.NewEncoder(os.Stdout).Encode(PublicId{id, bytes})
 }
 
-func doSign(home string, entity string, manifest string) {
-	fmt.Printf("IMPLEMENT ME: doSign %s %s %s\n", home, entity, manifest)
+func doSign(home string, entity string, mf *os.File) {
+	var manifest pb.Manifest
+	var manifestBody pb.ManifestBody
+
+	err := json.NewDecoder(mf).Decode(&manifestBody)
+	if err != nil {
+		log.Fatalf("Error decoding manifest body: %s", err.Error())
+	}
+
+	privk, err := getPrivateKey(home)
+	if err != nil {
+		log.Fatalf("Error retrieving private key: %s", err.Error())
+	}
+
+	pubk := privk.GetPublic()
+	pbytes, err := pubk.Bytes()
+	if err != nil {
+		log.Fatalf("Error marshalling public key: %s", err.Error())
+	}
+	id := b58.Encode(mc.Hash(pbytes))
+
+	manifest.Entity = entity
+	manifest.KeyId = id
+	manifest.Body = &manifestBody
+	manifest.Timestamp = time.Now().Unix()
+
+	bytes, err := ggproto.Marshal(&manifest)
+	if err != nil {
+		log.Fatalf("Error marshalling manifest: %s", err.Error())
+	}
+
+	sig, err := privk.Sign(bytes)
+	if err != nil {
+		log.Fatalf("Error signing manifest: %s", err.Error())
+	}
+
+	manifest.Signature = sig
+
+	json.NewEncoder(os.Stdout).Encode(&manifest)
 }
 
 func doVerify(home string, manifest string) {
