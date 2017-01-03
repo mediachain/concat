@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
 	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
@@ -104,7 +103,7 @@ func doSign(home string, entity string, mf *os.File) {
 }
 
 func doVerify(home string, manifest string) {
-	fmt.Printf("IMPLEMENT ME: doVerify %s %s\n", home, manifest)
+	log.Fatalf("IMPLEMENT ME: doVerify %s %s\n", home, manifest)
 }
 
 func getPublicKey(home string) (p2p_crypto.PubKey, error) {
