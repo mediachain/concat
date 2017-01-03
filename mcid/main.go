@@ -1,15 +1,22 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	b58 "github.com/jbenet/go-base58"
+	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
+	mc "github.com/mediachain/concat/mc"
 	kp "gopkg.in/alecthomas/kingpin.v2"
+	"log"
+	"os"
 )
 
 func main() {
 	var (
 		home = kp.Flag("home", "mcid home directory").Short('d').Default("~/.mediachain/mcid").String()
 
-		_ = kp.Command("id", "show your public identity; generates a new key pair if it doesn't exist") // idCmd declared but not used
+		_ = kp.Command("id", "show your public identity; generates a new key pair if it doesn't already exist.") // idCmd declared but not used
 
 		signCmd      = kp.Command("sign", "sign a manifest")
 		signEntity   = signCmd.Arg("entity", "entity id").Required().String()
@@ -31,8 +38,25 @@ func main() {
 	}
 }
 
+type PublicId struct {
+	KeyId string `json:"keyId"`
+	Key   []byte `json:"key"`
+}
+
 func doId(home string) {
-	fmt.Printf("IMPLEMENT ME: doId %s\n", home)
+	pubk, err := getPublicKey(home)
+	if err != nil {
+		log.Fatalf("Error retrieving public key: %s", err.Error())
+	}
+
+	bytes, err := pubk.Bytes()
+	if err != nil {
+		log.Fatalf("Error marshalling public key: %s", err.Error())
+	}
+
+	id := b58.Encode(mc.Hash(bytes))
+
+	json.NewEncoder(os.Stdout).Encode(PublicId{id, bytes})
 }
 
 func doSign(home string, entity string, manifest string) {
@@ -41,4 +65,12 @@ func doSign(home string, entity string, manifest string) {
 
 func doVerify(home string, manifest string) {
 	fmt.Printf("IMPLEMENT ME: doVerify %s %s\n", home, manifest)
+}
+
+func getPublicKey(home string) (p2p_crypto.PubKey, error) {
+	return nil, errors.New("IMPLEMENT ME: getPublicKey")
+}
+
+func getPrivateKey(home string) (p2p_crypto.PrivKey, error) {
+	return nil, errors.New("IMPLEMENT ME: getPrivateKey")
 }
