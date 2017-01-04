@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	ggproto "github.com/gogo/protobuf/proto"
@@ -9,6 +10,8 @@ import (
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	homedir "github.com/mitchellh/go-homedir"
+	sbox "golang.org/x/crypto/nacl/secretbox"
+	scrypt "golang.org/x/crypto/scrypt"
 	kp "gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"log"
@@ -65,6 +68,18 @@ type PrivateId struct {
 type ScryptParams struct {
 	N, R, P int
 }
+
+// default scrypt parameters (2009): N=16384, r=8, p=1
+// still current; see https://github.com/Tarsnap/scrypt/issues/19
+const (
+	ScryptN = 16384
+	ScryptR = 8
+	ScryptP = 1
+)
+
+var (
+	DecryptionError = errors.New("Private key decryption failed")
+)
 
 // ops
 func doId(home string) {
@@ -205,9 +220,77 @@ func getPrivateKey(priv PrivateId) (p2p_crypto.PrivKey, error) {
 //  key derivation with scrypt
 //  encryption with nacl secretbox
 func encryptPrivateId(priv *PrivateId, data []byte) error {
-	return errors.New("IMPLEMENT ME: encryptPrivateId")
+	var (
+		salt  [16]byte
+		nonce [24]byte
+		key   [32]byte
+	)
+
+	_, err := rand.Read(salt[:])
+	if err != nil {
+		return err
+	}
+
+	_, err = rand.Read(nonce[:])
+	if err != nil {
+		return err
+	}
+
+	pass, err := getEncryptionPass()
+	if err != nil {
+		return err
+	}
+
+	xkey, err := scrypt.Key(pass, salt[:], ScryptN, ScryptR, ScryptP, 32)
+	if err != nil {
+		return err
+	}
+
+	copy(key[:], xkey)
+
+	ctext := sbox.Seal(nil, data, &nonce, &key)
+
+	priv.Salt = salt[:]
+	priv.Nonce = nonce[:]
+	priv.Data = ctext[:]
+	priv.Params.N = ScryptN
+	priv.Params.R = ScryptR
+	priv.Params.P = ScryptP
+
+	return nil
 }
 
 func decryptPrivateId(priv PrivateId) ([]byte, error) {
-	return nil, errors.New("IMPLEMENT ME: decryptPrivateId")
+	var (
+		nonce [24]byte
+		key   [32]byte
+	)
+
+	pass, err := getDecryptionPass()
+	if err != nil {
+		return nil, err
+	}
+
+	xkey, err := scrypt.Key(pass, priv.Salt, priv.Params.N, priv.Params.R, priv.Params.P, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	copy(nonce[:], priv.Nonce)
+	copy(key[:], xkey)
+
+	bytes, ok := sbox.Open(nil, priv.Data, &nonce, &key)
+	if !ok {
+		return nil, DecryptionError
+	}
+
+	return bytes, nil
+}
+
+func getEncryptionPass() ([]byte, error) {
+	return nil, errors.New("IMPLEMENT ME: getEncryptionPass")
+}
+
+func getDecryptionPass() ([]byte, error) {
+	return nil, errors.New("IMPLEMENT ME: getDecryptionPass")
 }
