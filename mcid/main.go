@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
+	gopass "github.com/howeyc/gopass"
 	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	mc "github.com/mediachain/concat/mc"
@@ -288,9 +291,28 @@ func decryptPrivateId(priv PrivateId) ([]byte, error) {
 }
 
 func getEncryptionPass() ([]byte, error) {
-	return nil, errors.New("IMPLEMENT ME: getEncryptionPass")
+	for {
+		fmt.Printf("Enter passphrase: ")
+		pass1, err := gopass.GetPasswd()
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("Re-enter passphrase: ")
+		pass2, err := gopass.GetPasswd()
+		if err != nil {
+			return nil, err
+		}
+
+		if bytes.Equal(pass1, pass2) {
+			return pass1, nil
+		}
+
+		fmt.Println("Passphrases don't match")
+	}
 }
 
 func getDecryptionPass() ([]byte, error) {
-	return nil, errors.New("IMPLEMENT ME: getDecryptionPass")
+	fmt.Printf("Enter passphrase: ")
+	return gopass.GetPasswd()
 }
