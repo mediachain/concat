@@ -298,13 +298,13 @@ func decryptPrivateId(priv PrivateId) ([]byte, error) {
 
 func getEncryptionPass() ([]byte, error) {
 	for {
-		fmt.Printf("Enter passphrase: ")
+		fmt.Fprintf(os.Stderr, "Enter passphrase: ")
 		pass1, err := gopass.GetPasswd()
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Printf("Re-enter passphrase: ")
+		fmt.Fprintf(os.Stderr, "Re-enter passphrase: ")
 		pass2, err := gopass.GetPasswd()
 		if err != nil {
 			return nil, err
@@ -314,11 +314,11 @@ func getEncryptionPass() ([]byte, error) {
 			return pass1, nil
 		}
 
-		fmt.Println("Passphrases don't match")
+		fmt.Fprintln(os.Stderr, "Passphrases don't match")
 	}
 }
 
 func getDecryptionPass() ([]byte, error) {
-	fmt.Printf("Enter passphrase: ")
+	fmt.Fprintf(os.Stderr, "Enter passphrase: ")
 	return gopass.GetPasswd()
 }
