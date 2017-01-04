@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	ggproto "github.com/gogo/protobuf/proto"
-	b58 "github.com/jbenet/go-base58"
+	//b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
-	mc "github.com/mediachain/concat/mc"
+	//mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	homedir "github.com/mitchellh/go-homedir"
 	kp "gopkg.in/alecthomas/kingpin.v2"
@@ -43,25 +43,35 @@ func main() {
 	}
 }
 
-type PublicId struct {
-	KeyId string `json:"keyId"`
-	Key   []byte `json:"key"`
+type Identity struct {
+	Public  PublicId  `json:"public"`
+	Private PrivateId `json:"private"`
 }
 
+type PublicId struct {
+	KeyId string `json:"keyId"` // public key multihash
+	Key   []byte `json:"key"`   // marshalled public key
+}
+
+type PrivateId struct {
+	Params ScryptParams `json:"params"` // key derivation parameters
+	Salt   []byte       `json:"salt"`   // key derivation salt
+	Nonce  []byte       `json:"nonce"`  // encryption nonce
+	Data   []byte       `json:"data"`   // encrypted marshalled private key
+}
+
+type ScryptParams struct {
+	N, R, P int
+}
+
+// ops
 func doId(home string) {
-	pubk, err := getPublicKey(home)
+	id, err := getIdentity(home, true) // generate id if it doesn't already exist
 	if err != nil {
-		log.Fatalf("Error retrieving public key: %s", err.Error())
+		log.Fatalf("Error retrieving identity: %s", err.Error())
 	}
 
-	bytes, err := pubk.Bytes()
-	if err != nil {
-		log.Fatalf("Error marshalling public key: %s", err.Error())
-	}
-
-	kid := b58.Encode(mc.Hash(bytes))
-
-	json.NewEncoder(os.Stdout).Encode(PublicId{kid, bytes})
+	json.NewEncoder(os.Stdout).Encode(id.Public)
 }
 
 func doSign(home string, entity string, mf *os.File) {
@@ -73,20 +83,18 @@ func doSign(home string, entity string, mf *os.File) {
 		log.Fatalf("Error decoding manifest body: %s", err.Error())
 	}
 
-	privk, err := getPrivateKey(home)
+	id, err := getIdentity(home, false) // error if id doesn't exist
 	if err != nil {
-		log.Fatalf("Error retrieving private key: %s", err.Error())
+		log.Fatalf("Error retrieving identity: %s", err.Error())
 	}
 
-	pubk := privk.GetPublic()
-	pbytes, err := pubk.Bytes()
+	privk, err := getPrivateKey(id.Private)
 	if err != nil {
-		log.Fatalf("Error marshalling public key: %s", err.Error())
+		log.Fatalf("Error decrypting private key: %s", err.Error())
 	}
-	kid := b58.Encode(mc.Hash(pbytes))
 
 	manifest.Entity = entity
-	manifest.KeyId = kid
+	manifest.KeyId = id.Public.KeyId
 	manifest.Body = &manifestBody
 	manifest.Timestamp = time.Now().Unix()
 
@@ -109,20 +117,25 @@ func doVerify(home string, manifest string) {
 	log.Fatalf("IMPLEMENT ME: doVerify %s %s\n", home, manifest)
 }
 
-func getPublicKey(home string) (p2p_crypto.PubKey, error) {
-	_, err := homedir.Expand(home)
+// identity
+func getIdentity(home string, gen bool) (id Identity, err error) {
+	home, err = homedir.Expand(home)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	return nil, errors.New("IMPLEMENT ME: getPublicKey")
+	return id, errors.New("IMPLEMENT ME: getIdentity")
 }
 
-func getPrivateKey(home string) (p2p_crypto.PrivKey, error) {
-	_, err := homedir.Expand(home)
+func getPrivateKey(priv PrivateId) (p2p_crypto.PrivKey, error) {
+	bytes, err := decryptPrivateId(priv)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, errors.New("IMPLEMENT ME: getPrivateKey")
+	return p2p_crypto.UnmarshalPrivateKey(bytes)
+}
+
+func decryptPrivateId(priv PrivateId) ([]byte, error) {
+	return nil, errors.New("IMPLEMENT ME: decryptPrivateId")
 }
