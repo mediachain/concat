@@ -59,9 +59,9 @@ func doId(home string) {
 		log.Fatalf("Error marshalling public key: %s", err.Error())
 	}
 
-	id := b58.Encode(mc.Hash(bytes))
+	kid := b58.Encode(mc.Hash(bytes))
 
-	json.NewEncoder(os.Stdout).Encode(PublicId{id, bytes})
+	json.NewEncoder(os.Stdout).Encode(PublicId{kid, bytes})
 }
 
 func doSign(home string, entity string, mf *os.File) {
@@ -83,10 +83,10 @@ func doSign(home string, entity string, mf *os.File) {
 	if err != nil {
 		log.Fatalf("Error marshalling public key: %s", err.Error())
 	}
-	id := b58.Encode(mc.Hash(pbytes))
+	kid := b58.Encode(mc.Hash(pbytes))
 
 	manifest.Entity = entity
-	manifest.KeyId = id
+	manifest.KeyId = kid
 	manifest.Body = &manifestBody
 	manifest.Timestamp = time.Now().Unix()
 
