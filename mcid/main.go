@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	ggproto "github.com/gogo/protobuf/proto"
-	//b58 "github.com/jbenet/go-base58"
+	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
-	//mc "github.com/mediachain/concat/mc"
+	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
 	homedir "github.com/mitchellh/go-homedir"
 	kp "gopkg.in/alecthomas/kingpin.v2"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"time"
 )
 
 func main() {
-	log.SetFlags(0) // naked logs, it's interactive error output
+	log.SetFlags(0) // naked logs, it's interactive output
 
 	var (
 		home = kp.Flag("home", "mcid home directory").Short('d').Default("~/.mediachain/mcid").String()
@@ -118,13 +120,76 @@ func doVerify(home string, manifest string) {
 }
 
 // identity
-func getIdentity(home string, gen bool) (id Identity, err error) {
+func getIdentity(home string, genid bool) (id Identity, err error) {
 	home, err = homedir.Expand(home)
 	if err != nil {
 		return
 	}
 
-	return id, errors.New("IMPLEMENT ME: getIdentity")
+	idpath := path.Join(home, "identity.json")
+	_, err = os.Stat(idpath)
+	switch {
+	case os.IsNotExist(err):
+		if genid {
+			return generateIdentity(home, idpath)
+		}
+		fallthrough
+	case err != nil:
+		return
+
+	default:
+		return loadIdentity(idpath)
+	}
+}
+
+func generateIdentity(home, idpath string) (id Identity, err error) {
+	err = os.MkdirAll(home, 0755)
+	if err != nil {
+		return
+	}
+
+	log.Printf("Generating identity key pair")
+	privk, pubk, err := mc.GenerateECCKeyPair()
+	if err != nil {
+		return
+	}
+
+	pubbytes, err := pubk.Bytes()
+	if err != nil {
+		return
+	}
+	kid := b58.Encode(mc.Hash(pubbytes))
+
+	id.Public.KeyId = kid
+	id.Public.Key = pubbytes
+
+	privbytes, err := privk.Bytes()
+	if err != nil {
+		return
+	}
+
+	err = encryptPrivateId(&id.Private, privbytes)
+	if err != nil {
+		return
+	}
+
+	bytes, err := json.Marshal(&id)
+	if err != nil {
+		return
+	}
+
+	err = ioutil.WriteFile(idpath, bytes, 0600)
+	return
+}
+
+func loadIdentity(idpath string) (id Identity, err error) {
+	bytes, err := ioutil.ReadFile(idpath)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(bytes, &id)
+	return
 }
 
 func getPrivateKey(priv PrivateId) (p2p_crypto.PrivKey, error) {
@@ -134,6 +199,13 @@ func getPrivateKey(priv PrivateId) (p2p_crypto.PrivKey, error) {
 	}
 
 	return p2p_crypto.UnmarshalPrivateKey(bytes)
+}
+
+// private key encryption/decryption:
+//  key derivation with scrypt
+//  encryption with nacl secretbox
+func encryptPrivateId(priv *PrivateId, data []byte) error {
+	return errors.New("IMPLEMENT ME: encryptPrivateId")
 }
 
 func decryptPrivateId(priv PrivateId) ([]byte, error) {
