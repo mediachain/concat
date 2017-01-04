@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	jsonpb "github.com/gogo/protobuf/jsonpb"
 	ggproto "github.com/gogo/protobuf/proto"
 	gopass "github.com/howeyc/gopass"
 	b58 "github.com/jbenet/go-base58"
@@ -98,7 +99,7 @@ func doSign(home string, entity string, mf *os.File) {
 	var manifest pb.Manifest
 	var manifestBody pb.ManifestBody
 
-	err := json.NewDecoder(mf).Decode(&manifestBody)
+	err := jsonpb.Unmarshal(mf, &manifestBody)
 	if err != nil {
 		log.Fatalf("Error decoding manifest body: %s", err.Error())
 	}
@@ -130,7 +131,12 @@ func doSign(home string, entity string, mf *os.File) {
 
 	manifest.Signature = sig
 
-	json.NewEncoder(os.Stdout).Encode(&manifest)
+	marshaler := jsonpb.Marshaler{}
+	err = marshaler.Marshal(os.Stdout, &manifest)
+	if err != nil {
+		log.Fatalf("Error encoding manifest: %s", err.Error())
+	}
+	fmt.Println("")
 }
 
 func doVerify(home string, manifest string) {
