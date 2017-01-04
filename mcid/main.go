@@ -15,6 +15,8 @@ import (
 )
 
 func main() {
+	log.SetFlags(0) // naked logs, it's interactive error output
+
 	var (
 		home = kp.Flag("home", "mcid home directory").Short('d').Default("~/.mediachain/mcid").String()
 
