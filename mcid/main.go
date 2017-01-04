@@ -8,6 +8,7 @@ import (
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
+	homedir "github.com/mitchellh/go-homedir"
 	kp "gopkg.in/alecthomas/kingpin.v2"
 	"log"
 	"os"
@@ -109,9 +110,19 @@ func doVerify(home string, manifest string) {
 }
 
 func getPublicKey(home string) (p2p_crypto.PubKey, error) {
+	_, err := homedir.Expand(home)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, errors.New("IMPLEMENT ME: getPublicKey")
 }
 
 func getPrivateKey(home string) (p2p_crypto.PrivKey, error) {
+	_, err := homedir.Expand(home)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, errors.New("IMPLEMENT ME: getPrivateKey")
 }
