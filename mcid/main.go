@@ -37,7 +37,7 @@ func main() {
 		signManifest = signCmd.Arg("manifest", "manifest json file").Required().File()
 
 		verifyCmd      = kp.Command("verify", "verify a manifest")
-		verifyManifest = verifyCmd.Arg("manifest", "manifest json file").Required().ExistingFile()
+		verifyManifest = verifyCmd.Arg("manifest", "manifest json file").Required().File()
 	)
 
 	switch kp.Parse() {
@@ -139,8 +139,36 @@ func doSign(home string, entity string, mf *os.File) {
 	fmt.Println()
 }
 
-func doVerify(home string, manifest string) {
-	log.Fatalf("IMPLEMENT ME: doVerify %s %s\n", home, manifest)
+func doVerify(home string, mf *os.File) {
+	var manifest pb.Manifest
+
+	err := jsonpb.Unmarshal(mf, &manifest)
+	if err != nil {
+		log.Fatalf("Error decoding manifest: %s", err.Error())
+	}
+
+	pubk, err := mc.LookupEntityKey(manifest.Entity, manifest.KeyId)
+	if err != nil {
+		log.Fatalf("Error looking up entity key: %s", err.Error())
+	}
+
+	sig := manifest.Signature
+	manifest.Signature = nil
+
+	bytes, err := ggproto.Marshal(&manifest)
+	if err != nil {
+		log.Fatalf("Error marshalling manifest: %s", err.Error())
+	}
+
+	ok, err := pubk.Verify(bytes, sig)
+	switch {
+	case err != nil:
+		log.Fatalf("Error verifying manifest: %s", err.Error())
+	case !ok:
+		log.Fatalf("Manifest verifcation failed")
+	default:
+		fmt.Println("OK")
+	}
 }
 
 // identity
