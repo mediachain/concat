@@ -165,7 +165,7 @@ func doVerify(home string, mf *os.File) {
 	case err != nil:
 		log.Fatalf("Error verifying manifest: %s", err.Error())
 	case !ok:
-		log.Fatalf("Manifest verifcation failed")
+		log.Fatalf("Manifest verification failed")
 	default:
 		fmt.Println("OK")
 	}
