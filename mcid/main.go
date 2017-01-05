@@ -261,7 +261,7 @@ func encryptPrivateId(priv *PrivateId, data []byte) error {
 
 	priv.Salt = salt[:]
 	priv.Nonce = nonce[:]
-	priv.Data = ctext[:]
+	priv.Data = ctext
 	priv.Params.N = ScryptN
 	priv.Params.R = ScryptR
 	priv.Params.P = ScryptP
