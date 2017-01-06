@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	mc.SetLibp2pClient("mcnode")
+
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
 	bindaddr := flag.String("b", "127.0.0.1", "Peer control bind address [http]")
