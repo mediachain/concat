@@ -50,7 +50,7 @@ func MakePeerIdentity(home string) (empty PeerIdentity, err error) {
 func generatePeerIdentity(kpath string) (empty PeerIdentity, err error) {
 	log.Printf("Generating new node identity")
 	// RSA keys for interop with js
-	privk, pubk, err := generateRSAKeyPair()
+	privk, pubk, err := GenerateRSAKeyPair()
 	if err != nil {
 		return
 	}
@@ -102,7 +102,7 @@ func MakePublisherIdentity(home string) (empty PublisherIdentity, err error) {
 func generatePublisherIdentity(kpath string) (empty PublisherIdentity, err error) {
 	log.Printf("Generating new publisher identity")
 
-	privk, pubk, err := generateECCKeyPair()
+	privk, pubk, err := GenerateECCKeyPair()
 	if err != nil {
 		return
 	}
@@ -173,10 +173,10 @@ func saveKey(privk p2p_crypto.PrivKey, kpath string) error {
 	return ioutil.WriteFile(kpath, bytes, 0600)
 }
 
-func generateRSAKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
+func GenerateRSAKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
 	return p2p_crypto.GenerateKeyPair(p2p_crypto.RSA, 2048)
 }
 
-func generateECCKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
+func GenerateECCKeyPair() (p2p_crypto.PrivKey, p2p_crypto.PubKey, error) {
 	return p2p_crypto.GenerateKeyPair(p2p_crypto.Ed25519, 0)
 }

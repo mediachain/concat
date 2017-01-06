@@ -7,6 +7,7 @@ Package proto is a generated protocol buffer package.
 
 It is generated from these files:
 	dir.proto
+	manifest.proto
 	node.proto
 	stmt.proto
 
@@ -20,6 +21,9 @@ It has these top-level messages:
 	ListPeersResponse
 	ListNamespacesRequest
 	ListNamespacesResponse
+	Manifest
+	ManifestBody
+	NodeManifest
 	StreamEnd
 	StreamError
 	NodeInfoRequest
