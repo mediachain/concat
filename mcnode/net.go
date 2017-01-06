@@ -348,6 +348,64 @@ func (node *Node) netPing(ctx context.Context, pid p2p_peer.ID) (dt time.Duratio
 	}
 }
 
+func (node *Node) netIdentify(ctx context.Context, pid p2p_peer.ID) (nid NetIdentify, err error) {
+	if node.status == StatusOffline {
+		return nid, NodeOffline
+	}
+
+	if node.host.Network().Connectedness(pid) == p2p_net.Connected {
+		goto identify
+	}
+
+	err = node.doConnectPeer(ctx, pid)
+	if err != nil {
+		return
+	}
+
+	// give libp2p some time to populate the peerstore
+	time.Sleep(1 * time.Second)
+
+identify:
+	pstore := node.host.Peerstore()
+	nid.ID = pid.Pretty()
+
+	pubk := pstore.PubKey(pid)
+	if pubk != nil {
+		bytes, err := pubk.Bytes()
+		if err != nil {
+			return nid, err
+		}
+		nid.PublicKey = bytes
+	}
+
+	maddrs := pstore.Addrs(pid)
+	saddrs := make([]string, len(maddrs))
+	for x, maddr := range maddrs {
+		saddrs[x] = maddr.String()
+	}
+	nid.Addresses = saddrs
+
+	cver, err := pstore.Get(pid, "AgentVersion")
+	cvers, ok := cver.(string)
+	if ok {
+		nid.AgentVersion = cvers
+	}
+
+	pver, err := pstore.Get(pid, "ProtocolVersion")
+	pvers, ok := pver.(string)
+	if ok {
+		nid.ProtocolVersion = pvers
+	}
+
+	protos, err := pstore.GetProtocols(pid)
+	if err != nil {
+		return
+	}
+	nid.Protocols = protos
+
+	return
+}
+
 // Connectivity
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	err := node.doConnectPeer(ctx, pid)

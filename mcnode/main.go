@@ -106,6 +106,7 @@ func main() {
 	router.HandleFunc("/net/addr/{peerId}", node.httpNetPeerAddr)
 	router.HandleFunc("/net/conns", node.httpNetConns)
 	router.HandleFunc("/net/lookup/{peerId}", node.httpNetLookup)
+	router.HandleFunc("/net/identify/{peerId}", node.httpNetIdentify)
 	router.HandleFunc("/net/ping/{peerId}", node.httpNetPing)
 	router.HandleFunc("/shutdown", node.httpShutdown)
 

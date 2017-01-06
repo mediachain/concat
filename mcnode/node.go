@@ -91,6 +91,15 @@ type NodeInfo struct {
 	Info      string `json:"info"`
 }
 
+type NetIdentify struct {
+	ID              string
+	PublicKey       []byte
+	Addresses       []string
+	AgentVersion    string
+	ProtocolVersion string
+	Protocols       []string
+}
+
 var (
 	UnknownStatement = errors.New("Unknown statement")
 	UnknownObject    = errors.New("Unknown Object")
