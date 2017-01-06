@@ -16,6 +16,7 @@ import (
 )
 
 func (node *Node) pingHandler(s p2p_net.Stream) {
+	// DEPRECATED in favor of libp2p.PingService
 	defer s.Close()
 
 	pid := mc.LogStreamHandler(s)
@@ -359,6 +360,7 @@ func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeIn
 }
 
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {
+	// DEPRECATED in favor of libp2p.PingService; see netPing
 	s, err := node.doConnect(ctx, pid, "/mediachain/node/ping")
 	if err != nil {
 		return err

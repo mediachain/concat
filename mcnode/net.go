@@ -327,6 +327,27 @@ func (node *Node) netConns() []p2p_pstore.PeerInfo {
 	return peers
 }
 
+func (node *Node) netPing(ctx context.Context, pid p2p_peer.ID) (dt time.Duration, err error) {
+	err = node.doConnectPeer(ctx, pid)
+	if err != nil {
+		return
+	}
+
+	ch, err := node.ping.Ping(ctx, pid)
+	if err != nil {
+		return
+	}
+
+	select {
+	case <-ctx.Done():
+		err = ctx.Err()
+		return
+
+	case dt = <-ch:
+		return
+	}
+}
+
 // Connectivity
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	err := node.doConnectPeer(ctx, pid)

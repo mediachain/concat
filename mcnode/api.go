@@ -133,9 +133,33 @@ func (node *Node) httpNetLookup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /net/ping/{peerId}
+// Ping a peer using the ipfs ping protocol
+func (node *Node) httpNetPing(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	dt, err := node.netPing(ctx, pid)
+	if err != nil {
+		apiNetError(w, err)
+		return
+	}
+
+	fmt.Fprintln(w, dt)
+}
+
 // GET /ping/{peerId}
 // Lookup a peer in the directory and ping it with the /mediachain/node/ping protocol.
 // The node must be online and a directory must have been configured.
+// DEPRECATED in favor of /net/ping
 func (node *Node) httpPing(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	peerId := vars["peerId"]
