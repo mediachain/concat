@@ -23,11 +23,15 @@ mkdir -p ${PWD}/dist
 if [ "$OS_NAME" == "linux" ]; then
   strip -o /tmp/mcnode ${GOPATH}/bin/mcnode
   strip -o /tmp/mcdir ${GOPATH}/bin/mcdir
+  strip -o /tmp/mcid ${GOPATH}/bin/mcid
   make_tarball mcnode /tmp
   make_tarball mcdir /tmp
+  make_tarball mcid /tmp
   make_tarball mcnode ${GOPATH}/bin -unstripped
   make_tarball mcdir ${GOPATH}/bin -unstripped
+  make_tarball mcid ${GOPATH}/bin -unstripped
 else
   make_tarball mcnode ${GOPATH}/bin
   make_tarball mcdir ${GOPATH}/bin
+  make_tarball mcid ${GOPATH}/bin
 fi
