@@ -7,6 +7,7 @@ import (
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	p2p_proto "github.com/libp2p/go-libp2p-protocol"
+	p2p_ping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
@@ -37,6 +38,7 @@ func (node *Node) goOffline() error {
 			log.Printf("Error closing host: %s", err.Error())
 		}
 		node.host = nil
+		node.ping = nil
 
 		node.status = StatusOffline
 		node.natCfg.Clear()
@@ -88,6 +90,8 @@ func (node *Node) _goOnline() error {
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
 	host.SetStreamHandler("/mediachain/node/push", node.pushHandler)
 
+	ping := p2p_ping.NewPingService(host)
+
 	dht := NewDHT(ctx, host)
 
 	err = dht.Bootstrap()
@@ -99,6 +103,7 @@ func (node *Node) _goOnline() error {
 	node.host = host
 	node.netCtx = ctx
 	node.netCancel = cancel
+	node.ping = ping
 	node.dht = dht
 
 	return nil
