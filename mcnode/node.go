@@ -10,6 +10,7 @@ import (
 	p2p_host "github.com/libp2p/go-libp2p-host"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
+	p2p_ping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	mc "github.com/mediachain/concat/mc"
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
@@ -33,6 +34,7 @@ type Node struct {
 	host      p2p_host.Host
 	netCtx    context.Context
 	netCancel context.CancelFunc
+	ping      *p2p_ping.PingService
 	dht       DHT
 	dir       []p2p_pstore.PeerInfo
 	natCfg    mc.NATConfig
@@ -87,6 +89,15 @@ type NodeInfo struct {
 	Peer      string `json:"peer"`
 	Publisher string `json:"publisher"`
 	Info      string `json:"info"`
+}
+
+type NetIdentify struct {
+	ID              string
+	PublicKey       []byte
+	Addresses       []string
+	AgentVersion    string
+	ProtocolVersion string
+	Protocols       []string
 }
 
 var (

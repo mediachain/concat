@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	mc.SetLibp2pClient("mcnode")
+
 	pport := flag.Int("l", 9001, "Peer listen port")
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
 	bindaddr := flag.String("b", "127.0.0.1", "Peer control bind address [http]")
@@ -104,6 +106,8 @@ func main() {
 	router.HandleFunc("/net/addr/{peerId}", node.httpNetPeerAddr)
 	router.HandleFunc("/net/conns", node.httpNetConns)
 	router.HandleFunc("/net/lookup/{peerId}", node.httpNetLookup)
+	router.HandleFunc("/net/identify/{peerId}", node.httpNetIdentify)
+	router.HandleFunc("/net/ping/{peerId}", node.httpNetPing)
 	router.HandleFunc("/shutdown", node.httpShutdown)
 
 	log.Printf("Serving client interface at %s", haddr)

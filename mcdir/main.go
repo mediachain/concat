@@ -267,6 +267,8 @@ func (dir *Directory) listNamespaces() []string {
 }
 
 func main() {
+	mc.SetLibp2pClient("mcdir")
+
 	port := flag.Int("l", 9000, "Listen port")
 	hdir := flag.String("d", "~/.mediachain/mcdir", "Directory home")
 	flag.Parse()
