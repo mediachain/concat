@@ -8,11 +8,11 @@ import (
 	"fmt"
 	jsonpb "github.com/gogo/protobuf/jsonpb"
 	ggproto "github.com/gogo/protobuf/proto"
+	gopass "github.com/howeyc/gopass"
 	b58 "github.com/jbenet/go-base58"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	mc "github.com/mediachain/concat/mc"
 	pb "github.com/mediachain/concat/proto"
-	gopass "github.com/mediachain/gopass"
 	homedir "github.com/mitchellh/go-homedir"
 	sbox "golang.org/x/crypto/nacl/secretbox"
 	scrypt "golang.org/x/crypto/scrypt"
@@ -326,14 +326,12 @@ func decryptPrivateId(priv PrivateId) ([]byte, error) {
 
 func getEncryptionPass() ([]byte, error) {
 	for {
-		fmt.Fprintf(os.Stderr, "Enter passphrase: ")
-		pass1, err := gopass.GetPasswdX(false, os.Stderr)
+		pass1, err := gopass.GetPasswdPrompt("Enter passphrase: ", false, os.Stdin, os.Stderr)
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Fprintf(os.Stderr, "Re-enter passphrase: ")
-		pass2, err := gopass.GetPasswdX(false, os.Stderr)
+		pass2, err := gopass.GetPasswdPrompt("Re-enter passphrase: ", false, os.Stdin, os.Stderr)
 		if err != nil {
 			return nil, err
 		}
@@ -347,6 +345,5 @@ func getEncryptionPass() ([]byte, error) {
 }
 
 func getDecryptionPass() ([]byte, error) {
-	fmt.Fprintf(os.Stderr, "Enter passphrase: ")
-	return gopass.GetPasswdX(false, os.Stderr)
+	return gopass.GetPasswdPrompt("Enter passphrase: ", false, os.Stdin, os.Stderr)
 }
