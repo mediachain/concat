@@ -98,6 +98,8 @@ func main() {
 	router.HandleFunc("/config/info", node.httpConfigInfo)
 	router.HandleFunc("/auth", node.httpAuth)
 	router.HandleFunc("/auth/{peerId}", node.httpAuthPeer)
+	router.HandleFunc("/manifest", node.httpManifest)
+	router.HandleFunc("/manifest/node", node.httpManifestNode)
 	router.HandleFunc("/dir/list", node.httpDirList)
 	router.HandleFunc("/dir/list/{namespace}", node.httpDirList)
 	router.HandleFunc("/dir/list/{namespace}/all", node.httpDirListAll)

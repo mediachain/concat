@@ -1060,6 +1060,32 @@ func (node *Node) httpAuthPeerSet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+// GET  /manifest
+// POST /manifest
+// Gets or sets the node's manifests
+func (node *Node) httpManifest(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpManifestGet, node.httpManifestSet)
+}
+
+func (node *Node) httpManifestGet(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (node *Node) httpManifestSet(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// GET /manifest/node
+// Produces a manifest body for this node; input for signing with mcid
+func (node *Node) httpManifestNode(w http.ResponseWriter, r *http.Request) {
+	mf := &pb.ManifestBody{&pb.ManifestBody_Node{&pb.NodeManifest{node.PeerIdentity.Pretty(), node.publisher.Pretty()}}}
+
+	err := json.NewEncoder(w).Encode(mf)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
 // POST /shutdown
 // shutdown the node
 func (node *Node) httpShutdown(w http.ResponseWriter, r *http.Request) {
