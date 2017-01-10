@@ -1068,11 +1068,44 @@ func (node *Node) httpManifest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) httpManifestGet(w http.ResponseWriter, r *http.Request) {
-
+	enc := json.NewEncoder(w)
+	for _, mf := range node.mfs {
+		err := enc.Encode(mf)
+		if err != nil {
+			log.Printf("Error writing response body: %s", err.Error())
+			return
+		}
+	}
 }
 
 func (node *Node) httpManifestSet(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	mfs := make([]*pb.Manifest, 0)
 
+loop:
+	for {
+		mf := new(pb.Manifest)
+		err := dec.Decode(mf)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			apiError(w, http.StatusBadRequest, err)
+			return
+		default:
+			mfs = append(mfs, mf)
+		}
+	}
+
+	node.mfs = mfs
+
+	err := node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
 }
 
 // GET /manifest/node
