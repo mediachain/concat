@@ -2,6 +2,7 @@ syntax = "proto3";
 package proto;
 
 import "stmt.proto";
+import "manifest.proto";
 
 // end of result stream marker
 message StreamEnd {}
@@ -18,6 +19,13 @@ message NodeInfo {
   string peer = 1;
   string publisher = 2;
   string info = 3;
+}
+
+// /mediachain/node/manifest
+message ManifestRequest {}
+
+message ManifestResponse {
+  repeated Manifest manifest = 1;
 }
 
 // /mediachain/node/ping

@@ -28,6 +28,8 @@ It has these top-level messages:
 	StreamError
 	NodeInfoRequest
 	NodeInfo
+	ManifestRequest
+	ManifestResponse
 	Ping
 	Pong
 	QueryRequest
