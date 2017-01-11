@@ -85,6 +85,7 @@ func (node *Node) _goOnline() error {
 	}
 
 	host.SetStreamHandler("/mediachain/node/id", node.idHandler)
+	host.SetStreamHandler("/mediachain/node/manifest", node.manifestHandler)
 	host.SetStreamHandler("/mediachain/node/ping", node.pingHandler)
 	host.SetStreamHandler("/mediachain/node/query", node.queryHandler)
 	host.SetStreamHandler("/mediachain/node/data", node.dataHandler)
