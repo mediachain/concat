@@ -1119,6 +1119,37 @@ func (node *Node) httpManifestNode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /manifest/{peerId}
+// Requests manifest from remote peer peerId
+func (node *Node) httpManifestPeer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	mfs, err := node.doRemoteManifest(ctx, pid)
+	if err != nil {
+		apiNetError(w, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+
+	for _, mf := range mfs {
+		err := enc.Encode(mf)
+		if err != nil {
+			log.Printf("Error writing response body: %s", err.Error())
+			return
+		}
+	}
+}
+
 // POST /shutdown
 // shutdown the node
 func (node *Node) httpShutdown(w http.ResponseWriter, r *http.Request) {
