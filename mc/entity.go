@@ -9,6 +9,7 @@ import (
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	multihash "github.com/multiformats/go-multihash"
 	"log"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -115,8 +116,48 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 	return nil, EntityKeyNotFound
 }
 
+func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
+	if !bsrx.Match([]byte(user)) {
+		return nil, MalformedEntityId
+	}
+
+	khash, err := multihash.FromB58String(keyId)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("https://%s.keybase.pub/mediachain.json", user)
+
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	switch {
+	case res.StatusCode == 404:
+		return nil, EntityKeyNotFound
+
+	case res.StatusCode != 200:
+		return nil, fmt.Errorf("keybase error: %d %s", res.StatusCode, res.Status)
+	}
+
+	var pub EntityId
+	err = json.NewDecoder(res.Body).Decode(&pub)
+	if err != nil {
+		return nil, err
+	}
+
+	if pub.KeyId != keyId {
+		return nil, EntityKeyNotFound
+	}
+
+	return unmarshalEntityKeyBytes(pub.Key, khash)
+}
+
 var idProviders = map[string]LookupKeyFunc{
 	"blockstack": lookupBlockstack,
+	"keybase":    lookupKeybase,
 }
 
 func unmarshalEntityKey(key string, khash multihash.Multihash) (p2p_crypto.PubKey, error) {
@@ -125,10 +166,14 @@ func unmarshalEntityKey(key string, khash multihash.Multihash) (p2p_crypto.PubKe
 		return nil, err
 	}
 
-	hash := Hash(data)
+	return unmarshalEntityKeyBytes(data, khash)
+}
+
+func unmarshalEntityKeyBytes(key []byte, khash multihash.Multihash) (p2p_crypto.PubKey, error) {
+	hash := Hash(key)
 	if !bytes.Equal(hash, khash) {
 		return nil, EntityKeyNotFound
 	}
 
-	return p2p_crypto.UnmarshalPublicKey(data)
+	return p2p_crypto.UnmarshalPublicKey(key)
 }
