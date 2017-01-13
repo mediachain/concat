@@ -1110,7 +1110,7 @@ loop:
 
 // GET /manifest/node
 // Produces a manifest body for this node; input for signing with mcid
-func (node *Node) httpManifestNode(w http.ResponseWriter, r *http.Request) {
+func (node *Node) httpManifestSelf(w http.ResponseWriter, r *http.Request) {
 	mf := &pb.ManifestBody{&pb.ManifestBody_Node{&pb.NodeManifest{node.PeerIdentity.Pretty(), node.publisher.Pretty()}}}
 
 	err := json.NewEncoder(w).Encode(mf)
