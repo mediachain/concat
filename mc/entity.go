@@ -20,6 +20,11 @@ var (
 	EntityKeyNotFound = errors.New("Entity key not found")
 )
 
+type EntityId struct {
+	KeyId string `json:"keyId"` // public key multihash
+	Key   []byte `json:"key"`   // marshalled public key
+}
+
 func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
 	ix := strings.Index(entity, ":")
 	if ix < 0 {
