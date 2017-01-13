@@ -189,7 +189,9 @@ func (node *Node) registerPeerImpl(ctx context.Context, dir p2p_pstore.PeerInfo)
 			ns := node.publicNamespaces()
 			pbpub.Namespaces = ns
 
-			msg := pb.RegisterPeer{&pbpi, &pbpub}
+			mfs := node.mfs
+
+			msg := pb.RegisterPeer{&pbpi, &pbpub, mfs}
 
 			err = w.WriteMsg(&msg)
 			if err != nil {
