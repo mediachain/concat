@@ -1,6 +1,8 @@
 syntax = "proto3";
 package proto;
 
+import "manifest.proto";
+
 message PeerInfo {
   string id = 1;                   // peer id
   repeated bytes addr = 2;         // peer multiaddrs
@@ -15,6 +17,7 @@ message PublisherInfo {
 message RegisterPeer {
   PeerInfo info = 1;
   PublisherInfo publisher = 2;     // optional (v1.4)
+  repeated Manifest manifest = 3;  // optional (v1.5)
 }
 
 // /mediachain/dir/lookup

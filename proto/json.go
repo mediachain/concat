@@ -11,10 +11,30 @@ func marshalJSON(m pb.Message) ([]byte, error) {
 	return []byte(str), err
 }
 
+func unmarshalJSON(data []byte, m pb.Message) error {
+	return jsonpb.UnmarshalString(string(data), m)
+}
+
 func (m *Statement) MarshalJSON() ([]byte, error) {
 	return marshalJSON(m)
 }
 
 func (m *StatementBody) MarshalJSON() ([]byte, error) {
 	return marshalJSON(m)
+}
+
+func (m *Manifest) MarshalJSON() ([]byte, error) {
+	return marshalJSON(m)
+}
+
+func (m *ManifestBody) MarshalJSON() ([]byte, error) {
+	return marshalJSON(m)
+}
+
+func (m *Manifest) UnmarshalJSON(data []byte) error {
+	return unmarshalJSON(data, m)
+}
+
+func (m *ManifestBody) UnmarshalJSON(data []byte) error {
+	return unmarshalJSON(data, m)
 }

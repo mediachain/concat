@@ -42,6 +42,7 @@ type Node struct {
 	db        StatementDB
 	ds        Datastore
 	auth      PeerAuth
+	mfs       []*pb.Manifest
 	mx        sync.Mutex
 	counter   int
 }
@@ -300,11 +301,12 @@ func (node *Node) openDS() error {
 
 // persistent configuration
 type NodeConfig struct {
-	Info string                 `json:"info,omitempty"`
-	NAT  string                 `json:"nat,omitempty"`
-	Dir  string                 `json:"dir,omitempty"` // backwards compatibility
-	Dirs []string               `json:"dirs,omitempty"`
-	Auth map[string]interface{} `json:"auth,omitempty"`
+	Info     string                 `json:"info,omitempty"`
+	NAT      string                 `json:"nat,omitempty"`
+	Dir      string                 `json:"dir,omitempty"` // backwards compatibility
+	Dirs     []string               `json:"dirs,omitempty"`
+	Auth     map[string]interface{} `json:"auth,omitempty"`
+	Manifest []*pb.Manifest         `json:"manifest,omitempty"`
 }
 
 func (node *Node) saveConfig() error {
@@ -319,6 +321,7 @@ func (node *Node) saveConfig() error {
 		cfg.Dirs = dirs
 	}
 	cfg.Auth = node.auth.toJSON()
+	cfg.Manifest = node.mfs
 
 	bytes, err := json.Marshal(cfg)
 	if err != nil {
@@ -375,7 +378,13 @@ func (node *Node) loadConfig() error {
 	}
 
 	err = node.auth.fromJSON(cfg.Auth)
-	return err
+	if err != nil {
+		return err
+	}
+
+	node.mfs = cfg.Manifest
+
+	return nil
 }
 
 func (node *Node) doShutdown() {

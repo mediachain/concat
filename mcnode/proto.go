@@ -63,6 +63,26 @@ func (node *Node) idHandler(s p2p_net.Stream) {
 	w.WriteMsg(&res)
 }
 
+func (node *Node) manifestHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	mc.LogStreamHandler(s)
+
+	var req pb.ManifestRequest
+	var res pb.ManifestResponse
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	err := r.ReadMsg(&req)
+	if err != nil {
+		return
+	}
+
+	res.Manifest = node.mfs
+
+	w.WriteMsg(&res)
+}
+
 func (node *Node) queryHandler(s p2p_net.Stream) {
 	defer s.Close()
 
@@ -357,6 +377,32 @@ func (node *Node) doRemoteId(ctx context.Context, pid p2p_peer.ID) (empty NodeIn
 	}
 
 	return NodeInfo{res.Peer, res.Publisher, res.Info}, nil
+}
+
+func (node *Node) doRemoteManifest(ctx context.Context, pid p2p_peer.ID) ([]*pb.Manifest, error) {
+	s, err := node.doConnect(ctx, pid, "/mediachain/node/manifest")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ManifestRequest
+	var res pb.ManifestResponse
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Manifest, nil
 }
 
 func (node *Node) doPing(ctx context.Context, pid p2p_peer.ID) error {

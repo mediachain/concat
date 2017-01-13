@@ -1060,6 +1060,96 @@ func (node *Node) httpAuthPeerSet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+// GET  /manifest
+// POST /manifest
+// Gets or sets the node's manifests
+func (node *Node) httpManifest(w http.ResponseWriter, r *http.Request) {
+	apiConfigMethod(w, r, node.httpManifestGet, node.httpManifestSet)
+}
+
+func (node *Node) httpManifestGet(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
+	for _, mf := range node.mfs {
+		err := enc.Encode(mf)
+		if err != nil {
+			log.Printf("Error writing response body: %s", err.Error())
+			return
+		}
+	}
+}
+
+func (node *Node) httpManifestSet(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	mfs := make([]*pb.Manifest, 0)
+
+loop:
+	for {
+		mf := new(pb.Manifest)
+		err := dec.Decode(mf)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			apiError(w, http.StatusBadRequest, err)
+			return
+		default:
+			mfs = append(mfs, mf)
+		}
+	}
+
+	node.mfs = mfs
+
+	err := node.saveConfig()
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// GET /manifest/node
+// Produces a manifest body for this node; input for signing with mcid
+func (node *Node) httpManifestSelf(w http.ResponseWriter, r *http.Request) {
+	mf := &pb.ManifestBody{&pb.ManifestBody_Node{&pb.NodeManifest{node.PeerIdentity.Pretty(), node.publisher.Pretty()}}}
+
+	err := json.NewEncoder(w).Encode(mf)
+	if err != nil {
+		log.Printf("Error writing response body: %s", err.Error())
+	}
+}
+
+// GET /manifest/{peerId}
+// Requests manifest from remote peer peerId
+func (node *Node) httpManifestPeer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	peerId := vars["peerId"]
+	pid, err := p2p_peer.IDB58Decode(peerId)
+	if err != nil {
+		apiError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	mfs, err := node.doRemoteManifest(ctx, pid)
+	if err != nil {
+		apiNetError(w, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+
+	for _, mf := range mfs {
+		err := enc.Encode(mf)
+		if err != nil {
+			log.Printf("Error writing response body: %s", err.Error())
+			return
+		}
+	}
+}
+
 // POST /shutdown
 // shutdown the node
 func (node *Node) httpShutdown(w http.ResponseWriter, r *http.Request) {
