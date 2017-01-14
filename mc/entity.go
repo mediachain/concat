@@ -170,7 +170,11 @@ func unmarshalEntityKey(key string, khash multihash.Multihash) (p2p_crypto.PubKe
 }
 
 func unmarshalEntityKeyBytes(key []byte, khash multihash.Multihash) (p2p_crypto.PubKey, error) {
-	hash := Hash(key)
+	hash, err := multihash.Sum(key, int(khash[0]), -1)
+	if err != nil {
+		return nil, err
+	}
+
 	if !bytes.Equal(hash, khash) {
 		return nil, EntityKeyNotFound
 	}
