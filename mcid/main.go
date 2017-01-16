@@ -53,13 +53,8 @@ func main() {
 }
 
 type Identity struct {
-	Public  PublicId  `json:"public"`
-	Private PrivateId `json:"private"`
-}
-
-type PublicId struct {
-	KeyId string `json:"keyId"` // public key multihash
-	Key   []byte `json:"key"`   // marshalled public key
+	Public  mc.EntityId `json:"public"`
+	Private PrivateId   `json:"private"`
 }
 
 type PrivateId struct {

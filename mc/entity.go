@@ -9,6 +9,7 @@ import (
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	multihash "github.com/multiformats/go-multihash"
 	"log"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -19,6 +20,11 @@ var (
 	UnknownIdProvider = errors.New("Unknwon identity provider")
 	EntityKeyNotFound = errors.New("Entity key not found")
 )
+
+type EntityId struct {
+	KeyId string `json:"keyId"` // public key multihash
+	Key   []byte `json:"key"`   // marshalled public key
+}
 
 func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
 	ix := strings.Index(entity, ":")
@@ -110,8 +116,48 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 	return nil, EntityKeyNotFound
 }
 
+func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
+	if !bsrx.Match([]byte(user)) {
+		return nil, MalformedEntityId
+	}
+
+	khash, err := multihash.FromB58String(keyId)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("https://%s.keybase.pub/mediachain.json", user)
+
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	switch {
+	case res.StatusCode == 404:
+		return nil, EntityKeyNotFound
+
+	case res.StatusCode != 200:
+		return nil, fmt.Errorf("keybase error: %d %s", res.StatusCode, res.Status)
+	}
+
+	var pub EntityId
+	err = json.NewDecoder(res.Body).Decode(&pub)
+	if err != nil {
+		return nil, err
+	}
+
+	if pub.KeyId != keyId {
+		return nil, EntityKeyNotFound
+	}
+
+	return unmarshalEntityKeyBytes(pub.Key, khash)
+}
+
 var idProviders = map[string]LookupKeyFunc{
 	"blockstack": lookupBlockstack,
+	"keybase":    lookupKeybase,
 }
 
 func unmarshalEntityKey(key string, khash multihash.Multihash) (p2p_crypto.PubKey, error) {
@@ -120,10 +166,18 @@ func unmarshalEntityKey(key string, khash multihash.Multihash) (p2p_crypto.PubKe
 		return nil, err
 	}
 
-	hash := Hash(data)
+	return unmarshalEntityKeyBytes(data, khash)
+}
+
+func unmarshalEntityKeyBytes(key []byte, khash multihash.Multihash) (p2p_crypto.PubKey, error) {
+	hash, err := multihash.Sum(key, int(khash[0]), -1)
+	if err != nil {
+		return nil, err
+	}
+
 	if !bytes.Equal(hash, khash) {
 		return nil, EntityKeyNotFound
 	}
 
-	return p2p_crypto.UnmarshalPublicKey(data)
+	return p2p_crypto.UnmarshalPublicKey(key)
 }
