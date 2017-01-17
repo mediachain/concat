@@ -1,3 +1,12 @@
+## 17/1/2017: concat-v1.5
+- Mediachain identity [[PR #110]](https://github.com/mediachain/concat/pull/110) [[PR #112]](https://github.com/mediachain/concat/pull/112) [[PR #118]](https://github.com/mediachain/concat/pull/118)
+- Node manifests [[PR #116]](https://github.com/mediachain/concat/pull/116)
+- Improved IPFS interopability [[PR #113]](https://github.com/mediachain/concat/pull/113)
+- Misc fixes and improvements
+  - Deduplicate wkis in compound statements [[PR #107]](https://github.com/mediachain/concat/pull/107) [[PR #108]](https://github.com/mediachain/concat/pull/108)
+  - Parallelize directory and DHT lookups, with more reasonable timeouts [[PR #109]](https://github.com/mediachain/concat/pull/109)
+  - Canonical JSON marshalling for statements in query results [[PR #111]](https://github.com/mediachain/concat/pull/111)
+
 ## 19/12/2016: concat-v1.4
 - Directory extensions for namespace listing [[PR #101]](https://github.com/mediachain/concat/pull/101)
 - Multiple directories [[PR #102]](https://github.com/mediachain/concat/pull/102)

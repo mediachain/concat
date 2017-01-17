@@ -370,7 +370,7 @@ A REST API is provided for controlling the node. This is an administrative inter
 
 * `GET /id` -- node info for the local node
 * `GET /id/{peerId}` -- node info for peer given by peerId
-* `GET /ping/{peerId}` -- ping!
+* `GET /ping/{peerId}` -- ping! [DEPRECATED]
 * `POST /publish/{namespace}` -- publish a batch of statements to the specified namespace 
 * `POST /publish/{namespace}/{combine}` -- publish a batch of statements with CompoundStatement grouping 
 * `GET /stmt/{statementId}` -- retrieve statement by statementId
@@ -394,6 +394,9 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET/POST /config/dir` -- retrieve/set configured directories
 * `GET/POST /config/nat` -- retrieve/set NAT setting
 * `GET/POST /config/info` -- retrieve/set info string
+* `GET/POST /manifest` -- get/set the node manifest list
+* `GET /manifest/self` -- make a manifest body for this node
+* `GET /manifest/{peerId}` -- retrieve the manifest list of a remote peer
 * `GET /dir/list` -- list all peers registered with the directory
 * `GET /dir/list/{namespace}` -- list peers providing namespace in the directory
 * `GET /dir/listns` -- list namespaces in the directory
@@ -401,6 +404,8 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /net/addr/{peerId}` -- list known addresses for peer
 * `GET /net/conns` -- list active peer connections
 * `GET /net/lookup/{peerId}` -- lookup a peer address in the network
+* `GET /net/identify/{peerId}` -- identify a peer using the ipfs/identify protocol
+* `GET /net/ping/{peerId}` -- ping a peer using the ipfs/ping protocol
 * `POST /shutdown` -- shutdown the node
 
 ### P2P API
