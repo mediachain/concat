@@ -18,12 +18,18 @@ func main() {
 	cport := flag.Int("c", 9002, "Peer control interface port [http]")
 	bindaddr := flag.String("b", "127.0.0.1", "Peer control bind address [http]")
 	hdir := flag.String("d", "~/.mediachain/mcnode", "Node home")
+	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options ...]\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+
+	if *ver {
+		fmt.Println(mc.ConcatVersion)
+		os.Exit(0)
 	}
 
 	addr, err := mc.ParseAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *pport))
