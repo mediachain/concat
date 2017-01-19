@@ -26,40 +26,54 @@ type EntityId struct {
 	Key   []byte `json:"key"`   // marshalled public key
 }
 
-func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
+func CheckEntityId(entity string) error {
 	ix := strings.Index(entity, ":")
 	if ix < 0 {
-		return nil, MalformedEntityId
+		return MalformedEntityId
 	}
 
 	prov := entity[:ix]
 	user := entity[ix+1:]
 
-	lookup, ok := idProviders[prov]
-	if ok {
-		return lookup(user, keyId)
+	if !urx.Match([]byte(user)) {
+		return MalformedEntityId
 	}
 
-	return nil, UnknownIdProvider
+	_, ok := idProviders[prov]
+	if !ok {
+		return UnknownIdProvider
+	}
+
+	return nil
 }
 
-type LookupKeyFunc func(user, keyId string) (p2p_crypto.PubKey, error)
-
-var bsrx *regexp.Regexp
+var urx *regexp.Regexp
 
 func init() {
 	rx, err := regexp.Compile("^[a-zA-Z0-9.-]+$")
 	if err != nil {
 		log.Fatal(err)
 	}
-	bsrx = rx
+	urx = rx
 }
 
-func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
-	if !bsrx.Match([]byte(user)) {
-		return nil, MalformedEntityId
+func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
+	err := CheckEntityId(entity)
+	if err != nil {
+		return nil, err
 	}
 
+	ix := strings.Index(entity, ":")
+	prov := entity[:ix]
+	user := entity[ix+1:]
+
+	lookup := idProviders[prov]
+	return lookup(user, keyId)
+}
+
+type LookupKeyFunc func(user, keyId string) (p2p_crypto.PubKey, error)
+
+func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 	khash, err := multihash.FromB58String(keyId)
 	if err != nil {
 		return nil, err
@@ -117,10 +131,6 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 }
 
 func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
-	if !bsrx.Match([]byte(user)) {
-		return nil, MalformedEntityId
-	}
-
 	khash, err := multihash.FromB58String(keyId)
 	if err != nil {
 		return nil, err

@@ -99,6 +99,11 @@ func doSign(home string, entity string, mf *os.File) {
 		log.Fatalf("Error decoding manifest body: %s", err.Error())
 	}
 
+	err = mc.CheckEntityId(entity)
+	if err != nil {
+		log.Fatalf("Bad entity: %s", err.Error())
+	}
+
 	id, err := getIdentity(home, false) // error if id doesn't exist
 	if err != nil {
 		log.Fatalf("Error retrieving identity: %s", err.Error())
