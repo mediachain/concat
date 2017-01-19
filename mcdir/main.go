@@ -271,12 +271,18 @@ func main() {
 
 	port := flag.Int("l", 9000, "Listen port")
 	hdir := flag.String("d", "~/.mediachain/mcdir", "Directory home")
+	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options ...]\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+
+	if *ver {
+		fmt.Println(mc.ConcatVersion)
+		os.Exit(0)
 	}
 
 	home, err := homedir.Expand(*hdir)
