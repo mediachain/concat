@@ -18,12 +18,24 @@ import (
 var (
 	MalformedEntityId = errors.New("Malformed entity id")
 	UnknownIdProvider = errors.New("Unknwon identity provider")
-	EntityKeyNotFound = errors.New("Entity key not found")
 )
 
 type EntityId struct {
 	KeyId string `json:"keyId"` // public key multihash
 	Key   []byte `json:"key"`   // marshalled public key
+}
+
+type EntityKeyNotFound struct {
+	err string
+}
+
+func (e EntityKeyNotFound) Error() string {
+	return e.err
+}
+
+func entityKeyNotFound(what string) error {
+	err := fmt.Sprintf("Entity key not found: %s", what)
+	return EntityKeyNotFound{err}
 }
 
 func CheckEntityId(entity string) error {
@@ -96,12 +108,12 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 
 	prof, ok := res["profile"].(map[string]interface{})
 	if !ok {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Missing or malformed blockstack profile")
 	}
 
 	accts, ok := prof["account"].([]interface{})
 	if !ok {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Missing or malformed blockstack account list")
 	}
 
 	for _, acct := range accts {
@@ -127,7 +139,7 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 		return unmarshalEntityKey(key, khash)
 	}
 
-	return nil, EntityKeyNotFound
+	return nil, entityKeyNotFound("No mediachain account in blockstack profile")
 }
 
 func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
@@ -146,7 +158,7 @@ func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
 
 	switch {
 	case res.StatusCode == 404:
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Error retrieving mediachain id from keybase: 404 Not Found")
 
 	case res.StatusCode != 200:
 		return nil, fmt.Errorf("keybase error: %d %s", res.StatusCode, res.Status)
@@ -159,7 +171,7 @@ func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
 	}
 
 	if pub.KeyId != keyId {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Key id mismatch")
 	}
 
 	return unmarshalEntityKeyBytes(pub.Key, khash)
@@ -186,7 +198,7 @@ func unmarshalEntityKeyBytes(key []byte, khash multihash.Multihash) (p2p_crypto.
 	}
 
 	if !bytes.Equal(hash, khash) {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Key hash mismatch")
 	}
 
 	return p2p_crypto.UnmarshalPublicKey(key)
