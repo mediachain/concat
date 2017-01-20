@@ -18,7 +18,6 @@ import (
 var (
 	MalformedEntityId = errors.New("Malformed entity id")
 	UnknownIdProvider = errors.New("Unknwon identity provider")
-	EntityKeyNotFound = errors.New("Entity key not found")
 )
 
 type EntityId struct {
@@ -26,40 +25,67 @@ type EntityId struct {
 	Key   []byte `json:"key"`   // marshalled public key
 }
 
-func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
+type EntityKeyNotFound struct {
+	err string
+}
+
+func (e EntityKeyNotFound) Error() string {
+	return e.err
+}
+
+func entityKeyNotFound(what string) error {
+	err := fmt.Sprintf("Entity key not found: %s", what)
+	return EntityKeyNotFound{err}
+}
+
+func CheckEntityId(entity string) error {
 	ix := strings.Index(entity, ":")
 	if ix < 0 {
-		return nil, MalformedEntityId
+		return MalformedEntityId
 	}
 
 	prov := entity[:ix]
 	user := entity[ix+1:]
 
-	lookup, ok := idProviders[prov]
-	if ok {
-		return lookup(user, keyId)
+	if !urx.Match([]byte(user)) {
+		return MalformedEntityId
 	}
 
-	return nil, UnknownIdProvider
+	_, ok := idProviders[prov]
+	if !ok {
+		return UnknownIdProvider
+	}
+
+	return nil
 }
 
-type LookupKeyFunc func(user, keyId string) (p2p_crypto.PubKey, error)
-
-var bsrx *regexp.Regexp
+var urx *regexp.Regexp
 
 func init() {
 	rx, err := regexp.Compile("^[a-zA-Z0-9.-]+$")
 	if err != nil {
 		log.Fatal(err)
 	}
-	bsrx = rx
+	urx = rx
 }
 
-func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
-	if !bsrx.Match([]byte(user)) {
-		return nil, MalformedEntityId
+func LookupEntityKey(entity string, keyId string) (p2p_crypto.PubKey, error) {
+	err := CheckEntityId(entity)
+	if err != nil {
+		return nil, err
 	}
 
+	ix := strings.Index(entity, ":")
+	prov := entity[:ix]
+	user := entity[ix+1:]
+
+	lookup := idProviders[prov]
+	return lookup(user, keyId)
+}
+
+type LookupKeyFunc func(user, keyId string) (p2p_crypto.PubKey, error)
+
+func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 	khash, err := multihash.FromB58String(keyId)
 	if err != nil {
 		return nil, err
@@ -82,12 +108,12 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 
 	prof, ok := res["profile"].(map[string]interface{})
 	if !ok {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Missing or malformed blockstack profile")
 	}
 
 	accts, ok := prof["account"].([]interface{})
 	if !ok {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Missing or malformed blockstack account list")
 	}
 
 	for _, acct := range accts {
@@ -113,14 +139,10 @@ func lookupBlockstack(user, keyId string) (p2p_crypto.PubKey, error) {
 		return unmarshalEntityKey(key, khash)
 	}
 
-	return nil, EntityKeyNotFound
+	return nil, entityKeyNotFound("No mediachain account in blockstack profile")
 }
 
 func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
-	if !bsrx.Match([]byte(user)) {
-		return nil, MalformedEntityId
-	}
-
 	khash, err := multihash.FromB58String(keyId)
 	if err != nil {
 		return nil, err
@@ -136,7 +158,7 @@ func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
 
 	switch {
 	case res.StatusCode == 404:
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Error retrieving mediachain id from keybase: 404 Not Found")
 
 	case res.StatusCode != 200:
 		return nil, fmt.Errorf("keybase error: %d %s", res.StatusCode, res.Status)
@@ -149,7 +171,7 @@ func lookupKeybase(user, keyId string) (p2p_crypto.PubKey, error) {
 	}
 
 	if pub.KeyId != keyId {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Key id mismatch")
 	}
 
 	return unmarshalEntityKeyBytes(pub.Key, khash)
@@ -176,7 +198,7 @@ func unmarshalEntityKeyBytes(key []byte, khash multihash.Multihash) (p2p_crypto.
 	}
 
 	if !bytes.Equal(hash, khash) {
-		return nil, EntityKeyNotFound
+		return nil, entityKeyNotFound("Key hash mismatch")
 	}
 
 	return p2p_crypto.UnmarshalPublicKey(key)
