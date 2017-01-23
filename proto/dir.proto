@@ -44,3 +44,13 @@ message ListNamespacesRequest {}
 message ListNamespacesResponse {
   repeated string namespaces = 1;
 }
+
+// /mediachain/dir/listmf
+message ListManifestRequest {
+  string entity = 1;
+}
+
+message ListManifestResponse {
+  repeated Manifest manifest = 1;
+}
+
