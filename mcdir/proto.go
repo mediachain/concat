@@ -146,3 +146,31 @@ func (dir *Directory) listnsHandler(s p2p_net.Stream) {
 		res.Reset()
 	}
 }
+
+func (dir *Directory) listmfHandler(s p2p_net.Stream) {
+	defer s.Close()
+
+	mc.LogStreamHandler(s)
+
+	var req pb.ListManifestRequest
+	var res pb.ListManifestResponse
+
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+	w := ggio.NewDelimitedWriter(s)
+
+	for {
+		err := r.ReadMsg(&req)
+		if err != nil {
+			break
+		}
+
+		res.Manifest = dir.mfs.Lookup(req.Entity)
+
+		err = w.WriteMsg(&res)
+		if err != nil {
+			break
+		}
+
+		res.Reset()
+	}
+}
