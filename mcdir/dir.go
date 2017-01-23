@@ -16,11 +16,17 @@ type Directory struct {
 	host  p2p_host.Host
 	peers map[p2p_peer.ID]PeerRecord
 	mx    sync.Mutex
+	mfs   ManifestStore
 }
 
 type PeerRecord struct {
 	peer      p2p_pstore.PeerInfo
 	publisher *pb.PublisherInfo
+}
+
+type ManifestStore interface {
+	Put([]*pb.Manifest)
+	Lookup(entity string) []*pb.Manifest
 }
 
 func (dir *Directory) registerPeer(rec PeerRecord) {

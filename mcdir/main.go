@@ -55,7 +55,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]PeerRecord)}
+	dir := &Directory{PeerIdentity: id, host: host, peers: make(map[p2p_peer.ID]PeerRecord), mfs: NewManifestStore()}
 	host.SetStreamHandler("/mediachain/dir/register", dir.registerHandler)
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
