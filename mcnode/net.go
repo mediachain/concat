@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	ggio "github.com/gogo/protobuf/io"
 	p2p_net "github.com/libp2p/go-libp2p-net"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
@@ -574,6 +575,43 @@ func (node *Node) doDirListNS(ctx context.Context) ([]string, error) {
 	return node.doDirCollect(ctx, node.doDirListNSImpl)
 }
 
+func (node *Node) doDirListMF(ctx context.Context, entity string) ([]*pb.Manifest, error) {
+	strs, err := node.doDirCollect(ctx,
+		func(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error) {
+			mfs, err := node.doDirListMFImpl(ctx, dir, entity)
+			if err != nil {
+				return nil, err
+			}
+
+			strs := make([]string, len(mfs))
+			for x, mf := range mfs {
+				bytes, err := json.Marshal(mf)
+				if err != nil {
+					return nil, err
+				}
+				strs[x] = string(bytes)
+			}
+
+			return strs, nil
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	mfs := make([]*pb.Manifest, len(strs))
+	for x, str := range strs {
+		mf := new(pb.Manifest)
+		err := json.Unmarshal([]byte(str), mf)
+		if err != nil {
+			return nil, err
+		}
+		mfs[x] = mf
+	}
+
+	return mfs, nil
+}
+
 func (node *Node) doDirCollect(ctx context.Context, proc func(ctx context.Context, dir p2p_pstore.PeerInfo) ([]string, error)) ([]string, error) {
 	dirs := node.dir
 
@@ -698,6 +736,34 @@ func (node *Node) doDirListNSImpl(ctx context.Context, dir p2p_pstore.PeerInfo) 
 	}
 
 	return res.Namespaces, nil
+}
+
+func (node *Node) doDirListMFImpl(ctx context.Context, dir p2p_pstore.PeerInfo, entity string) ([]*pb.Manifest, error) {
+	s, err := node.doDirConnect(ctx, dir, "/mediachain/dir/listmf")
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	w := ggio.NewDelimitedWriter(s)
+	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
+
+	var req pb.ListManifestRequest
+	var res pb.ListManifestResponse
+
+	req.Entity = entity
+
+	err = w.WriteMsg(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ReadMsg(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Manifest, nil
 }
 
 func (node *Node) doDirConnect(ctx context.Context, dir p2p_pstore.PeerInfo, proto p2p_proto.ID) (p2p_net.Stream, error) {
