@@ -54,8 +54,10 @@ func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
 		// XXX and in the meantime, it holds the manifest store lock...
 		// XXX The solution to this problem is to fetch keys asynchronously
 		// XXX with back-off/retry logic; impl is complicated though, so for now
-		// XXX damn the torpedoes.
+		// XXX damn the torpedoes (but at least release the lock)
+		mfs.mx.Unlock()
 		pubk, err = mc.LookupEntityKey(mf.Entity, mf.KeyId)
+		mfs.mx.Lock()
 		if err != nil {
 			log.Printf("Error looking up entity key %s: %s", kid, err.Error())
 			return
