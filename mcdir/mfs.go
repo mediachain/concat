@@ -67,15 +67,15 @@ func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
 
 	ok, err := verifyManifest(mf, pubk)
 	switch {
-	case ok:
-		// yay! a valid manifest.
-		mfs.mf[mfh] = ManifestRecord{mf, src}
-
 	case err != nil:
 		log.Printf("Error verifying manifest %s: %s", mfh, err.Error())
 
-	default:
+	case !ok:
 		log.Printf("Error verifying manifest %s: signature verification failed", mfh)
+
+	default:
+		// yay! a valid manifest.
+		mfs.mf[mfh] = ManifestRecord{mf, src}
 	}
 }
 
