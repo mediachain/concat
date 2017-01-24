@@ -42,13 +42,14 @@ func (dir *Directory) registerHandler(s p2p_net.Stream) {
 		dir.registerPeer(PeerRecord{pinfo, req.Publisher})
 
 		if len(req.Manifest) > 0 {
-			dir.mfs.Put(req.Manifest)
+			dir.mfs.Put(pid, req.Manifest)
 		}
 
 		req.Reset()
 	}
 
 	dir.unregisterPeer(pid)
+	dir.mfs.Remove(pid)
 }
 
 func (dir *Directory) lookupHandler(s p2p_net.Stream) {

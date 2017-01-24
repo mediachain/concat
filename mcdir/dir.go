@@ -25,7 +25,8 @@ type PeerRecord struct {
 }
 
 type ManifestStore interface {
-	Put([]*pb.Manifest)
+	Put(src p2p_peer.ID, lst []*pb.Manifest)
+	Remove(src p2p_peer.ID)
 	Lookup(entity string) []*pb.Manifest
 }
 
