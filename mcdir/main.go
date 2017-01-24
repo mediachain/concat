@@ -60,7 +60,7 @@ func main() {
 	host.SetStreamHandler("/mediachain/dir/lookup", dir.lookupHandler)
 	host.SetStreamHandler("/mediachain/dir/list", dir.listHandler)
 	host.SetStreamHandler("/mediachain/dir/listns", dir.listnsHandler)
-	host.SetStreamHandler("/mediachain/dir/listns", dir.listmfHandler)
+	host.SetStreamHandler("/mediachain/dir/listmf", dir.listmfHandler)
 
 	for _, addr := range host.Addrs() {
 		if !mc.IsLinkLocalAddr(addr) {
