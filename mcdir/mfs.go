@@ -1,6 +1,7 @@
 package main
 
 import (
+	ggproto "github.com/gogo/protobuf/proto"
 	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	mc "github.com/mediachain/concat/mc"
@@ -38,7 +39,13 @@ func (mfs *ManifestStoreImpl) Put(src p2p_peer.ID, lst []*pb.Manifest) {
 }
 
 func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
-	mfh := hashManifest(mf).B58String()
+	mfx, err := hashManifest(mf)
+	if err != nil {
+		log.Printf("Error hashing manifest; wtf: %s", err.Error())
+		return
+	}
+
+	mfh := mfx.B58String()
 
 	_, ok := mfs.mf[mfh]
 	if ok {
@@ -49,7 +56,6 @@ func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
 	pubk, ok := mfs.keys[kid]
 
 	if !ok {
-		var err error
 		// XXX This can take arbitrary long and might need to be throttled
 		// XXX and in the meantime, it holds the manifest store lock...
 		// XXX The solution to this problem is to fetch keys asynchronously
@@ -65,7 +71,7 @@ func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
 		mfs.keys[kid] = pubk
 	}
 
-	ok, err := verifyManifest(mf, pubk)
+	ok, err = verifyManifest(mf, pubk)
 	switch {
 	case err != nil:
 		log.Printf("Error verifying manifest %s: %s", mfh, err.Error())
@@ -88,12 +94,24 @@ func (mfs *ManifestStoreImpl) Lookup(entity string) []*pb.Manifest {
 	return nil
 }
 
-func hashManifest(mf *pb.Manifest) multihash.Multihash {
-	// XXX Implement me
-	return nil
+func hashManifest(mf *pb.Manifest) (multihash.Multihash, error) {
+	bytes, err := ggproto.Marshal(mf)
+	if err != nil {
+		return nil, err
+	}
+
+	return mc.Hash(bytes), nil
 }
 
 func verifyManifest(mf *pb.Manifest, pubk p2p_crypto.PubKey) (bool, error) {
-	// XXX Implement me
-	return false, nil
+	sig := mf.Signature
+	mf.Signature = nil
+	bytes, err := ggproto.Marshal(mf)
+	mf.Signature = sig
+
+	if err != nil {
+		return false, err
+	}
+
+	return pubk.Verify(bytes, sig)
 }
