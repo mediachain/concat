@@ -86,12 +86,28 @@ func (mfs *ManifestStoreImpl) putManifest(src p2p_peer.ID, mf *pb.Manifest) {
 }
 
 func (mfs *ManifestStoreImpl) Remove(src p2p_peer.ID) {
-	// XXX Implement me
+	mfs.mx.Lock()
+	defer mfs.mx.Unlock()
+
+	for mfh, mfr := range mfs.mf {
+		if mfr.src == src {
+			delete(mfs.mf, mfh)
+		}
+	}
 }
 
 func (mfs *ManifestStoreImpl) Lookup(entity string) []*pb.Manifest {
-	// XXX Implement me
-	return nil
+	mfs.mx.Lock()
+	defer mfs.mx.Unlock()
+
+	res := make([]*pb.Manifest, 0)
+	for _, mfr := range mfs.mf {
+		if mfr.mf.Entity == entity {
+			res = append(res, mfr.mf)
+		}
+	}
+
+	return res
 }
 
 func hashManifest(mf *pb.Manifest) (multihash.Multihash, error) {
