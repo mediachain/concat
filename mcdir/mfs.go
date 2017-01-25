@@ -100,13 +100,28 @@ func (mfs *ManifestStoreImpl) Lookup(entity string) []*pb.Manifest {
 	mfs.mx.Lock()
 	defer mfs.mx.Unlock()
 
+	switch {
+	case entity == "":
+		fallthrough
+	case entity == "*":
+		return mfs.lookupManifest(func(*pb.Manifest) bool {
+			return true
+		})
+
+	default:
+		return mfs.lookupManifest(func(mf *pb.Manifest) bool {
+			return mf.Entity == entity
+		})
+	}
+}
+
+func (mfs *ManifestStoreImpl) lookupManifest(filter func(*pb.Manifest) bool) []*pb.Manifest {
 	res := make([]*pb.Manifest, 0)
 	for _, mfr := range mfs.mf {
-		if mfr.mf.Entity == entity {
+		if filter(mfr.mf) {
 			res = append(res, mfr.mf)
 		}
 	}
-
 	return res
 }
 
