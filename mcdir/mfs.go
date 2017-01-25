@@ -8,6 +8,7 @@ import (
 	pb "github.com/mediachain/concat/proto"
 	multihash "github.com/multiformats/go-multihash"
 	"log"
+	"strings"
 	"sync"
 )
 
@@ -106,6 +107,12 @@ func (mfs *ManifestStoreImpl) Lookup(entity string) []*pb.Manifest {
 	case entity == "*":
 		return mfs.lookupManifest(func(*pb.Manifest) bool {
 			return true
+		})
+
+	case strings.HasSuffix(entity, "*"):
+		pre := entity[:len(entity)-1]
+		return mfs.lookupManifest(func(mf *pb.Manifest) bool {
+			return strings.HasPrefix(mf.Entity, pre)
 		})
 
 	default:
