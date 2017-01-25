@@ -259,6 +259,31 @@ func (node *Node) httpDirListNS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /dir/listmf/{entity}
+// List manifests from some entity
+func (node *Node) httpDirListMF(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	entity := vars["entity"]
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	mfs, err := node.doDirListMF(ctx, entity)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	for _, mf := range mfs {
+		err = enc.Encode(mf)
+		if err != nil {
+			log.Printf("Error encoding manifest result: %s", err.Error())
+			return
+		}
+	}
+}
+
 var nsrx *regexp.Regexp
 
 func init() {

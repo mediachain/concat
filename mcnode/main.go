@@ -111,6 +111,7 @@ func main() {
 	router.HandleFunc("/dir/list/{namespace}", node.httpDirList)
 	router.HandleFunc("/dir/list/{namespace}/all", node.httpDirListAll)
 	router.HandleFunc("/dir/listns", node.httpDirListNS)
+	router.HandleFunc("/dir/listmf/{entity}", node.httpDirListMF)
 	router.HandleFunc("/net/addr", node.httpNetAddr)
 	router.HandleFunc("/net/addr/{peerId}", node.httpNetPeerAddr)
 	router.HandleFunc("/net/conns", node.httpNetConns)
