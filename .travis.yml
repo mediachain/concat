@@ -18,7 +18,7 @@ before_install:
   - if [[ -d "$HOME/gocache/src" && -d "$HOME/gocache/pkg" ]]; then rsync -a "$HOME/gocache/" "$GOPATH/"; fi
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX="g++-4.8" CC="gcc-4.8" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX="g++-6" CC="gcc-6" CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++ -std=c++11 -lrt -Wl,--no-as-needed"; fi
   - ./setup.sh
   - ./install.sh
   - ./package.sh
@@ -42,8 +42,8 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-4.8
-      - g++-4.8
+      - gcc-6
+      - g++-6
 
 deploy:
   skip_cleanup: true

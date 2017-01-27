@@ -49,6 +49,7 @@ func (ds *RocksDS) Open(home string) error {
 		}
 	}
 	opts.OptimizeForPointLookup(uint64(bcmb))
+	opts.SetAllowConcurrentMemtableWrites(false)
 
 	db, err := rocksdb.OpenDb(opts, dbpath)
 	if err != nil {
