@@ -128,8 +128,8 @@ func (node *Node) goPublic() error {
 			return err
 		}
 
-		// wait a bit for NAT port mapping to take effect and DHT bootstrap
-		time.Sleep(2 * time.Second)
+		// wait a bit for the DHT to bootstrap and NAT port mapping to take effect
+		time.Sleep(5 * time.Second)
 		fallthrough
 
 	case StatusOnline:
