@@ -78,6 +78,8 @@ type Datastore interface {
 type DHT interface {
 	Bootstrap() error
 	Lookup(ctx context.Context, pid p2p_peer.ID) (p2p_pstore.PeerInfo, error)
+	Provide(ctx context.Context, key string) error
+	FindProviders(ctx context.Context, key string) <-chan p2p_pstore.PeerInfo
 	Close() error
 }
 
