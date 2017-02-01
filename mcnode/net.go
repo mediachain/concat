@@ -426,6 +426,14 @@ identify:
 	return
 }
 
+func (node *Node) netFindPeers(ctx context.Context) (<-chan p2p_pstore.PeerInfo, error) {
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	return node.dht.FindProviders(ctx, "/mediachain/node"), nil
+}
+
 // Connectivity
 func (node *Node) doConnect(ctx context.Context, pid p2p_peer.ID, proto p2p_proto.ID) (p2p_net.Stream, error) {
 	err := node.doConnectPeer(ctx, pid)
