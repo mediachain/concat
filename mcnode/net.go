@@ -436,6 +436,10 @@ func (node *Node) netFindPeers(ctx context.Context) (<-chan p2p_pstore.PeerInfo,
 	go func() {
 		defer close(och)
 		for pinfo := range ich {
+			if pinfo.ID == node.ID {
+				continue
+			}
+
 			node.host.Peerstore().AddAddrs(pinfo.ID, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
 
 			select {
