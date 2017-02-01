@@ -431,7 +431,23 @@ func (node *Node) netFindPeers(ctx context.Context) (<-chan p2p_pstore.PeerInfo,
 		return nil, NodeOffline
 	}
 
-	return node.dht.FindProviders(ctx, "/mediachain/node"), nil
+	ich := node.dht.FindProviders(ctx, "/mediachain/node")
+	och := make(chan p2p_pstore.PeerInfo)
+	go func() {
+		defer close(och)
+		for pinfo := range ich {
+			node.host.Peerstore().AddAddrs(pinfo.ID, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
+
+			select {
+			case och <- pinfo:
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return och, nil
 }
 
 // Connectivity
