@@ -118,6 +118,7 @@ func main() {
 	router.HandleFunc("/net/lookup/{peerId}", node.httpNetLookup)
 	router.HandleFunc("/net/identify/{peerId}", node.httpNetIdentify)
 	router.HandleFunc("/net/ping/{peerId}", node.httpNetPing)
+	router.HandleFunc("/net/find", node.httpNetFindPeers)
 	router.HandleFunc("/shutdown", node.httpShutdown)
 
 	log.Printf("Serving client interface at %s", haddr)

@@ -128,16 +128,15 @@ func (node *Node) goPublic() error {
 			return err
 		}
 
-		if node.natCfg.Opt == mc.NATConfigAuto {
-			// wait a bit for NAT port mapping to take effect
-			time.Sleep(2 * time.Second)
-		}
+		// wait a bit for the DHT to bootstrap and NAT port mapping to take effect
+		time.Sleep(5 * time.Second)
 		fallthrough
 
 	case StatusOnline:
 		for _, dir := range node.dir {
 			go node.registerPeer(node.netCtx, dir)
 		}
+		go node.registerPeerDHT(node.netCtx)
 		node.status = StatusPublic
 
 		log.Println("Node is public")
@@ -162,6 +161,23 @@ func (node *Node) registerPeer(ctx context.Context, dir p2p_pstore.PeerInfo) {
 
 		case <-time.After(5 * time.Minute):
 			log.Println("Retrying to register with directory")
+			continue
+		}
+	}
+}
+
+func (node *Node) registerPeerDHT(ctx context.Context) {
+	for {
+		err := node.dht.Provide(ctx, "/mediachain/node")
+		if err != nil {
+			log.Printf("Error publishing rendezvous in the DHT: %s", err.Error())
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-time.After(1 * time.Hour):
 			continue
 		}
 	}
@@ -408,6 +424,34 @@ identify:
 	nid.Protocols = protos
 
 	return
+}
+
+func (node *Node) netFindPeers(ctx context.Context) (<-chan p2p_pstore.PeerInfo, error) {
+	if node.status == StatusOffline {
+		return nil, NodeOffline
+	}
+
+	ich := node.dht.FindProviders(ctx, "/mediachain/node")
+	och := make(chan p2p_pstore.PeerInfo)
+	go func() {
+		defer close(och)
+		for pinfo := range ich {
+			if pinfo.ID == node.ID {
+				continue
+			}
+
+			node.host.Peerstore().AddAddrs(pinfo.ID, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
+
+			select {
+			case och <- pinfo:
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return och, nil
 }
 
 // Connectivity

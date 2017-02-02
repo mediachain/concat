@@ -182,6 +182,23 @@ func (node *Node) httpNetPing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, dt)
 }
 
+// GET /net/find
+// Find peers through DHT rendezvous
+func (node *Node) httpNetFindPeers(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	ch, err := node.netFindPeers(ctx)
+	if err != nil {
+		apiNetError(w, err)
+		return
+	}
+
+	for pinfo := range ch {
+		fmt.Fprintln(w, pinfo.ID.Pretty())
+	}
+}
+
 // GET /ping/{peerId}
 // Lookup a peer in the directory and ping it with the /mediachain/node/ping protocol.
 // The node must be online and a directory must have been configured.

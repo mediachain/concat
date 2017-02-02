@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	ipfs_cid "github.com/ipfs/go-cid"
 	ipfs_ds "github.com/ipfs/go-datastore"
 	ipfs_dsq "github.com/ipfs/go-datastore/query"
 	goproc "github.com/jbenet/goprocess"
@@ -30,6 +31,7 @@ const (
 	DHTMinPeers          = 4
 	DHTMinBootstrapPeers = 2
 	DHTTickPeriod        = 1 * time.Minute
+	LotsOfProviders      = 2 << 20
 )
 
 func NewDHT(ctx context.Context, host p2p_host.Host) DHT {
@@ -95,6 +97,16 @@ func (dht *DHTImpl) Lookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_psto
 		err = UnknownPeer
 	}
 	return
+}
+
+func (dht *DHTImpl) Provide(ctx context.Context, key string) error {
+	cid := ipfs_cid.NewCidV1(ipfs_cid.Raw, mc.Hash([]byte(key)))
+	return dht.dht.Provide(ctx, cid)
+}
+
+func (dht *DHTImpl) FindProviders(ctx context.Context, key string) <-chan p2p_pstore.PeerInfo {
+	cid := ipfs_cid.NewCidV1(ipfs_cid.Raw, mc.Hash([]byte(key)))
+	return dht.dht.FindProvidersAsync(ctx, cid, LotsOfProviders)
 }
 
 func (dht *DHTImpl) Close() error {
