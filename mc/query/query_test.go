@@ -81,7 +81,8 @@ var simpleq []string = []string{
 	"SELECT * FROM * ORDER BY namespace DESC, counter ASC",
 	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter",
 	"SELECT * FROM * ORDER BY counter LIMIT 10",
-	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter LIMIT 10"}
+	"SELECT * FROM * WHERE timestamp > 1474000000 ORDER BY counter LIMIT 10",
+}
 
 var delq []string = []string{
 	"DELETE FROM *",
@@ -114,7 +115,10 @@ var delq []string = []string{
 	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000",
 	"DELETE FROM foo.bar WHERE publisher = abc AND NOT timestamp < 1474000000 OR counter > 10",
 	"DELETE FROM foo.bar WHERE publisher = abc AND NOT (timestamp < 1474000000 OR counter > 10)",
-	"DELETE FROM * WHERE id = abc"}
+	"DELETE FROM * WHERE id = abc",
+	"DELETE FROM * LIMIT 10",
+	"DELETE FROM * WHERE id = abc LIMIT 10",
+}
 
 func checkError(t *testing.T, where string, err error) {
 	if err != nil {

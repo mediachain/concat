@@ -20,7 +20,9 @@ Select <- 'SELECT' WS Selector
                   (WS Order)?
                   (WS Limit)?
 
-Delete <- 'DELETE' WS Source (WS Criteria)?
+Delete <- 'DELETE' WS Source
+                  (WS Criteria)?
+                  (WS Limit)?
 
 Selector <- SimpleSelector   { p.setSimpleSelector() }
           / CompoundSelector { p.setCompoundSelector() }
