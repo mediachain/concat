@@ -688,6 +688,7 @@ func (node *Node) httpVacuumIncremental(w http.ResponseWriter, r *http.Request) 
 	err := node.db.Vacuum(false)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	fmt.Fprintln(w, "OK")
@@ -699,6 +700,7 @@ func (node *Node) httpVacuumFull(w http.ResponseWriter, r *http.Request) {
 	err := node.db.Vacuum(true)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	fmt.Fprintln(w, "OK")
