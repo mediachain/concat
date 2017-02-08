@@ -493,3 +493,30 @@ func (sdb *SQLiteDB) MergeBatch(stmts []*pb.Statement) (count int, err error) {
 
 	return count, nil
 }
+
+func (sdb *SQLiteDB) Vacuum(full bool) error {
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
+	if full {
+		return sdb.vacuumFull()
+	}
+
+	return sdb.vacuumIncremental()
+}
+
+func (sdb *SQLiteDB) vacuumFull() error {
+	// reset auto_vacuum to INCREMENTAL for simple db migration
+	_, err := sdb.db.Exec("PRAGMA auto_vacuum=INCREMENTAL")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("VACUUM")
+	return err
+}
+
+func (sdb *SQLiteDB) vacuumIncremental() error {
+	_, err := sdb.db.Exec("PRAGMA incremental_vacuum")
+	return err
+}
