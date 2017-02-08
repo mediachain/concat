@@ -89,6 +89,8 @@ func main() {
 	router.HandleFunc("/merge/{peerId}", node.httpMerge)
 	router.HandleFunc("/push/{peerId}", node.httpPush)
 	router.HandleFunc("/delete", node.httpDelete)
+	router.HandleFunc("/vacuum/incremental", node.httpVacuumIncremental)
+	router.HandleFunc("/vacuum/full", node.httpVacuumFull)
 	router.HandleFunc("/data/put", node.httpPutData)
 	router.HandleFunc("/data/get", node.httpGetDataBatch)
 	router.HandleFunc("/data/get/{objectId}", node.httpGetData)
