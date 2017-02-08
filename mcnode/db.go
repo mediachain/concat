@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
 	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -393,12 +394,12 @@ func (sdb *SQLiteDB) Open(home string) error {
 	}
 
 	if mktables {
-		err = sdb.createTables()
+		err = sdb.tuneDB()
 		if err != nil {
 			return err
 		}
 
-		err = sdb.tuneDB()
+		err = sdb.createTables()
 		if err != nil {
 			return err
 		}
@@ -419,6 +420,11 @@ func (sdb *SQLiteDB) openDB(dbpath string) error {
 
 func (sdb *SQLiteDB) tuneDB() error {
 	_, err := sdb.db.Exec("PRAGMA journal_mode=WAL")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("PRAGMA auto_vacuum=INCREMENTAL")
 	return err
 }
 
@@ -487,4 +493,42 @@ func (sdb *SQLiteDB) MergeBatch(stmts []*pb.Statement) (count int, err error) {
 	}
 
 	return count, nil
+}
+
+func (sdb *SQLiteDB) Vacuum(full bool) error {
+	sdb.wlock.Lock()
+	defer sdb.wlock.Unlock()
+
+	if full {
+		return sdb.vacuumFull()
+	}
+
+	return sdb.vacuumIncremental()
+}
+
+func (sdb *SQLiteDB) vacuumFull() error {
+	// reset auto_vacuum to INCREMENTAL for simple db migration
+	_, err := sdb.db.Exec("PRAGMA auto_vacuum=INCREMENTAL")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("VACUUM")
+	return err
+}
+
+func (sdb *SQLiteDB) vacuumIncremental() error {
+	var autovac int
+	row := sdb.db.QueryRow("PRAGMA auto_vacuum")
+	err := row.Scan(&autovac)
+	if err != nil {
+		return err
+	}
+
+	if autovac != 2 {
+		return fmt.Errorf("Incremental vacuum not enabled in the database; run a full vacuum first")
+	}
+
+	_, err = sdb.db.Exec("PRAGMA incremental_vacuum")
+	return err
 }

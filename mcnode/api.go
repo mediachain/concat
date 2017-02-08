@@ -682,6 +682,30 @@ func (node *Node) httpDelete(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, count)
 }
 
+// POST /vacuum/incremental
+// Perform an incremental vacuum in the statement db
+func (node *Node) httpVacuumIncremental(w http.ResponseWriter, r *http.Request) {
+	err := node.db.Vacuum(false)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
+// POST /vacuum/incremental
+// Perform a full vacuum in the statement db
+func (node *Node) httpVacuumFull(w http.ResponseWriter, r *http.Request) {
+	err := node.db.Vacuum(true)
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
 // datastore interface
 type DataObject struct {
 	Data []byte `json:"data"`

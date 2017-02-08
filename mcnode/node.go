@@ -58,6 +58,7 @@ type StatementDB interface {
 	Merge(*pb.Statement) (bool, error)
 	MergeBatch([]*pb.Statement) (int, error)
 	Delete(*mcq.Query) (int, error)
+	Vacuum(full bool) error
 	Close() error
 }
 
