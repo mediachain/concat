@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	ggproto "github.com/gogo/protobuf/proto"
 	sqlite3 "github.com/mattn/go-sqlite3"
 	mcq "github.com/mediachain/concat/mc/query"
@@ -517,6 +518,17 @@ func (sdb *SQLiteDB) vacuumFull() error {
 }
 
 func (sdb *SQLiteDB) vacuumIncremental() error {
-	_, err := sdb.db.Exec("PRAGMA incremental_vacuum")
+	var autovac int
+	row := sdb.db.QueryRow("PRAGMA auto_vacuum")
+	err := row.Scan(&autovac)
+	if err != nil {
+		return err
+	}
+
+	if autovac != 2 {
+		return fmt.Errorf("Incremental vacuum not enabled in the database; run a full vacuum first")
+	}
+
+	_, err = sdb.db.Exec("PRAGMA incremental_vacuum")
 	return err
 }
