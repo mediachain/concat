@@ -393,12 +393,12 @@ func (sdb *SQLiteDB) Open(home string) error {
 	}
 
 	if mktables {
-		err = sdb.createTables()
+		err = sdb.tuneDB()
 		if err != nil {
 			return err
 		}
 
-		err = sdb.tuneDB()
+		err = sdb.createTables()
 		if err != nil {
 			return err
 		}
@@ -419,6 +419,11 @@ func (sdb *SQLiteDB) openDB(dbpath string) error {
 
 func (sdb *SQLiteDB) tuneDB() error {
 	_, err := sdb.db.Exec("PRAGMA journal_mode=WAL")
+	if err != nil {
+		return err
+	}
+
+	_, err = sdb.db.Exec("PRAGMA auto_vacuum=INCREMENTAL")
 	return err
 }
 
