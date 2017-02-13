@@ -379,6 +379,8 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `POST /merge/{peerId}` -- query a peer and merge the resulting statements and metadata
 * `POST /push/{peerId}` -- issue a local query and push the resulting statements to a remote peer.
 * `POST /delete` -- delete statements matching this MCQL DELETE query
+* `POST vacuum/incremental` -- perform an incremental statement db vacuum
+* `POST vacuum/full` -- perform a full statement db vacuum
 * `POST /data/put` -- add a batch of data objects to datastore
 * `POST /data/get` -- get a batch of objects from the datastore
 * `GET /data/get/{objectId}` -- get a single object from the datastore; 404 semantics
@@ -400,6 +402,7 @@ A REST API is provided for controlling the node. This is an administrative inter
 * `GET /dir/list` -- list all peers registered with the directory
 * `GET /dir/list/{namespace}` -- list peers providing namespace in the directory
 * `GET /dir/listns` -- list namespaces in the directory
+* `GET /dir/listmf/{entity}` -- list manifests in the directory for entity
 * `GET /net/addr` -- list self addresses
 * `GET /net/addr/{peerId}` -- list known addresses for peer
 * `GET /net/conns` -- list active peer connections

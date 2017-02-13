@@ -1,3 +1,13 @@
+## 13/2/2017: concat-v1.6
+- Directory extensions for manifest lookup [[PR #125]](https://github.com/mediachain/concat/pull/125)
+- Peer discovery through DHT rendezvous [[PR #128]](https://github.com/mediachain/concat/pull/128)
+- mcid usabililty improvements [[PR #124]](https://github.com/mediachain/concat/pull/124)
+- Statement DB vacuum support [[PR #130]](https://github.com/mediachain/concat/pull/130)
+- Misc fixes and improvements
+  - version command for binaries [[PR #122]](https://github.com/mediachain/concat/pull/122)
+  - Add LIMIT clause to MCQL DELETE [[PR #129]](https://github.com/mediachain/concat/pull/129)
+  - Update rocksdb, disable concurrent memtable writing which is no longer supported with point lookup optimizations [[PR #126]](https://github.com/mediachain/concat/pull/126)
+
 ## 17/1/2017: concat-v1.5
 - Mediachain identity [[PR #110]](https://github.com/mediachain/concat/pull/110) [[PR #112]](https://github.com/mediachain/concat/pull/112) [[PR #118]](https://github.com/mediachain/concat/pull/118)
 - Node manifests [[PR #116]](https://github.com/mediachain/concat/pull/116)
