@@ -23,6 +23,14 @@ func (m *StatementBody) MarshalJSON() ([]byte, error) {
 	return marshalJSON(m)
 }
 
+func (m *Statement) UnmarshalJSON(data []byte) error {
+	return unmarshalJSON(data, m)
+}
+
+func (m *StatementBody) UnmarshalJSON(data []byte) error {
+	return unmarshalJSON(data, m)
+}
+
 func (m *Manifest) MarshalJSON() ([]byte, error) {
 	return marshalJSON(m)
 }
