@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mux "github.com/gorilla/mux"
+	p2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	p2p_peer "github.com/libp2p/go-libp2p-peer"
 	p2p_pstore "github.com/libp2p/go-libp2p-peerstore"
 	mc "github.com/mediachain/concat/mc"
@@ -419,6 +420,61 @@ loop:
 
 	for _, sid := range sids {
 		fmt.Fprintln(w, sid)
+	}
+}
+
+// POST /import
+// DATA: A stream of json-encoded pb.Statements
+// Merges a stream of pre-signed statements
+// Returns the number of statements merged
+func (node *Node) httpImport(w http.ResponseWriter, r *http.Request) {
+	const batch = 1024
+	var err error
+	count := 0
+
+	dec := json.NewDecoder(r.Body)
+	pkcache := make(map[string]p2p_crypto.PubKey)
+	stmts := make([]*pb.Statement, 0, batch)
+
+loop:
+	for {
+		stmt := new(pb.Statement)
+		err = dec.Decode(stmt)
+		switch {
+		case err == io.EOF:
+			break loop
+		case err != nil:
+			goto import_error
+		}
+
+		stmts = append(stmts, stmt)
+		if len(stmts) >= batch {
+			var xcount int
+			xcount, err = node.doImport(stmts, pkcache)
+			count += xcount
+			if err != nil {
+				goto import_error
+			}
+			stmts = stmts[:0]
+		}
+	}
+
+	if len(stmts) > 0 {
+		var xcount int
+		xcount, err = node.doImport(stmts, pkcache)
+		count += xcount
+		if err != nil {
+			goto import_error
+		}
+	}
+
+	fmt.Fprintln(w, count)
+	return
+
+import_error:
+	apiError(w, http.StatusBadRequest, err)
+	if count > 0 {
+		fmt.Fprintf(w, "Partial import: %d statements merged\n", count)
 	}
 }
 

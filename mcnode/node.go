@@ -196,6 +196,25 @@ func (node *Node) doPublishBatch(ns string, lst []interface{}) ([]string, error)
 	return sids, err
 }
 
+func (node *Node) doImport(stmts []*pb.Statement, pkcache map[string]p2p_crypto.PubKey) (int, error) {
+	for _, stmt := range stmts {
+		if !node.checkStatement(stmt) {
+			return 0, BadStatement
+		}
+
+		verify, err := node.verifyStatementCacheKeys(stmt, pkcache)
+		if err != nil {
+			return 0, err
+		}
+
+		if !verify {
+			return 0, BadStatement
+		}
+	}
+
+	return node.db.MergeBatch(stmts)
+}
+
 func (node *Node) makeStatement(ns string, body interface{}) (*pb.Statement, error) {
 	stmt := new(pb.Statement)
 	pid := node.publisher.ID58
