@@ -43,8 +43,6 @@ func NewDHT(ctx context.Context, host p2p_host.Host) DHT {
 func (dht *DHTImpl) Bootstrap() error {
 	bootp := dht.bootstrapOverlay()
 	ctx := goproc_ctx.OnClosingContext(bootp)
-	// XXX This leaks a ticker on shutdown
-	//     BUG: https://github.com/libp2p/go-libp2p-kad-dht/issues/43
 	err := dht.dht.Bootstrap(ctx)
 	if err != nil {
 		bootp.Close()
