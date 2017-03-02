@@ -11,6 +11,7 @@ import (
 	mcq "github.com/mediachain/concat/mc/query"
 	pb "github.com/mediachain/concat/proto"
 	multihash "github.com/multiformats/go-multihash"
+	"io"
 	"log"
 	"runtime"
 )
@@ -685,6 +686,10 @@ loop:
 	for {
 		err := r.ReadMsg(&res)
 		if err != nil {
+			if err == io.EOF {
+				log.Printf("node.doMergeDataImpl: Got EOF in data stream")
+			}
+
 			return count, err
 		}
 
