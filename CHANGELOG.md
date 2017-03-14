@@ -1,3 +1,6 @@
+## 14/3/2017: concat-v1.7
+- Added `/import` HTTP endpoint for merging a stream of existing signed statements (used for loading archives) [[PR #135]](https://github.com/mediachain/concat/pull/135)
+
 ## 13/2/2017: concat-v1.6
 - Directory extensions for manifest lookup [[PR #125]](https://github.com/mediachain/concat/pull/125)
 - Peer discovery through DHT rendezvous [[PR #128]](https://github.com/mediachain/concat/pull/128)
