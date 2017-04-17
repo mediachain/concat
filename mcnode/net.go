@@ -17,6 +17,12 @@ import (
 	"time"
 )
 
+const (
+	// TTL for DHT address lookups; this is longer than a p2p_pstore.TempAddrTTL (10s)
+	// but shorter than p2p_pstore.ProviderAddrTTL (10min)
+	LookupCacheAddrTTL = 1 * time.Minute
+)
+
 // goOffline stops the network
 func (node *Node) goOffline() error {
 	node.mx.Lock()
@@ -487,125 +493,15 @@ func (node *Node) doConnectPeer(ctx context.Context, pid p2p_peer.ID) error {
 }
 
 func (node *Node) doLookup(ctx context.Context, pid p2p_peer.ID) (pinfo p2p_pstore.PeerInfo, err error) {
-	pinfo, err = node.doLookupImpl(ctx, pid)
-	if err == nil {
-		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, p2p_pstore.ProviderAddrTTL)
-	}
-
-	return
-}
-
-func (node *Node) doLookupImpl(ctx context.Context, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	if node.status == StatusOffline {
-		return empty, NodeOffline
-	}
-
-	dirs := node.dir
-	workers := len(dirs) + 1
-	ch := make(chan interface{}, workers)
-
-	var dirctx, dhtctx context.Context
-	var dircancel, dhtcancel context.CancelFunc
-
-	if len(dirs) == 0 {
-		goto lookup_dht
-	}
-
-	dirctx, dircancel = context.WithTimeout(ctx, 5*time.Second)
-	defer dircancel()
-
-	for _, dir := range dirs {
-		go func(dir p2p_pstore.PeerInfo) {
-			pinfo, err := node.doDirLookupImpl(dirctx, dir, pid)
-			if err == nil {
-				ch <- pinfo
-			} else {
-				ch <- err
-			}
-		}(dir)
-	}
-
-lookup_dht:
-	dhtctx, dhtcancel = context.WithTimeout(ctx, 30*time.Second)
+	dhtctx, dhtcancel := context.WithTimeout(ctx, 10*time.Second)
 	defer dhtcancel()
 
-	go func() {
-		pinfo, err := node.dht.Lookup(dhtctx, pid)
-		if err == nil {
-			ch <- pinfo
-		} else {
-			ch <- err
-		}
-	}()
-
-	errcount := 0
-loop:
-	for x := 0; x < workers; x++ {
-		select {
-		case res := <-ch:
-			switch res := res.(type) {
-			case p2p_pstore.PeerInfo:
-				return res, nil
-
-			case error:
-				if res != UnknownPeer {
-					log.Printf("Peer lookup error: %s", res.Error())
-					errcount++
-				}
-
-			default:
-				log.Printf("doLookupImpl: unexpected result type: %T", res)
-				errcount++
-			}
-
-		case <-ctx.Done():
-			break loop
-		}
-	}
-
-	// we didn't resolve, but what kind of error is it?
-	if errcount < workers {
-		// not all workers failed, or our context expired; we didn't find the peer
-		err = UnknownPeer
-	} else {
-		// all workers failed, signal error
-		err = LookupError
+	pinfo, err = node.dht.Lookup(dhtctx, pid)
+	if err == nil {
+		node.host.Peerstore().AddAddrs(pid, pinfo.Addrs, LookupCacheAddrTTL)
 	}
 
 	return
-}
-
-func (node *Node) doDirLookupImpl(ctx context.Context, dir p2p_pstore.PeerInfo, pid p2p_peer.ID) (empty p2p_pstore.PeerInfo, err error) {
-	s, err := node.doDirConnect(ctx, dir, "/mediachain/dir/lookup")
-	if err != nil {
-		return empty, err
-	}
-	defer s.Close()
-
-	req := pb.LookupPeerRequest{pid.Pretty()}
-	w := ggio.NewDelimitedWriter(s)
-	err = w.WriteMsg(&req)
-	if err != nil {
-		return empty, err
-	}
-
-	var resp pb.LookupPeerResponse
-	r := ggio.NewDelimitedReader(s, mc.MaxMessageSize)
-	err = r.ReadMsg(&resp)
-	if err != nil {
-		return empty, err
-	}
-
-	if resp.Peer == nil {
-		return empty, UnknownPeer
-	}
-
-	pinfo, err := mc.PBToPeerInfo(resp.Peer)
-	if err != nil {
-		return empty, err
-	}
-
-	return pinfo, nil
 }
 
 func (node *Node) doDirList(ctx context.Context, ns string) ([]string, error) {
